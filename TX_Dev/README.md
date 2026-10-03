@@ -61,6 +61,8 @@ V2, V3, V8, V11 and V12 also need your eyes. The steps below say what to look at
 
 ## Session 1: Hotseat (about 20 min)
 
+Done 2026-10-03 with TX_Dev 0.0.1.1. Results are Leon's notes plus the `summarize_log.py` lines.
+
 Setup:
 - Multiplayer, Hotseat, Create Game. Gathering Storm rules, Tiny map, Quick speed.
 - Players: P0, P1 and P2 human, P3 AI. Teams: P0 and P1 on Team 1, P2 and P3 on Team 2.
@@ -69,70 +71,72 @@ Setup:
 1. Turn 1: found the capital with P0, P1 and P2. End turns until turn 3.
    - Why: the setup buttons need capitals.
    - Expect: the DEV button on the launch bar.
-   - Result:
+   - Result: as expected.
 2. As P0, open the panel. Press S1 Dump (UI), S1 Dump (G), then S1 Team map.
    - Why: find team setters in both contexts, and how team IDs are numbered.
    - Expect: the panel shows a suggested New team.
-   - Result:
+   - Result: "new team: 10". UI setters: only `PlayerConfigurations[0]:SetTeam`. G setters: none. Solo players own team IDs (slot 4 is team 2 and so on, Free Cities 8, Barbarians 9), empty slots are -1. The config team can't be read in G.
 3. Press S2 Probe setters (no calls).
    - Why: which candidate setters exist.
    - Expect: the S2 setter row lists the hits, if any.
-   - Result:
+   - Result: (none: press S2 Probe setters). No candidate exists in G or UI.
 4. Press V10 Friends target-other, V9 Deals target-other, V5 Marker (keeper), V4 Boost (keeper). Put the marker Warrior to sleep. Don't move it.
    - Why: build the "before" state.
    - Expect: SPIKE lines with ok=true, a P0 Warrior far from P1, new P0 units near P0's capital.
-   - Result:
+   - Result: warriors and archers seen. Deals P1-P2: open borders both ways plus GPT, friendship both ways. Marker at 19,29, 40 tiles from anything of P1's.
 5. End turn with all three humans. As P0, press Arm BASE + snapshot.
    - Why: record the "before" column.
    - Expect: `V4-UI.BASE` says P1 got the boost too, and `V5-UI.BASE` says P1 sees the marker.
-   - Result:
+   - Result: phase BASE. `V5-UI.BASE`: P1 sees the marker, as expected. `V4-UI.BASE`: P0 boosted, P1 not, so the boost was not shared even before the change. V4 can't be measured this way.
 6. Save as `TX_baseline`.
    - Why: S2 and the lobby test start from here.
    - Expect: -
-   - Result:
+   - Result: okay
 7. Target P1, New team as suggested. Press S3 Set Target's team.
    - Why: the config level change (TP 1.3).
    - Expect: `S3-UI.S3LIVE PASS`. The live team probably doesn't change yet.
-   - Result:
+   - Result: phase S3LIVE; P1 lost the team banner! `S3-UI.S3LIVE PASS` (config 0 to 10, set and broadcast ok). G reads `Players[1]:GetTeam()` = 10 at once (`V1-G.S3LIVE PASS`). UI still reads 0 and has no `Teams[10]` (`V1-UI.S3LIVE FAIL`). The base game's `LeaderIcon.lua:143` threw a runtime error because `Teams[10]` was nil in the UI: that's the lost banner.
 8. Open World Rankings and look at the leader ribbon. Press Snapshot now.
    - Why: V2 and the "after, live" column.
    - Expect: write down what the screens show.
-   - Result:
+   - Result: didn't end turn yet. P1 still on my team on the world rankings. `V5-UI.S3LIVE FAIL`: vision still shared. V9 and V10 PASS.
 9. Save as `TX_s3`. Exit to the main menu and load `TX_s3`.
    - Why: does the config team apply on reload (Mode B)?
    - Expect: `V1-G.S3RELOAD1` PASS if it does.
-   - Result:
+   - Result: "S3RELOAD1". Player 1 no longer on my team on the world ranking (all pages). `V1-G` and `V1-UI.S3RELOAD1` PASS, `Teams[10]={1}`, P1 no longer in `Teams[0]`.
 10. End turn once (all players). Then save as `TX_s3r1`.
     - Why: the turn start checks after the reload. The new save carries the reload count for step 14.
     - Expect: V1 and V5 PASS, V9 and V10 PASS.
-    - Result:
+    - Result: V1, V9 and V10 PASS. `V5-UI.S3RELOAD1 FAIL`: P1 still sees the marker. P0 and P1 are still `DIPLO_STATE_ALLIED` both ways (V7), which may be where the shared vision comes from.
 
-Stop here if V1 still fails and S2 found nothing. Then the lobby test (S3b) is next, else Mode C. Quit to the desktop and send Lua.log.
+Summary: the config change sticks, and after a reload every getter and World Rankings agree P1 is on its own team. Vision is still shared. War (V6) and victory (V3) are not tested yet; they decide whether the split is real.
 
 ## Session 1b: Hotseat, continued
 
-The same day, from `TX_s3`. Only if V1 passed after the reload or S2 found a setter.
+Continue in the same game after step 10 (or load `TX_s3r1`). Only if V1 passed after the reload or S2 found a setter: V1 passed, so run it.
 
-11. Press V4 Boost (keeper) again, then V6 Other declares war on keeper. End turn.
-    - Why: V4 and V6.
-    - Expect: V4 PASS (P0 boosted, P1 not), V6 PASS (P1 not at war).
+11. Press V6 Other declares war on keeper. End turn. Skip V4 Boost: its control failed in step 5.
+    - Why: V6, is war still shared?
+    - Expect: `V6 PASS`: P2 at war with P0, P1 not at war with anyone. FAIL means war is still shared and the split is only a label.
     - Result:
 12. Press V8 War allowed?, then as P0 open diplomacy with P1.
-    - Why: V8.
-    - Expect: write down whether war is offered.
+    - Why: V8, and what the game now thinks P0 and P1 are to each other.
+    - Expect: write down the relationship the screen shows (allied, friends, something else) and whether war is offered.
     - Result:
 13. Press V3 Domination: keeper. As P0, take both enemy capitals with the Tanks. End turn.
-    - Why: V3, shared victory.
-    - Expect: no victory screen. P1 still holds its own capital as a rival.
+    - Why: V3, shared victory. This is the core promise.
+    - Expect: no victory screen, because P1 still holds its own capital as a rival. A victory that names P1 too means the core promise fails.
     - Result:
 14. Load `TX_s3r1` and end turn once.
     - Why: V11, the second reload. The reload count is stored in the save, so loading `TX_s3` again would only give `S3RELOAD1` again.
     - Expect: the `S3RELOAD2` lines match `RELOAD1`.
     - Result:
-15. Only if S2 listed a setter: load `TX_baseline`. The panel forgets New team and the S2 setter row on every load, so press S1 Team map, S1 Dump (UI) and S2 Probe setters (no calls) again. Pick the setter in the S2 setter row, press S2 CALL selected setter (!). Then Snapshot now, save `TX_s2`, reload, end turn.
+15. Skip: S2 found no setter. (Only if S2 listed a setter: load `TX_baseline`, press S1 Team map, S1 Dump (UI) and S2 Probe setters again, pick the setter, press S2 CALL selected setter (!), then Snapshot now, save `TX_s2`, reload, end turn.)
     - Why: Mode A.
-    - Expect: `V1-G.S2LIVE` PASS. If the game crashes, write that down.
-    - Result:
+    - Expect: -
+    - Result: skipped, no setter.
+
+Then quit to the desktop and send Lua.log.
 
 ## Session 2: network MP (about 20 min)
 
