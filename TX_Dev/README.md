@@ -118,7 +118,8 @@ Continue in the same game after step 10 (or load `TX_s3r1`). Only if V1 passed a
 11. Press V6 Other declares war on keeper. End turn. Skip V4 Boost: its control failed in step 5.
     - Why: V6, is war still shared?
     - Expect: `V6 PASS`: P2 at war with P0, P1 not at war with anyone. FAIL means war is still shared and the split is only a label.
-    - Result:
+    - Result: WE WERE ALLIED SOMEHOW WHEN I LOADED TX_s3r1 (NOT THE SAME TEAM, BUT THE IN GAME ALLIANCE FUNCTION), but since it was an offensive war by player 0, player 1 DID NOT automatically join (in fact, he still haven't even MET P3). I reloaded TX_s3r1 to make sure--same result. Reloaded TX_s3 and we were already allied by then. Realoded TX_baseline (while we were still TEAMMATES) and we were still already allied then. This muddles the result.
+    - Note: the alliance doesn't muddle V6. The engine already kept teammates in `DIPLO_STATE_ALLIED` at BASE (V7), and the split leaves that state in place, so it now shows as an alliance. A base-game alliance never joins wars on its own (its description: allies can't declare war on each other, get open borders, and get a casus belli if an ally loses a city; only a Defensive Pact declares war automatically). Teammates share every war, whoever declared it. So P1 staying out of the war means war is no longer shared. The log line `V6-G.*` and the `[DIPLO]` line say who declared.
 12. Press V8 War allowed?, then as P0 open diplomacy with P1.
     - Why: V8, and what the game now thinks P0 and P1 are to each other.
     - Expect: write down the relationship the screen shows (allied, friends, something else) and whether war is offered.
