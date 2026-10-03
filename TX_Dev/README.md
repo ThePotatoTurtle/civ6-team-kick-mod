@@ -46,7 +46,7 @@ Context: UI runs in the panel, G runs in the gameplay script (sent as a request)
 | V9 Deals target-other | `v9_deals` | G | open borders both ways plus 1 gold per turn, target to other | `V9-G.*`, `V9-UI.*` | V9 |
 | V10 Friends target-other | `v10_friend` | G | declared friendship target and other | `V10-G.*`, `V10-UI.*` | V10 |
 | V3 Domination: keeper | `v3_setup` | G | war, 3 Tanks and a weakened capital next to every enemy capital, for the keeper | `V3-*` | V3 |
-| V3 Domination: target | `v3_setup` | G | the same for the target | `V3-*` | V3 |
+| V3 Domination: target | `v3_setup` | G | the same for the target. Not used in the sessions: V10 makes the target and the other declared friends, so the target can't go to war with them | `V3-*` | V3 |
 | V8 War allowed? | | UI | may keeper and target declare war on each other? | `V8-UI.*` | V8 |
 | Diplo matrix | `diplo` | G | war, alliance, friendship, open borders, met and team per pair | | V7 |
 | Clear spike state | `clear` | G | forgets the arm and the S1/S2 lists | | |
@@ -55,7 +55,7 @@ V2, V3, V8, V11 and V12 also need your eyes. The steps below say what to look at
 
 ## Saves in this spike
 
-- The spike has to save and reload the game it tests: `TX_baseline`, `TX_s3`, `TX_s3r1`, `TX_s2`, `TX_v3`, `TX_mp`.
+- The spike has to save and reload the game it tests: `TX_baseline`, `TX_s3`, `TX_s3r1`, `TX_s2`, `TX_mp`.
 - That's fine, and it's the one exception to "never load old saves". All of them come from the same new game in the same session, with the same mod set.
 - Never load a save from any other game, and don't change Additional Content between saving and loading.
 
@@ -103,7 +103,7 @@ Setup:
    - Expect: `V1-G.S3RELOAD1` PASS if it does.
    - Result:
 10. End turn once (all players). Then save as `TX_s3r1`.
-    - Why: the turn start checks after the reload. The new save carries the reload count for step 15.
+    - Why: the turn start checks after the reload. The new save carries the reload count for step 14.
     - Expect: V1 and V5 PASS, V9 and V10 PASS.
     - Result:
 
@@ -121,19 +121,15 @@ The same day, from `TX_s3`. Only if V1 passed after the reload or S2 found a set
     - Why: V8.
     - Expect: write down whether war is offered.
     - Result:
-13. Save `TX_v3`. Press V3 Domination: keeper. As P0, take both enemy capitals with the Tanks. End turn.
+13. Press V3 Domination: keeper. As P0, take both enemy capitals with the Tanks. End turn.
     - Why: V3, shared victory.
     - Expect: no victory screen. P1 still holds its own capital as a rival.
     - Result:
-14. Load `TX_v3`. Press V3 Domination: target. As P1, take the capitals.
-    - Why: V3, the other side.
-    - Expect: no victory that includes P0.
-    - Result:
-15. Load `TX_s3r1` and end turn once.
+14. Load `TX_s3r1` and end turn once.
     - Why: V11, the second reload. The reload count is stored in the save, so loading `TX_s3` again would only give `S3RELOAD1` again.
     - Expect: the `S3RELOAD2` lines match `RELOAD1`.
     - Result:
-16. Only if S2 listed a setter: load `TX_baseline`. The panel forgets New team and the S2 setter row on every load, so press S1 Team map, S1 Dump (UI) and S2 Probe setters (no calls) again. Pick the setter in the S2 setter row, press S2 CALL selected setter (!). Then Snapshot now, save `TX_s2`, reload, end turn.
+15. Only if S2 listed a setter: load `TX_baseline`. The panel forgets New team and the S2 setter row on every load, so press S1 Team map, S1 Dump (UI) and S2 Probe setters (no calls) again. Pick the setter in the S2 setter row, press S2 CALL selected setter (!). Then Snapshot now, save `TX_s2`, reload, end turn.
     - Why: Mode A.
     - Expect: `V1-G.S2LIVE` PASS. If the game crashes, write that down.
     - Result:
