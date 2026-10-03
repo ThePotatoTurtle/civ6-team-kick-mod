@@ -11,7 +11,7 @@
 		<Box Anchor="L,B" Size="parent,2" Color="120,170,220,255"/>
 		<Stack ID="MainStack" Anchor="L,T" Offset="10,8" StackGrowth="Bottom" StackPadding="4">
 			<Container Size="600,28">
-				<Label ID="TitleLabel" Anchor="L,C" Style="FontNormal18" Color="190,220,250,255" String="TX Dev 0.0.1.2  (Ctrl+Shift+D)"/>
+				<Label ID="TitleLabel" Anchor="L,C" Style="FontNormal18" Color="190,220,250,255" String="TX Dev 0.0.1.3  (Ctrl+Shift+D)"/>
 				<GridButton ID="RefreshButton" Anchor="R,C" Offset="76,0" Size="70,26" SliceCorner="12,12" SliceSize="1,1" SliceTextureSize="24,24" Texture="Controls_ButtonControl_Brown" StateOffsetIncrement="0,24" Style="FontNormal14" TextColor="230,220,200,255" String="Refresh"/>
 				<GridButton ID="CloseButton" Anchor="R,C" Size="70,26" SliceCorner="12,12" SliceSize="1,1" SliceTextureSize="24,24" Texture="Controls_ButtonControl_Brown" StateOffsetIncrement="0,24" Style="FontNormal14" TextColor="230,220,200,255" String="Close"/>
 			</Container>

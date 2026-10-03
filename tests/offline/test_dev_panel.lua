@@ -74,13 +74,16 @@ local LABELS = {
 	"Diplo matrix", "Clear spike state", "Q Setup Session 2", "AL0 Read state (UI+G)", "AL1 Friendship off (!)",
 	"AL2 Probe APIs (no calls)", "AL3 War then peace (!)", "AL4 Alliance deal 1 turn (!)", "AL5 SetHasAllied toggle (!)",
 	"AL6 War/denounce valid? (UI)", "AL7 Vision OFF (all teams!)", "AL7 Vision ON (restore)",
+	"AL3b War(false) then peace (!)", "VIS1 Remove outgoing vis (!)", "VIS2 Recheck visibility (!)",
+	"VIS3 SetVisibilityOn 0 (!)", "K Full kick (S3+VIS1) (!)", "AL4L Alliance, friends off (!)",
+	"AL8 Unmeet both ways (!)", "AL9 Unmeet then meet (!)",
 }
 
 test("init: context shown, Main hidden, hotkey and Esc, every button", function()
 	Setup()
 	H.eq(ENV.ContextPtr:IsHidden(), false, "ContextPtr:SetHide(false) in init")
 	H.eq(ENV.Controls.Main:IsHidden(), true)
-	H.ok(#H.lines("[TX][SPIKE][INIT] UI TX_Dev 0.0.1.2 loaded (for TX 0.0.1 spike)", true) == 1)
+	H.ok(#H.lines("[TX][SPIKE][INIT] UI TX_Dev 0.0.1.3 loaded (for TX 0.0.1 spike)", true) == 1)
 	FAKE_UI.KeyTo(ENV, Keys.D, { ctrl = true, shift = true })
 	H.eq(ENV.Controls.Main:IsHidden(), false, "Ctrl+Shift+D opens")
 	H.ok(string.find(ENV.Controls.RolesLabel:GetText(), "keeper=P0 target=P1 other=P2", 1, true), ENV.Controls.RolesLabel:GetText())
@@ -383,10 +386,21 @@ test("Session 2 live: Q Setup, split, no reload; V6 and V3 verdicts at the next 
 	NoErrors()
 end)
 
+-- The leftover state after a split (Session 2): ALLIED both ways and shared
+-- vision (LinkVision) whatever the teams. P0 has a second city far from P1.
+-- Ex-teammates have met (Session 2 V7: met=1); the fake world starts unmet.
+local function MeetTeammates()
+	FAKE.PairSet(FAKE.diplo.met, 0, 1, true)
+	FAKE.PairSet(FAKE.diplo.met, 1, 0, true)
+end
+
 local function SplitPanel()
 	Setup()
 	Events.LoadGameViewStateDone()
 	FAKE.teamModel = "live"
+	FAKE_DEV.AddCity(0, 3, 12)
+	FAKE_DEV.LinkVision(0, 1)
+	MeetTeammates()
 	Click("V5 Marker (keeper)")
 	ArmNow()
 	SetTeamEdit(2)
@@ -402,6 +416,15 @@ test("AL buttons: refused before the split; AL0 logs AL0-UI and AL0-G", function
 	Click("AL3 War then peace (!)")
 	H.ok(H.hasLine("[TX][SPIKE][AL3] UI refused: arm BASE and split the team first"))
 	H.isnil(LastRequest("al3_war_peace"), "nothing sent")
+	for _, label in ipairs({ "AL3b War(false) then peace (!)", "VIS1 Remove outgoing vis (!)", "VIS2 Recheck visibility (!)",
+		"VIS3 SetVisibilityOn 0 (!)" }) do
+		Click(label)
+	end
+	H.ok(H.hasLine("[TX][SPIKE][AL3b] UI refused: arm BASE and split the team first (or load TX3_split)"))
+	for n = 1, 3 do
+		H.ok(H.hasLine("[TX][SPIKE][VIS" .. n .. "] UI refused: arm BASE and split the team first"))
+	end
+	H.isnil(LastRequest("vis_step"), "nothing sent")
 	Click("AL0 Read state (UI+G)")
 	H.ok(H.hasLine("[TX][CHECK] AL0-UI.BASE INFO T1 UI state now target->keeper=DIPLO_STATE_NEUTRAL"))
 	H.ok(H.hasLine("[TX][CHECK] AL0-G.BASE INFO T1 G state now"))
@@ -450,6 +473,175 @@ test("AL2, AL4, AL6, AL7 from the panel", function()
 	Click("AL7 Vision ON (restore)")
 	Frames(1)
 	H.deq(FAKE_DEV.visFlag, { false, true })
+	H.len(H.lines("REFUSED"), 0)
+	NoErrors()
+end)
+
+-- ---------------------------------------------------------------------------
+-- TX_Dev 0.0.1.3: AL0 side effects, AL3b, VIS buttons, K full kick
+-- ---------------------------------------------------------------------------
+test("AL0 logs VIS0 (UI and G) and the AL0fx side-effect line", function()
+	SplitPanel()
+	Click("AL0 Read state (UI+G)")
+	local v = H.lines("[TX][CHECK] VIS0-UI.S3LIVE INFO T1 UI marker keeper sees=yes target sees=yes")[1]
+	H.notnil(v, H.Ser(H.lines("VIS0")))
+	H.ok(string.find(v, ": vision still shared (target sees the keeper's marker and city)", 1, true), v)
+	H.ok(string.find(v, "city at 3,12; GetVisibilityOn k->t=2 t->k=2; sources k->t=SOURCE_ALLY t->k=SOURCE_ALLY", 1, true), v)
+	H.ok(H.hasLine("[TX][CHECK] VIS0-G.S3LIVE INFO T1 G marker keeper sees=yes target sees=yes"))
+	local fx = H.lines("[TX][CHECK] AL0fx-UI.S3LIVE INFO T1 UI keeper P0 target P1; grievances k->t=0 t->k=0")[1]
+	H.notnil(fx, H.Ser(H.lines("AL0fx")))
+	for _, part in ipairs({ "DOW warmonger points k->t=50 level=LOC_FAKE_WARMONGER_-50", "AtWarChangeTurn k->t=-1 t->k=-1",
+		"CanMakePeaceWith k->t=false t->k=false", "MinPeaceDuration=10", "open borders target from keeper=no keeper from target=no",
+		"deals=0", "era score k=0 t=0", "Leon: notifications, historic moments" }) do
+		H.ok(string.find(fx, part, 1, true), part .. " in " .. fx)
+	end
+	NoErrors()
+end)
+
+test("AL3b from the panel: UI before and after with the fx lines (grievances after the war)", function()
+	SplitPanel()
+	Click("AL3b War(false) then peace (!)")
+	H.ok(H.hasLine("[TX][CHECK] AL3b-UI.S3LIVE.before INFO T1 UI before: state now target->keeper=DIPLO_STATE_ALLIED"))
+	H.ok(H.hasLine("[TX][CHECK] AL3bfx-UI.S3LIVE.before INFO T1 UI before: keeper P0 target P1; grievances k->t=0 t->k=0"))
+	H.ok(H.hasLine("[TX][SPIKE][AL3b] G PROBE AL3b war <table>:DeclareWarOn(1,1,false) exists=function ok=true"))
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] AL3b-UI.S3LIVE.after PASS T1 UI after: state now target->keeper=DIPLO_STATE_UNFRIENDLY"))
+	local fx = H.lines("[TX][CHECK] AL3bfx-UI.S3LIVE.after INFO")[1]
+	H.ok(fx ~= nil and string.find(fx, "grievances k->t=0 t->k=100; ", 1, true), fx)
+	H.ok(string.find(fx, "AtWarChangeTurn k->t=1 t->k=1", 1, true), fx)
+	EndTurn()
+	Events.PlayerTurnActivated(0, true)
+	H.ok(H.hasLine("[TX][CHECK] AL3b-UI.S3LIVE.turn PASS T2 UI turn:"))
+	H.ok(H.hasLine("[TX][CHECK] AL3bfx-UI.S3LIVE.turn INFO T2 UI turn:"))
+	NoErrors()
+end)
+
+test("VIS buttons from the panel: VIS1 before/after in UI and G, VIS2, VIS3, next turn read", function()
+	SplitPanel()
+	Click("VIS1 Remove outgoing vis (!)")
+	H.ok(H.hasLine("[TX][CHECK] VIS1-UI.S3LIVE.before INFO T1 UI before: marker keeper sees=yes target sees=yes"))
+	H.eq(LastRequest("vis_step").params.n, 1)
+	H.ok(H.hasLine("[TX][CHECK] VIS1-G.S3LIVE.after PASS"))
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] VIS1-UI.S3LIVE.after PASS T1 UI after: marker keeper sees=yes target sees=no"))
+	Click("VIS2 Recheck visibility (!)")
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] VIS2-UI.S3LIVE.after"))
+	Click("VIS3 SetVisibilityOn 0 (!)")
+	Frames(1)
+	local l = H.lines("[TX][CHECK] VIS3-UI.S3LIVE.after")[1]
+	H.ok(l ~= nil and string.find(l, "GetVisibilityOn k->t=0 t->k=0", 1, true), l)
+	H.eq(Game:GetProperty("TX_DEV_ARM").vis.n, 3)
+	EndTurn()
+	Events.PlayerTurnActivated(0, true)
+	H.ok(H.hasLine("[TX][CHECK] VIS3-UI.S3LIVE.turn PASS T2 UI turn:"))
+	H.ok(H.hasLine("[TX][CHECK] VIS3-G.S3LIVE.turn PASS T2 G turn:"))
+	H.len(H.lines("REFUSED"), 0)
+	NoErrors()
+end)
+
+test("K Full kick from the panel: refused unarmed; from BASE: S3 write, k_kick (no war), UI reads, save line, turn reads", function()
+	Setup()
+	Events.LoadGameViewStateDone()
+	FAKE.teamModel = "live"
+	FAKE_DEV.AddCity(0, 3, 12)
+	FAKE_DEV.LinkVision(0, 1)
+	MeetTeammates()
+	Click("K Full kick (S3+VIS1) (!)")
+	H.ok(H.hasLine("[TX][SPIKE][K] UI refused: K starts at BASE (load TX3_base, or press Arm BASE first)"))
+	H.isnil(LastRequest("k_kick"))
+	H.len(FAKE.teamSets, 0)
+	Click("V5 Marker (keeper)")
+	ArmNow()
+	FAKE_DEV.SetState(0, 1, "DIPLO_STATE_ALLIED")
+	FAKE_DEV.SetState(1, 0, "DIPLO_STATE_ALLIED")
+	H.clean()
+	ENV.Controls.TeamEdit:SetText("")   -- after loading TX3_base the box is empty: K uses the armed newTeam
+	Click("K Full kick (S3+VIS1) (!)")
+	H.ok(H.hasLine("[TX][CHECK] K-UI.BASE.before INFO T1 UI before: state now target->keeper=DIPLO_STATE_ALLIED"))
+	H.len(H.lines("Kfx-"), 0, "no war, no side-effect line")
+	H.ok(H.hasLine("[TX][CHECK] Kvis-UI.BASE.before INFO"))
+	H.deq(FAKE.teamSets[1], { pid = 1, team = 2, turn = 1, context = "UI" })
+	H.eq(FAKE.broadcasts[#FAKE.broadcasts].pid, 1)
+	H.ok(H.hasLine("[TX][CHECK] S3-UI.S3LIVE PASS T1 UI config team of P1 0 -> 2 (want 2)"))
+	local r = LastRequest("k_kick")
+	H.notnil(r)
+	H.eq(r.params.target, 1)
+	H.eq(r.params.team, 2)
+	H.eq(r.params.path, "S3")
+	H.isnil(LastRequest("changed"), "k_kick records the change itself")
+	H.ok(H.hasLine("[TX][CHECK] K-G.S3LIVE.after INFO"))
+	H.ok(H.hasLine("[TX][CHECK] Kvis-G.S3LIVE.after PASS"))
+	Frames(1)
+	H.ok(H.hasLine("[TX][SPIKE][SNAP] UI S3LIVE reason=changed"))
+	H.ok(H.hasLine("[TX][CHECK] K-UI.S3LIVE.after INFO T1 UI after: state now target->keeper=DIPLO_STATE_ALLIED"))
+	H.ok(H.hasLine("[TX][CHECK] Kvis-UI.S3LIVE.after PASS T1 UI after: marker keeper sees=yes target sees=no"))
+	H.len(FAKE_DEV.dows, 0, "no war in K")
+	local last = H.lines()[#H.lines()]
+	H.ok(string.find(last, "[TX][SPIKE][K] UI done. NOW save the game as TX3_kick and load TX3_kick", 1, true), last)
+	Click("K Full kick (S3+VIS1) (!)")
+	H.ok(H.hasLine("[TX][SPIKE][K] UI refused: K starts at BASE"), "a second K is refused")
+	EndTurn()
+	Events.PlayerTurnActivated(0, true)
+	H.ok(H.hasLine("[TX][CHECK] K-UI.S3LIVE.turn INFO T2 UI turn:"))
+	H.ok(H.hasLine("[TX][CHECK] Kvis-UI.S3LIVE.turn PASS T2 UI turn:"))
+	H.ok(H.hasLine("[TX][CHECK] K-G.S3LIVE.turn INFO T2"))
+	H.ok(H.hasLine("[TX][CHECK] Kvis-G.S3LIVE.turn PASS T2"))
+	H.len(H.lines("REFUSED"), 0)
+	NoErrors()
+end)
+
+test("K Full kick: no gameplay answer (or a refusal): WARNING, no save line", function()
+	Setup()
+	Events.LoadGameViewStateDone()
+	FAKE.teamModel = "live"
+	MeetTeammates()
+	Click("V5 Marker (keeper)")
+	ArmNow()
+	H.clean()
+	FAKE_UI.deferRequests = true   -- the k_kick request never reaches gameplay
+	Click("K Full kick (S3+VIS1) (!)")
+	H.notnil(LastRequest("k_kick"))
+	Frames(25)
+	H.ok(H.hasLine("[TX][SPIKE][K] UI WARNING gameplay did not finish K (refused, error or no answer): do NOT save TX3_kick."))
+	H.len(H.lines("NOW save the game as TX3_kick"), 0)
+	H.len(H.lines("K-UI.BASE.after"), 0)
+	FAKE_UI.deferRequests = false
+	FAKE_UI.pending = {}
+	H.clean()
+end)
+
+test("AL8 from the panel: the UI line logs met and is INCONCLUSIVE while unmet", function()
+	SplitPanel()
+	FAKE_DEV.SetState(0, 1, "DIPLO_STATE_NEUTRAL")
+	FAKE_DEV.SetState(1, 0, "DIPLO_STATE_NEUTRAL")
+	Click("AL8 Unmeet both ways (!)")
+	Frames(1)
+	local l = H.lines("[TX][CHECK] AL8-UI.S3LIVE.after INFO T1 UI after: INCONCLUSIVE: not met (k->t=no t->k=no)")[1]
+	H.notnil(l, H.Ser(H.lines("AL8-UI")))
+	H.ok(string.find(l, "; met k->t=no t->k=no", 1, true), l)
+	H.len(H.lines("AL8-UI.S3LIVE.after PASS"), 0)
+	NoErrors()
+end)
+
+test("AL4L, AL8, AL9 from the panel: UI before/after, the hash for AL4L, UI turn reads with the alliance timer", function()
+	SplitPanel()
+	Click("AL4L Alliance, friends off (!)")
+	H.eq(LastRequest("al4l_alliance_long").params.hash, string.len("ALLIANCE_RESEARCH") * 1000 + 7)
+	H.ok(H.hasLine("[TX][CHECK] AL4L-UI.S3LIVE.before INFO"))
+	Frames(1)
+	local l = H.lines("[TX][CHECK] AL4L-UI.S3LIVE.after INFO")[1]
+	H.ok(l ~= nil and string.find(l, "GetAllianceType=", 1, true) and string.find(l, "TurnsUntilExpiration=", 1, true), l)
+	EndTurn()
+	Events.PlayerTurnActivated(0, true)
+	H.ok(H.hasLine("[TX][CHECK] AL4L-UI.S3LIVE.turn INFO T2 UI turn:"))
+	Click("AL8 Unmeet both ways (!)")
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] AL8-UI.S3LIVE.after"))
+	H.ok(H.hasLine("[TX][SPIKE][AL8] G SetHasMet(false) P0<->P1: met k->t=no t->k=no"))
+	Click("AL9 Unmeet then meet (!)")
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] AL9-UI.S3LIVE.after"))
 	H.len(H.lines("REFUSED"), 0)
 	NoErrors()
 end)

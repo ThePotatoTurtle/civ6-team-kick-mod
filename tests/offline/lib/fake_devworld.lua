@@ -26,6 +26,13 @@
 --     SetHasAllied(b, true) sets HasAllied, false is a no-op (EFV T27); an
 --     enacted ALLIANCE deal sets HasAllied and ALLIED both ways;
 --     Game.GetGameDiplomacy():SetAlliesShareVisFlag(v) switches sharedVision.
+--   VIS (TX_Dev 0.0.1.3): FAKE_DEV.LinkVision(a, b) makes a and b see what the
+--     other sees whatever the teams (the leftover vision after a split, Session 2).
+--     PlayersVisibility[a]:RemoveOutgoingVisibility(b) cuts a -> b (Add restores);
+--     Recheck*/SetVisibilityOn change no map vision (recorded only).
+--     DeclareWarOn records its arguments, sets the war turn and gives the
+--     defender 100 grievances against the attacker. SetHasMet(b, false) unmeets
+--     (no state change: what the engine does is the AL8 / AL9 question).
 -- ===========================================================================
 
 FAKE_DEV = {}
@@ -77,6 +84,9 @@ FAKE_DEV.GAMEINFO = {
 		{ StateType = "DIPLO_STATE_ALLIED" }, { StateType = "DIPLO_STATE_DECLARED_FRIEND" }, { StateType = "DIPLO_STATE_FRIENDLY" },
 		{ StateType = "DIPLO_STATE_NEUTRAL" }, { StateType = "DIPLO_STATE_UNFRIENDLY" }, { StateType = "DIPLO_STATE_DENOUNCED" },
 		{ StateType = "DIPLO_STATE_WAR" },
+	} },
+	DiplomaticVisibilitySources = { pk = "VisibilitySourceType", rows = {
+		{ VisibilitySourceType = "SOURCE_TECH" }, { VisibilitySourceType = "SOURCE_ALLY" },
 	} },
 }
 
@@ -214,10 +224,21 @@ end
 -- ---------------------------------------------------------------------------
 -- Visibility
 -- ---------------------------------------------------------------------------
+-- a's vision reaches b whatever the teams (both ways).
+function FAKE_DEV.LinkVision(a, b)
+	FAKE_DEV.links[a] = FAKE_DEV.links[a] or {}
+	FAKE_DEV.links[b] = FAKE_DEV.links[b] or {}
+	FAKE_DEV.links[a][b] = true
+	FAKE_DEV.links[b][a] = true
+end
+
 local function Sees(pid, x, y)
 	if FAKE_DEV.visible[pid] ~= nil and FAKE_DEV.visible[pid][Key(x, y)] then return true end
 	local who = { pid }
 	if FAKE_DEV.sharedVision then who = Mates(pid) end
+	for _, a in ipairs(FAKE.SortedKeys(FAKE_DEV.links)) do
+		if a ~= pid and FAKE_DEV.links[a][pid] then who[#who + 1] = a end
+	end
 	for _, id in ipairs(who) do
 		for _, u in ipairs(UnitsOf(id)) do
 			if Dist(u.x, u.y, x, y) <= 2 then return true end
@@ -358,8 +379,8 @@ local function Attach(pid, p)
 		return { GetDiplomaticState = function(_, other) return StateTypeOf(pid, other) end }
 	end)
 	local d = p.diplomacy
-	rawset(d, "SetHasMet", function(_, b)
-		FAKE.PairSet(FAKE.diplo.met, pid, b, true)
+	rawset(d, "SetHasMet", function(_, b, v)
+		FAKE.PairSet(FAKE.diplo.met, pid, b, v ~= false)
 	end)
 	rawset(d, "SetHasDeclaredFriendship", function(_, b, v)
 		FAKE.PairSet(FAKE.diplo.friend, pid, b, v)
@@ -377,6 +398,37 @@ local function Attach(pid, p)
 		local pb = FAKE.players[b]
 		return pb ~= nil and pb.team ~= p.team and not FAKE.IsAtWar(pid, b) and not FAKE.PairGet(FAKE.diplo.friend, pid, b)
 	end)
+	-- VIS and the AL3 side effects (TX_Dev 0.0.1.3)
+	local D = FAKE_DEV
+	rawset(d, "DeclareWarOn", function(_, b, warType, flag)
+		D.dows[#D.dows + 1] = { a = pid, b = b, warType = warType, flag = flag }
+		FAKE.SetWar(pid, b, true)
+		D.warTurn[Key(pid, b)], D.warTurn[Key(b, pid)] = FAKE.turn, FAKE.turn
+		D.grievances[Key(b, pid)] = (D.grievances[Key(b, pid)] or 0) + 100
+	end)
+	rawset(d, "GetAtWarChangeTurn", function(_, b) return D.warTurn[Key(pid, b)] or -1 end)
+	rawset(d, "GetGrievancesAgainst", function(_, b) return D.grievances[Key(pid, b)] or 0 end)
+	rawset(d, "CanMakePeaceWith", function(_, b) return FAKE.IsAtWar(pid, b) end)
+	rawset(d, "ComputeDOWWarmongerPoints", function(_, b, warType) return 50 end)
+	rawset(d, "GetWarmongerLevel", function(_, pts) return "LOC_FAKE_WARMONGER_" .. tostring(pts) end)
+	rawset(d, "GetVisibilityOn", function(_, b)
+		local v = D.diploVis[Key(pid, b)]
+		if v == nil then return 2 end
+		return v
+	end)
+	rawset(d, "SetVisibilityOn", function(_, b, v)
+		D.diploVis[Key(pid, b)] = v
+		D.visCalls[#D.visCalls + 1] = "SetVisibilityOn " .. pid .. "," .. b .. "," .. tostring(v)
+	end)
+	rawset(d, "RecheckVisibilityOnAll", function()
+		D.visCalls[#D.visCalls + 1] = "RecheckVisibilityOnAll " .. pid
+	end)
+	rawset(d, "RecheckVisibilityOn", function(_, b)
+		D.visCalls[#D.visCalls + 1] = "RecheckVisibilityOn " .. pid .. "," .. b
+	end)
+	rawset(d, "IsVisibilitySourceActive", function(_, b, idx)
+		return idx == GameInfo.DiplomaticVisibilitySources.SOURCE_ALLY.Index and StateTypeOf(pid, b) == "DIPLO_STATE_ALLIED"
+	end)
 end
 
 -- opts: w, h (map size), sharedVision, sharedBoosts, boostOnCreate, hotseat,
@@ -392,6 +444,7 @@ function FAKE_DEV.Install(opts)
 	D.boosts, D.techs, D.civics = {}, {}, {}
 	D.deals, D.working = {}, {}
 	D.states, D.peace, D.visFlag = {}, {}, {}
+	D.links, D.visCalls, D.dows, D.warTurn, D.grievances, D.diploVis, D.era = {}, {}, {}, {}, {}, {}, {}
 	D.sharedVision = opts.sharedVision ~= false
 	D.sharedBoosts = opts.sharedBoosts ~= false
 	D.boostOnCreate = opts.boostOnCreate ~= false
@@ -449,6 +502,15 @@ function FAKE_DEV.Install(opts)
 			if FAKE.players[pid] == nil then return nil end
 			return {
 				IsVisible = function(_, x, y) return Sees(pid, x, y) end,
+				RemoveOutgoingVisibility = function(_, other)
+					D.visCalls[#D.visCalls + 1] = "RemoveOutgoingVisibility " .. pid .. "," .. tostring(other)
+					if D.links[pid] ~= nil then D.links[pid][other] = nil end
+				end,
+				AddOutgoingVisibility = function(_, other)
+					D.visCalls[#D.visCalls + 1] = "AddOutgoingVisibility " .. pid .. "," .. tostring(other)
+					D.links[pid] = D.links[pid] or {}
+					D.links[pid][other] = true
+				end,
 				ChangeVisibilityCount = function(_, idx, n)
 					D.visCount[#D.visCount + 1] = { pid = pid, idx = idx, n = n }
 					D.visible[pid] = D.visible[pid] or {}
@@ -523,10 +585,16 @@ function FAKE_DEV.Install(opts)
 	Network.GetGameHostPlayerID = function() return 0 end
 	Game.GetWinningTeam = function() return D.winningTeam, -1 end
 	Game.GetGameDiplomacy = function()
-		return { SetAlliesShareVisFlag = function(_, v)
-			D.visFlag[#D.visFlag + 1] = v
-			D.sharedVision = v == true
-		end }
+		return {
+			SetAlliesShareVisFlag = function(_, v)
+				D.visFlag[#D.visFlag + 1] = v
+				D.sharedVision = v == true
+			end,
+			GetMinPeaceDuration = function() return 10 end,
+		}
+	end
+	Game.GetEras = function()
+		return { GetPlayerCurrentScore = function(_, pid) return D.era[pid] or 0 end }
 	end
 
 	for _, id in ipairs(FAKE.SortedKeys(FAKE.players)) do

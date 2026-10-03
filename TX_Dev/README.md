@@ -1,6 +1,6 @@
 # Team Expulsion Dev Tools (TX_Dev)
 
-Spike panel for Team Expulsion. Version 0.0.1.2, mod id `813c09c2-7476-4882-b8d6-7a0708b0891d`. Needs Gathering Storm only. Never enable it in a real game: it changes teams, declares wars and spawns units. Results go to Lua.log as `[TX][SPIKE]` and `[TX][CHECK]` lines. Read them with `python tools\summarize_log.py`.
+Spike panel for Team Expulsion. Version 0.0.1.3, mod id `813c09c2-7476-4882-b8d6-7a0708b0891d`. Needs Gathering Storm only. Never enable it in a real game: it changes teams, declares wars and spawns units. Results go to Lua.log as `[TX][SPIKE]` and `[TX][CHECK]` lines. Read them with `python tools\summarize_log.py`.
 
 All sessions are hotseat (one copy of the game).
 
@@ -19,7 +19,7 @@ Panel rows:
 
 Roles: keeper = the Target's lowest teammate, other = the lowest major on another team. Session 1 setup: keeper P0, target P1, other P2.
 
-Check IDs: `V1-G.S3LIVE` = item, context (G gameplay, UI panel), phase. Phases: `BASE` (armed, before the change), `S3LIVE` (after the change, no load yet), `S3RELOAD<n>` (after the n-th load since the change). AL IDs add a stage: `AL3-G.S3RELOAD1.after` (`before`, `after`, `turn` = next turn start).
+Check IDs: `V1-G.S3LIVE` = item, context (G gameplay, UI panel), phase. Phases: `BASE` (armed, before the change), `S3LIVE` (after the change, no load yet), `S3RELOAD<n>` (after the n-th load since the change). AL, VIS and K IDs add a stage: `AL3-G.S3RELOAD1.after` (`before`, `after`, `turn` = every later turn start). `VIS<n>` and `Kvis` lines are the vision read-out, `AL0fx` / `AL3fx` / `AL3bfx` the war side effects.
 
 ## Buttons
 
@@ -40,22 +40,30 @@ Check IDs: `V1-G.S3LIVE` = item, context (G gameplay, UI panel), phase. Phases: 
 | V3 Domination: keeper | war, Tanks and weak capitals for the keeper. Needs V6 first |
 | V3 Domination: target | not used (V10 friends block the war) |
 | V8 War allowed? | may keeper and target declare war on each other? |
-| AL0 Read state (UI+G) | read only: diplo state both ways, HasAllied, friendship, war, marker vision |
+| AL0 Read state (UI+G) | read only: diplo state both ways, HasAllied, friendship, met, war, vision (`VIS0`), side effects (`AL0fx`) |
 | AL1 Friendship off (!) | keeper-target friendship off, both ways |
 | AL2 Probe APIs (no calls) | which alliance and peace calls exist |
 | AL3 War then peace (!) | keeper declares war on target, then makes peace |
+| AL3b War(false) then peace (!) | AL3 with DeclareWarOn's third argument false, to compare penalties |
 | AL4 Alliance deal 1 turn (!) | a research alliance keeper-target for 1 turn, so it can expire |
+| AL4L Alliance, friends off (!) | AL4, then AL1 at once. For the run to the alliance's expiry |
 | AL5 SetHasAllied toggle (!) | alliance flag on, then off. May stick for good |
 | AL6 War/denounce valid? (UI) | read only: does the game allow war or denounce? |
 | AL7 Vision OFF (all teams!) / AL7 Vision ON (restore) | GLOBAL team vision flag. Affects every team. Always press ON after OFF |
+| AL8 Unmeet both ways (!) | clean break probe: keeper and target "unmeet" each other |
+| AL9 Unmeet then meet (!) | clean break probe: unmeet, then meet again |
+| VIS1 Remove outgoing vis (!) | keeper and target stop sending vision to each other |
+| VIS2 Recheck visibility (!) | asks the game to recompute keeper's and target's visibility |
+| VIS3 SetVisibilityOn 0 (!) | diplomatic visibility level 0, both ways |
+| K Full kick (S3+VIS1) (!) | the real kick: S3 Set Target's team, then VIS1. No war. Only at BASE |
 | Diplo matrix | war, allied, friend, open borders, met, team per pair |
 | Clear spike state | forgets the arm |
 
-AL1, AL3, AL4, AL5 and AL7 are refused before the split. Each logs a `before` and `after` line, and a `turn` line at every next turn start. PASS = keeper and target are no longer `DIPLO_STATE_ALLIED` either way.
+The (!) AL and VIS buttons are refused before the split. Each logs a `before` and `after` line, and a `turn` line at every later turn start. AL PASS = keeper and target have met and are no longer `DIPLO_STATE_ALLIED` either way. VIS PASS = the target no longer sees the keeper's marker or far city, while the keeper does ("marker missing" when the keeper doesn't see its own marker: no verdict).
 
 ## Saves
 
-The spike saves and reloads its own game (`TX_*`, `TX2_*`). That is the one exception to "never load old saves". Never load a save from another game. Don't change Additional Content between saving and loading.
+The spike saves and reloads its own game (`TX_*`, `TX2_*`, `TX3_*`). That is the one exception to "never load old saves". Never load a save from another game. Don't change Additional Content between saving and loading.
 
 ## Session 1 (done 2026-10-03, 0.0.1.1)
 
@@ -139,25 +147,77 @@ Then quit to the desktop and send the raw Lua.log file, not only the summary.
 
 Summary: before a reload the base UI breaks (`LeaderIcon.lua:143`, clicking P1's banner killed the UI), so a kick needs a save and reload right away. After it, war and victory are split. Only war then peace (AL3) ends the ALLIED state. Shared vision survives everything tried, including AL3 and AL7. V9/V10 FAIL at turn 35 is the normal 30-turn expiry of the deals and friendship made on turn 3, not the split.
 
-## Session 3 outline (hotseat, other team shapes)
+## Session 3 (hotseat, new game)
 
-Same buttons. Set Target with the < > arrows and New team in its box. After each S3: save, load, end turn (all).
+TX_Dev 0.0.1.3. Leon's order for ending the leftover alliance: a clean break, then a real alliance that truly ends, then war and peace as the last resort.
 
-**3a. Three-player team.** Setup: P0, P1, P2 human on Team 1. P3 human or AI on Team 2.
-1. Capitals, turn 3. S1 Team map. Target P2. Q Setup Session 2. End turn. Arm BASE.
-2. S3 Set Target's team (New team as suggested). Save, load, end turn.
-   - Expect: `V1` PASS. P0 and P1 still one team.
-3. V6 Other declares war on keeper (P3 on P0). End turn. Diplo matrix.
-   - Expect: P0 and P1 both at war with P3. P2 not.
-4. Second kick: S1 Team map (suggests the next ID, 11 if the first was 10). Target P1, New team as suggested. Arm BASE. S3 Set Target's team. Save, load, end turn.
-   - Expect: `V1` PASS, P1 alone on the new team. Every player on its own team.
+**a) Setup**
 
-**3b. AI teammate.** Setup: P0 human and P1 AI on Team 1. P2 human and P3 AI on Team 2.
-1. Capitals, turn 3. Target P1. Q Setup Session 2. End turn. Arm BASE.
-2. S3 Set Target's team (New team as suggested). Save, load, end turn.
-   - Expect: `V1` PASS. The AI keeps playing, no errors.
-3. V6 Other declares war on keeper. End turn. Diplo matrix.
-   - Expect: P2 at war with P0, not with P1.
+1. Setup as Session 1: Hotseat, GS rules, Tiny, Quick. P0, P1, P2 human, P3 AI. Teams {P0,P1} {P2,P3}. Found capitals, end turns to turn 3.
+2. As P0: S1 Team map. Q Setup Session 2. End turn (all). Arm BASE + snapshot. Save as `TX3_base`.
+   - Expect: New team filled (10), phase BASE.
+   - Result:
+3. S3 Set Target's team. Save as `TX3_split`. Load `TX3_split`.
+   - Expect: phase S3RELOAD1, `V1-*.S3RELOAD1 PASS`.
+   - Result:
+
+**b) Vision tests.** For each of VIS1, VIS2, VIS3: load `TX3_split`, V5 Marker (keeper), end turn (all), AL0, the VIS button, end turn (all), AL0. As P1, also look at P0's land.
+
+4. VIS1 Remove outgoing vis (!).
+   - Expect: `VIS1-*.after` or `.turn` PASS: P1 no longer sees P0's marker and far city.
+   - Result:
+5. VIS2 Recheck visibility (!).
+   - Expect: write down what P1 sees.
+   - Result:
+6. VIS3 SetVisibilityOn 0 (!).
+   - Expect: write down what P1 sees.
+   - Result:
+
+**c) Clean break probes.** Each: load `TX3_split`, AL0, the button, end turn (all), AL0. Look at the diplomacy screen and the ribbon.
+
+7. AL8 Unmeet both ways (!).
+   - Expect: while P0 and P1 are unmet, `AL8-*` is INFO "INCONCLUSIVE: not met" (an unmet pair is no exit; the state is still logged). PASS only if they meet again on their own and are not ALLIED. Do P0 and P1 still know each other?
+   - Result:
+8. AL9 Unmeet then meet (!).
+   - Expect: `AL9-*` PASS if meeting again starts them fresh (NEUTRAL). Any first-meeting popup?
+   - Result:
+
+**d) Alliance expiry run**
+
+9. Load `TX3_split`. AL0. AL4L Alliance, friends off (!). End turns (all) until the alliance's TurnsUntilExpiration (diplomacy screen, or the `AL4L-UI.*.turn` lines) reaches 0, then 2 more turns. AL0.
+   - Expect: after the expiry the state is FRIENDLY or NEUTRAL (`AL4L-*.turn PASS`), not back to the timeless ALLIED. Note any historic moment.
+   - Result:
+10. Only if time: the same with AL4 Alliance deal 1 turn (!), for comparison.
+    - Result:
+
+**e) Full kick**
+
+11. Load `TX3_base`. K Full kick (S3+VIS1) (!). Wait for the `[K] UI done. NOW save` line (a `WARNING ... do NOT save` line means load `TX3_base` again). Save as `TX3_kick`. Load `TX3_kick`. V6 Other declares war on keeper. End turn (all). AL0.
+    - Expect: separate teams, P1 not at war with P2, still ALLIED with P0 (no war step), and no shared vision if VIS1 worked (`Kvis-*.turn PASS`).
+    - Result:
+
+**f) War then peace side effects (last resort)**
+
+12. Load `TX3_split`. AL0. AL3 War then peace (!). Look at notifications, historic moments, grievances in the diplomacy screen. End turn (all). AL0.
+    - Expect: `AL3-*.after PASS`. `AL3fx` lines: grievances, warmonger, war turn, peace allowed, open borders, deals, era score.
+    - Result:
+13. Load `TX3_split`. AL3b War(false) then peace (!). Same as 12.
+    - Expect: compare with 12.
+    - Result:
+
+**g) Team shapes (optional if time).** After each S3: save, load, end turn (all).
+
+14. Three-player team: P0, P1, P2 human on one team, P3 on the other. Target P2. Arm BASE. S3 Set Target's team. V6. Diplo matrix.
+    - Expect: `V1` PASS. P0 and P1 at war with P3, P2 not.
+    - Result:
+15. Second kick in that game: S1 Team map, Target P1, Arm BASE, S3 Set Target's team.
+    - Expect: New team 11. Every player on its own team.
+    - Result:
+16. AI teammate: P0 human, P1 AI on one team; P2 human, P3 AI. Target P1. Arm BASE. S3 Set Target's team. V6.
+    - Expect: `V1` PASS, the AI keeps playing, P2 at war with P0 only.
+    - Result:
+
+Then quit to the desktop and send the raw Lua.log.
 
 ## Afterwards
 

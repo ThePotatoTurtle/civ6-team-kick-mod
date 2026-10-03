@@ -507,6 +507,14 @@ test("verdicts: AL, ALId, Brief, Rets", function()
 	H.ok(string.find(t, ": no longer ALLIED", 1, true), t)
 	v, t = TXD.Verdict.AL("S3LIVE", nil, A)
 	H.ok(v == "INFO" and string.find(t, "^INCONCLUSIVE: state unreadable"), t)
+	-- AL8: an unmet pair is no exit, whatever state it reads
+	local N = "DIPLO_STATE_NEUTRAL"
+	v, t = TXD.Verdict.AL("S3LIVE", N, N, false, false)
+	H.ok(v == "INFO" and string.find(t, "^INCONCLUSIVE: not met %(k%->t=no t%->k=no%), no verdict; state now"), t)
+	H.eq(V(TXD.Verdict.AL, "S3LIVE", N, N, true, false), "INFO", "unmet one way")
+	H.eq(V(TXD.Verdict.AL, "S3LIVE", N, N, true, true), "PASS", "met both ways")
+	H.eq(V(TXD.Verdict.AL, "S3LIVE", N, N, nil, nil), "PASS", "met unknown: the state decides")
+	H.eq(V(TXD.Verdict.AL, "BASE", N, N, false, false), "INFO")
 	H.eq(TXD.ALId("3", { armedTurn = 1, phase = "RELOAD", path = "S3", loads = 1 }, "after"), "AL3-UI.S3RELOAD1.after")
 	H.eq(TXD.ALId("0", nil), "AL0-UI.BASE")
 	H.eq(TXD.Brief({ FailureReasons = { "LOC_A", "LOC_B" }, ok = false }), "{FailureReasons={1=LOC_A,2=LOC_B},ok=false}")
@@ -516,6 +524,101 @@ test("verdicts: AL, ALId, Brief, Rets", function()
 	H.eq(TXD.Rets(TX_Probe(false, "Game", nil, ".Two")), "false|{FailureReasons={1=X}}")
 	H.eq(TXD.Rets(TX_Probe(false, "Game", nil, ".Gone")), "MISSING")
 	H.eq(TXD.Rets(TX_Probe(false, "Game", nil, "?Two")), "function")
+end)
+
+test("verdicts: VIS (marker and far keeper city), StepId", function()
+	Load("UI")
+	local shared = { has = true, k = true, t = true, near = 20 }
+	local cut = { has = true, k = true, t = false, near = 20 }
+	local v, t = TXD.Verdict.VIS("BASE", shared, shared)
+	H.eq(v, "INFO")
+	H.ok(string.find(t, "(before the change: still one team)", 1, true), t)
+	v, t = TXD.Verdict.VIS("S3RELOAD1", shared, cut)
+	H.eq(v, "INFO")
+	H.ok(string.find(t, ": vision still shared (target sees the keeper's marker)", 1, true), t)
+	H.ok(string.find(t, "^marker keeper sees=yes target sees=yes nearest target asset=20; city keeper sees=yes target sees=no"), t)
+	v, t = TXD.Verdict.VIS("S3RELOAD1", shared, shared)
+	H.ok(string.find(t, "(target sees the keeper's marker and city)", 1, true), t)
+	v, t = TXD.Verdict.VIS("S3RELOAD1", cut, cut)
+	H.eq(v, "PASS")
+	H.ok(string.find(t, ": the target no longer sees the keeper's assets, the keeper does", 1, true), t)
+	-- the keeper does not see its own marker: "marker missing", the city decides
+	local gone = { has = true, k = false, t = false, near = 20 }
+	v, t = TXD.Verdict.VIS("S3RELOAD1", gone, cut)
+	H.eq(v, "PASS")
+	H.ok(string.find(t, "(marker missing: the keeper does not see it)", 1, true), t)
+	v, t = TXD.Verdict.VIS("S3RELOAD1", gone, { has = false })
+	H.ok(v == "INFO" and string.find(t, "^INCONCLUSIVE: no usable reading; marker"), t)
+	H.ok(string.find(t, "marker missing", 1, true) and string.find(t, "; no city", 1, true), t)
+	v, t = TXD.Verdict.VIS("S3LIVE", { has = true, k = true, t = true, near = 2 }, nil)
+	H.ok(v == "INFO" and string.find(t, "(a target asset within 3 tiles)", 1, true) and string.find(t, "^INCONCLUSIVE"), t)
+	v, t = TXD.Verdict.VIS("S3LIVE", { has = true, k = true, t = nil, near = 9 }, nil)
+	H.ok(v == "INFO" and string.find(t, "(unreadable)", 1, true), t)
+	v, t = TXD.Verdict.VIS("S3LIVE", nil, cut)
+	H.ok(v == "PASS" and string.find(t, "^no marker; city"), t)
+	local arm = { armedTurn = 1, phase = "RELOAD", path = "S3", loads = 1 }
+	H.eq(TXD.StepId("VIS1", arm, "turn"), "VIS1-UI.S3RELOAD1.turn")
+	H.eq(TXD.StepId("Kvis", nil), "Kvis-UI.BASE")
+	H.eq(TXD.StepId("AL3fx", arm, "after"), "AL3fx-UI.S3RELOAD1.after")
+	H.eq(TXD.ALId("3b", arm, "after"), "AL3b-UI.S3RELOAD1.after")
+end)
+
+test("gate: VIS calls only from VIS<n> labels; RemoveOutgoingVisibility also from K", function()
+	Load()
+	local calls = {}
+	local pv = {
+		RemoveOutgoingVisibility = function(_, b) calls[#calls + 1] = "rm" .. b end,
+		AddOutgoingVisibility = function(_, b) calls[#calls + 1] = "add" .. b end,
+	}
+	local d = {
+		RecheckVisibilityOnAll = function() calls[#calls + 1] = "all" end,
+		RecheckVisibilityOn = function(_, b) calls[#calls + 1] = "on" .. b end,
+		SetVisibilityOn = function(_, b, v) calls[#calls + 1] = "set" .. b .. "=" .. v end,
+		GetVisibilityOn = function() return 2 end,
+	}
+	H.eq(TX_Probe("VIS1 remove", pv, nil, ":RemoveOutgoingVisibility", 1).ok, true)
+	H.eq(TX_Probe("K vis", pv, nil, ":RemoveOutgoingVisibility", 1).ok, true)
+	H.eq(TX_Probe("VIS", pv, nil, ":RemoveOutgoingVisibility", 1).ok, true)
+	H.eq(TX_Probe("VISx remove", pv, nil, ":RemoveOutgoingVisibility", 1).refused, true)
+	H.eq(TX_Probe("AL3 peace", pv, nil, ":RemoveOutgoingVisibility", 1).refused, true)
+	H.eq(TX_Probe(false, pv, nil, ":RemoveOutgoingVisibility", 1).refused, true, "quiet mode has no label: refused")
+	H.ok(H.hasLine("REFUSED gated (only from VIS/K)"))
+	H.eq(TX_Probe("V5", pv, nil, ":AddOutgoingVisibility", 1).refused, true)
+	H.eq(TX_Probe("K vis", d, nil, ":SetVisibilityOn", 1, 0).refused, true, "K only removes outgoing vision")
+	H.ok(H.hasLine("REFUSED gated (only from VIS)"))
+	H.eq(TX_Probe("VIS3 set", d, nil, ":SetVisibilityOn", 1, 0).ok, true)
+	H.eq(TX_Probe("VIS2 recheck", d, nil, ":RecheckVisibilityOnAll").ok, true)
+	H.eq(TX_Probe("VIS2 recheck", d, nil, ":RecheckVisibilityOn", 1).ok, true)
+	H.eq(TX_Probe(false, d, nil, ":GetVisibilityOn", 1).ok, true, "reads are not gated")
+	H.eq(TX_Probe("AL2 exist", pv, nil, "?RemoveOutgoingVisibility").exists, "function", "existence is allowed")
+	H.deq(calls, { "rm1", "rm1", "rm1", "set1=0", "all", "on1" })
+	H.eq(TXD.GateBlocks("VIS12", "SetVisibilityOn"), nil)
+	H.eq(TXD.GateBlocks("VIS1a", "SetVisibilityOn"), "VIS")
+	H.eq(TXD.GateBlocks("AL71", "SetAlliesShareVisFlag"), "AL7", "a gate that ends in a digit takes no suffix")
+	AssertShapes()
+end)
+
+test("gate: SetHasMet(b, false) probes only from AL8 / AL9", function()
+	Load()
+	local calls = {}
+	local d = { SetHasMet = function(_, b, v) calls[#calls + 1] = tostring(v) end }
+	H.eq(TX_Probe("AL3 x", d, nil, ":SetHasMet", 1, false).refused, true)
+	H.ok(H.hasLine("REFUSED gated (only from AL8/AL9)"))
+	H.eq(TX_Probe("AL81 x", d, nil, ":SetHasMet", 1, false).refused, true)
+	H.eq(TX_Probe("AL8 unmeet", d, nil, ":SetHasMet", 1, false).ok, true)
+	H.eq(TX_Probe("AL9 unmeet", d, nil, ":SetHasMet", 1, false).ok, true)
+	H.deq(calls, { "false", "false" })
+end)
+
+test("never-call: Game.RetirePlayer (Session 2 S1 dump)", function()
+	Load()
+	H.ok(TXD.IsNever("Game", ".RetirePlayer"))
+	H.ok(TXD.IsNever(nil, ":RetirePlayer"))
+	local called = 0
+	TXD.SetRoots({ Game = function() return { RetirePlayer = function() called = called + 1 end } end })
+	H.eq(TX_Probe("VIS1 x", "Game", nil, ".RetirePlayer", 1).refused, true)
+	H.eq(TX_Probe(false, "Game", nil, "?RetirePlayer").exists, "function", "existence is allowed")
+	H.eq(called, 0)
 end)
 
 -- ---------------------------------------------------------------------------

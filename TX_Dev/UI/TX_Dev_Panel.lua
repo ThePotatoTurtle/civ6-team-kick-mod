@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Dev_Panel.lua  (TX_Dev 0.0.1.2, spike kit for Team Expulsion 0.0.1)
+-- TX_Dev_Panel.lua  (TX_Dev 0.0.1.3, spike kit for Team Expulsion 0.0.1)
 -- Context: UI (AddUserInterfaces, Context InGame). TESTING ONLY. PLAN I.6.
 --
 -- Panel toggled by Ctrl+Shift+D or the "DEV" launch bar button (copied from
@@ -75,6 +75,7 @@ local SnapshotUI           -- forward
 local RefreshInfo          -- forward
 local CfgMembers           -- forward
 local ALReadUI             -- forward
+local VisReadUI            -- forward
 
 -- ---------------------------------------------------------------------------
 -- Helpers
@@ -297,6 +298,15 @@ local function HasOB(a, b)
 	return Flag(function() return Players[a]:GetDiplomacy():HasOpenBordersFrom(b) end)
 end
 
+-- true / false, nil when unreadable (AL8 / AL9: no verdict for an unmet pair).
+local function Met(a, b)
+	local ok, v = pcall(function() return Players[a]:GetDiplomacy():HasMet(b) end)
+	if ok and type(v) == "boolean" then
+		return v
+	end
+	return nil
+end
+
 -- a's view of b as a StateType (DiplomacyActionView.lua:869-871).
 local function StateName(a, b)
 	local ok, name = pcall(function()
@@ -333,6 +343,15 @@ end
 
 local function Visible(pid, x, y)
 	return Flag(function() return PlayersVisibility[pid]:IsVisible(x, y) end)
+end
+
+-- As Visible, but nil when unreadable (the VIS verdict must not read an error as "does not see").
+local function VisibleOrNil(pid, x, y)
+	local ok, v = pcall(function() return PlayersVisibility[pid]:IsVisible(x, y) end)
+	if ok and type(v) == "boolean" then
+		return v
+	end
+	return nil
 end
 
 -- Distance to pid's nearest city or unit.
@@ -607,17 +626,9 @@ local function MpFlag(arm)
 	return NetMP()
 end
 
-local function S3Set(mode)
-	local t = CurrentTarget()
-	if mode == "self" then
-		t = LocalID()
-	end
-	local team = tonumber(EditText(Controls.TeamEdit))
-	if team == nil then
-		Spike("S3", "set: type a New team first (S1 Team map suggests one)")
-		return
-	end
-	local arm = ArmRead()
+-- The S3 config write in UI: SetTeam on the config, then broadcast; logs the
+-- S3-UI checks. Returns the live team before the write.
+local function S3Write(t, team, arm)
 	local mach = Machine()
 	local cfgBefore, liveBefore = CfgTeamOf(t), TeamOf(t)
 	Spike("S3", "about to set the config team of P" .. t .. " " .. Str(cfgBefore) .. " -> " .. team ..
@@ -640,6 +651,20 @@ local function S3Set(mode)
 		changedLive = "yes"
 	end
 	Check("S3LIVE-UI." .. label, "INFO", "Players[" .. t .. "]:GetTeam() changed live=" .. changedLive)
+	return liveBefore
+end
+
+local function S3Set(mode)
+	local t = CurrentTarget()
+	if mode == "self" then
+		t = LocalID()
+	end
+	local team = tonumber(EditText(Controls.TeamEdit))
+	if team == nil then
+		Spike("S3", "set: type a New team first (S1 Team map suggests one)")
+		return
+	end
+	local liveBefore = S3Write(t, team, ArmRead())
 	local p = BaseParams("changed")
 	p.path, p.target, p.team = "S3", t, team
 	if liveBefore ~= nil then
@@ -870,8 +895,21 @@ SnapshotUI = function(reason)
 	if reason == "turn" or reason == "loaded" then
 		Safe("AL", function()
 			if type(arm.al) == "table" and TXD.Turn() > (tonumber(arm.al.turn) or 0) then
-				ALReadUI(arm, Str(arm.al.n), "turn", "turn " .. TXD.Turn() .. ", AL" .. Str(arm.al.n) .. " pressed on turn " ..
+				ALReadUI(arm, "AL" .. Str(arm.al.n), "turn", "turn " .. TXD.Turn() .. ", AL" .. Str(arm.al.n) .. " pressed on turn " ..
 					Str(arm.al.turn))
+			end
+		end)
+		Safe("VIS", function()
+			if type(arm.vis) == "table" and TXD.Turn() > (tonumber(arm.vis.turn) or 0) then
+				VisReadUI(arm, "VIS" .. Str(arm.vis.n), "turn", "turn " .. TXD.Turn() .. ", VIS" .. Str(arm.vis.n) ..
+					" pressed on turn " .. Str(arm.vis.turn))
+			end
+		end)
+		Safe("K", function()
+			if type(arm.k) == "table" and TXD.Turn() > (tonumber(arm.k.turn) or 0) then
+				local note = "turn " .. TXD.Turn() .. ", K pressed on turn " .. Str(arm.k.turn)
+				ALReadUI(arm, "K", "turn", note)
+				VisReadUI(arm, "Kvis", "turn", note)
 			end
 		end)
 	end
@@ -1004,8 +1042,73 @@ local function IntactVision(arm)
 	return "intact team: no capital of P" .. Str(o)
 end
 
--- The UI read-out. n: the AL step; stage: before | after | turn | nil. Step "0" is INFO.
-ALReadUI = function(arm, n, stage, note)
+-- Side effects of war then peace (Session 3: AL3, AL3b; AL0 for the baseline). UI reads only, all probes:
+-- GetGrievancesAgainst (DiplomacyActionView_AllianceRow.lua:46, XP2); the DOW warmonger
+-- points and level (DeclareWarPopup.lua:113,130: ComputeDOWWarmongerPoints(defender,
+-- warType), GetWarmongerLevel(-points)); GetAtWarChangeTurn, CanMakePeaceWith,
+-- CanDeclareWarOn (CityStates.lua:1496-1516); GetMinPeaceDuration (CityStates.lua:74);
+-- era score (EraProgressPanel.lua:68, XP2). Open borders and the deal count are
+-- verified UI reads (R D).
+local FX_ITEMS = { AL0 = true, AL3 = true, AL3b = true }
+
+local function ALFxUI(arm, item, stage)
+	local k, t = arm.keeper, arm.target
+	local dk, dt = DiploOf(k), DiploOf(t)
+	local function Both(member)
+		return " k->t=" .. TXD.Tok(TX_Probe(false, dk, nil, member, t)) .. " t->k=" .. TXD.Tok(TX_Probe(false, dt, nil, member, k))
+	end
+	local warmonger
+	local rf = TX_Probe(false, "WarTypes", nil, "=FORMAL_WAR")
+	if rf.ok and rf.rets[1] ~= nil then
+		local rp = TX_Probe(false, dk, nil, ":ComputeDOWWarmongerPoints", t, rf.rets[1])
+		warmonger = TXD.Tok(rp)
+		if rp.ok and type(rp.rets[1]) == "number" then
+			warmonger = warmonger .. " level=" .. TXD.Tok(TX_Probe(false, dk, nil, ":GetWarmongerLevel", -rp.rets[1]))
+		end
+	else
+		warmonger = "FORMAL_WAR=" .. TXD.Tok(rf)
+	end
+	local minPeace
+	local rg = TX_Probe(false, "Game", nil, ".GetGameDiplomacy")
+	if rg.ok and rg.rets[1] ~= nil then
+		minPeace = TXD.Tok(TX_Probe(false, rg.rets[1], nil, ":GetMinPeaceDuration"))
+	else
+		minPeace = TXD.Tok(rg)
+	end
+	local era
+	local re = TX_Probe(false, "Game", nil, ".GetEras")
+	if re.ok and re.rets[1] ~= nil then
+		era = "k=" .. TXD.Tok(TX_Probe(false, re.rets[1], nil, ":GetPlayerCurrentScore", k)) ..
+			" t=" .. TXD.Tok(TX_Probe(false, re.rets[1], nil, ":GetPlayerCurrentScore", t))
+	else
+		era = TXD.Tok(re)
+	end
+	local okD, nDeals = pcall(function()
+		local deals = DealManager.GetPlayerDeals(k, t)
+		if deals == nil then
+			return 0
+		end
+		return #deals
+	end)
+	if not okD then
+		nDeals = "ERR"
+	end
+	local head = ""
+	if stage ~= nil then
+		head = stage .. ": "
+	end
+	Check(TXD.StepId(item .. "fx", arm, stage), "INFO", head .. "keeper P" .. Str(k) .. " target P" .. Str(t) ..
+		"; grievances" .. Both(":GetGrievancesAgainst") .. "; DOW warmonger points k->t=" .. warmonger ..
+		"; AtWarChangeTurn" .. Both(":GetAtWarChangeTurn") .. "; CanMakePeaceWith" .. Both(":CanMakePeaceWith") ..
+		"; CanDeclareWarOn" .. Both(":CanDeclareWarOn") .. "; MinPeaceDuration=" .. minPeace ..
+		"; open borders target from keeper=" .. TXD.YN(HasOB(t, k)) .. " keeper from target=" .. TXD.YN(HasOB(k, t)) ..
+		"; deals=" .. Str(nDeals) .. "; era score " .. era ..
+		"; Leon: notifications, historic moments, grievances in the diplomacy screen")
+end
+
+-- The UI read-out. item: AL0 (always INFO), AL1..AL7, AL3b, AL7off, K; stage:
+-- before | after | turn | nil. AL0, AL3 and AL3b also log the <item>fx line.
+ALReadUI = function(arm, item, stage, note)
 	local k, t = arm.keeper, arm.target
 	local sTK, sKT = StateName(t, k), StateName(k, t)
 	local d = DiploOf(k)
@@ -1021,15 +1124,121 @@ ALReadUI = function(arm, n, stage, note)
 	local facts = "GetAllianceType=" .. TXD.Tok(at) .. " TurnsUntilExpiration=" .. TXD.Tok(ae) ..
 		" DeclaredFriendshipTurn=" .. TXD.Tok(ft) .. " CanDeclareWarOn k->t=" .. TXD.Tok(cw) .. " at war=" .. TXD.YN(AtWar(k, t)) ..
 		" target sees marker=" .. vis .. "; " .. IntactVision(arm) .. "; GAME_ALLIES_SHARE_VISIBILITY=" .. TXD.Tok(share)
-	local v, txt = TXD.Verdict.AL(TXD.PhaseLabel(arm), sTK, sKT)
-	if n == "0" then
+	local metKT, metTK = Met(k, t), Met(t, k)
+	facts = facts .. "; met k->t=" .. TXD.YN(metKT) .. " t->k=" .. TXD.YN(metTK)
+	local v, txt = TXD.Verdict.AL(TXD.PhaseLabel(arm), sTK, sKT, metKT, metTK)
+	if item == "AL0" then
 		v = "INFO"
 	end
 	local head = ""
 	if stage ~= nil then
 		head = stage .. ": "
 	end
-	Check(TXD.ALId(n, arm, stage), v, head .. txt .. "; keeper P" .. Str(k) .. " target P" .. Str(t) .. "; " .. facts ..
+	Check(TXD.StepId(item, arm, stage), v, head .. txt .. "; keeper P" .. Str(k) .. " target P" .. Str(t) .. "; " .. facts ..
+		(note and ("; " .. note) or ""))
+	if FX_ITEMS[item] then
+		ALFxUI(arm, item, stage)
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- VIS: the leftover shared vision (Session 2). UI half of the read-out.
+-- ---------------------------------------------------------------------------
+-- Cities and units of pid as { {x, y} } (the gameplay Assets twin).
+local function Assets(pid)
+	local out = {}
+	pcall(function()
+		for _, c in Players[pid]:GetCities():Members() do
+			out[#out + 1] = { x = c:GetX(), y = c:GetY() }
+		end
+	end)
+	pcall(function()
+		for _, u in Players[pid]:GetUnits():Members() do
+			out[#out + 1] = { x = u:GetX(), y = u:GetY() }
+		end
+	end)
+	return out
+end
+
+local function PlotDist(x1, y1, x2, y2)
+	local ok, d = pcall(function() return Map.GetPlotDistance(x1, y1, x2, y2) end)
+	if ok and type(d) == "number" then
+		return d
+	end
+	return 999
+end
+
+-- The keeper city farthest from every target asset: { x, y, near } or nil.
+local function FarCity(k, t)
+	local cands = {}
+	pcall(function()
+		for _, c in Players[k]:GetCities():Members() do
+			cands[#cands + 1] = { x = c:GetX(), y = c:GetY(), idx = c:GetID() }
+		end
+	end)
+	local best, d = TXD.FarthestPlot(cands, Assets(t), PlotDist)
+	if best == nil then
+		return nil
+	end
+	return { x = best.x, y = best.y, near = d }
+end
+
+-- a's active diplomatic visibility sources on b (DiplomacyActionView.lua:996-997), a probe.
+local function VisSources(a, b)
+	local d = DiploOf(a)
+	local active, bad = {}, nil
+	local ok, err = pcall(function()
+		for row in GameInfo.DiplomaticVisibilitySources() do
+			local r = TX_Probe(false, d, nil, ":IsVisibilitySourceActive", b, row.Index)
+			if not r.ok then
+				bad = bad or TXD.Tok(r)
+			elseif r.rets[1] == true then
+				active[#active + 1] = Str(row.VisibilitySourceType)
+			end
+		end
+	end)
+	if not ok then
+		return "ERR:" .. string.gsub(Str(err), "%s+", "_")
+	end
+	if bad ~= nil then
+		return bad
+	end
+	if #active == 0 then
+		return "none"
+	end
+	return table.concat(active, ",")
+end
+
+local function VisOnTok(a, b)
+	return TXD.Tok(TX_Probe(false, DiploOf(a), nil, ":GetVisibilityOn", b))
+end
+
+-- The UI VIS read-out (IsVisible is verified in UI). item: VIS0 (always INFO), VIS1..VIS3, Kvis.
+VisReadUI = function(arm, item, stage, note)
+	local k, t = arm.keeper, arm.target
+	local m, c = { has = false }, { has = false }
+	local where = {}
+	if type(arm.v5) == "table" then
+		local x, y = arm.v5.x, arm.v5.y
+		m = { has = true, k = VisibleOrNil(k, x, y), t = VisibleOrNil(t, x, y), near = NearestAsset(t, x, y) }
+		where[#where + 1] = "marker at " .. Str(x) .. "," .. Str(y)
+	end
+	local city = FarCity(k, t)
+	if city ~= nil then
+		c = { has = true, k = VisibleOrNil(k, city.x, city.y), t = VisibleOrNil(t, city.x, city.y), near = city.near }
+		where[#where + 1] = "city at " .. city.x .. "," .. city.y
+	end
+	local v, txt = TXD.Verdict.VIS(TXD.PhaseLabel(arm), m, c)
+	if item == "VIS0" then
+		v = "INFO"
+	end
+	local head = ""
+	if stage ~= nil then
+		head = stage .. ": "
+	end
+	Check(TXD.StepId(item, arm, stage), v, head .. txt .. "; keeper P" .. Str(k) .. " target P" .. Str(t) .. "; " ..
+		(#where > 0 and table.concat(where, ", ") or "no marker, no keeper city") .. "; GetVisibilityOn k->t=" ..
+		VisOnTok(k, t) .. " t->k=" .. VisOnTok(t, k) .. "; sources k->t=" .. VisSources(k, t) .. " t->k=" .. VisSources(t, k) ..
 		(note and ("; " .. note) or ""))
 end
 
@@ -1047,20 +1256,23 @@ local function ALRoles()
 	return a
 end
 
+-- AL0: the AL and VIS read-outs (UI), then the G half.
 local function ALRead()
-	ALReadUI(ALRoles(), "0")
+	local arm = ALRoles()
+	ALReadUI(arm, "AL0")
+	VisReadUI(arm, "VIS0")
 	Send(BaseParams("al_read"))
 end
 
--- A destructive AL step: UI read before, the G command, UI read after the answer.
--- Refused unarmed and at BASE (gameplay refuses too).
-local function ALStep(n, cmd, extra)
+-- A destructive AL or VIS step: UI read before, the G command, UI read after
+-- the answer. Refused unarmed and at BASE (gameplay refuses too).
+local function Step(section, cmd, extra, read)
 	local arm = ArmRead()
 	if not IsArmed(arm) or arm.phase == "BASE" then
-		Spike("AL" .. n, "refused: arm BASE and split the team first (or load TX2_split)")
+		Spike(section, "refused: arm BASE and split the team first (or load TX3_split)")
 		return
 	end
-	ALReadUI(arm, n, "before")
+	read(arm, "before")
 	local p = BaseParams(cmd)
 	extra = extra or {}
 	for _, key in ipairs(TXD.SortedKeys(extra)) do
@@ -1069,8 +1281,60 @@ local function ALStep(n, cmd, extra)
 	SendAndWait(p, function()
 		local now = ArmRead()
 		if IsArmed(now) then
-			ALReadUI(now, n, "after")
+			read(now, "after")
 		end
+	end, "arm")
+end
+
+local function ALStep(n, cmd, extra)
+	local item = "AL" .. n
+	Step(item, cmd, extra, function(a, stage) ALReadUI(a, item, stage) end)
+end
+
+local function VISStep(n)
+	local item = "VIS" .. n
+	Step(item, "vis_step", { n = n }, function(a, stage) VisReadUI(a, item, stage) end)
+end
+
+-- K: the full kick, a rehearsal of the real mod action. The S3 config write and
+-- broadcast here, then one gameplay request (k_kick) that records the change and
+-- runs VIS1. No war (Leon: war then peace is the last resort). Refused unless
+-- armed at BASE. Uses the armed target and the New team box (else the armed newTeam).
+local function KFullKick()
+	local arm = ArmRead()
+	if not IsArmed(arm) or arm.phase ~= "BASE" then
+		Spike("K", "refused: K starts at BASE (load TX3_base, or press Arm BASE first)")
+		return
+	end
+	local t = arm.target
+	local team = tonumber(EditText(Controls.TeamEdit)) or tonumber(arm.newTeam)
+	if team == nil then
+		Spike("K", "refused: no New team (S1 Team map suggests one)")
+		return
+	end
+	if CurrentTarget() ~= t then
+		Spike("K", "the panel Target is P" .. Str(CurrentTarget()) .. "; K kicks the armed target P" .. Str(t))
+	end
+	ALReadUI(arm, "K", "before")
+	VisReadUI(arm, "Kvis", "before")
+	local liveBefore = S3Write(t, team, arm)
+	local p = BaseParams("k_kick")
+	p.path, p.target, p.team = "S3", t, team
+	if liveBefore ~= nil then
+		p.orig = liveBefore
+	end
+	SendAndWait(p, function()
+		local now = ArmRead()
+		-- arm.k is written only by a k_kick that ran to the end (the wait also ends on a timeout).
+		if not IsArmed(now) or now.phase == "BASE" or type(now.k) ~= "table" then
+			Spike("K", "WARNING gameplay did not finish K (refused, error or no answer): do NOT save TX3_kick. " ..
+				"Read the G lines, then load TX3_base.")
+			return
+		end
+		SnapshotUI("changed")
+		ALReadUI(now, "K", "after")
+		VisReadUI(now, "Kvis", "after")
+		Spike("K", "done. NOW save the game as TX3_kick and load TX3_kick (the base UI is stale until a load).")
 	end, "arm")
 end
 
@@ -1095,14 +1359,14 @@ local function AL2Exist()
 	Send(BaseParams("al2_exist"))
 end
 
--- AL4 UI half: the alliance value hash (DB.MakeHash, DiplomacyActionView_Expansion1.lua:165), then G.
-local function AL4Deal()
-	local r = TX_Probe("AL4 hash", "DB", nil, ".MakeHash", "ALLIANCE_RESEARCH")
+-- AL4 / AL4L UI half: the alliance value hash (DB.MakeHash, DiplomacyActionView_Expansion1.lua:165), then G.
+local function AL4Deal(n, cmd)
+	local r = TX_Probe("AL" .. n .. " hash", "DB", nil, ".MakeHash", "ALLIANCE_RESEARCH")
 	local extra = {}
 	if r.ok and type(r.rets[1]) == "number" then
 		extra.hash = r.rets[1]
 	end
-	ALStep("4", "al4_alliance", extra)
+	ALStep(n, cmd, extra)
 end
 
 -- AL6: read-only refusal checks for war and denounce. IsDiplomaticActionValid:
@@ -1189,11 +1453,19 @@ local UIFN = {
 	AL1 = function() ALStep("1", "al1_friend_off") end,
 	AL2 = AL2Exist,
 	AL3 = function() ALStep("3", "al3_war_peace") end,
-	AL4 = AL4Deal,
+	AL3b = function() ALStep("3b", "al3b_war_peace") end,
+	AL4 = function() AL4Deal("4", "al4_alliance") end,
+	AL4L = function() AL4Deal("4L", "al4l_alliance_long") end,
+	AL8 = function() ALStep("8", "al8_unmeet") end,
+	AL9 = function() ALStep("9", "al9_remeet") end,
 	AL5 = function() ALStep("5", "al5_allied_toggle") end,
 	AL6 = AL6Valid,
 	AL7Off = function() ALStep("7off", "al7_vis", { on = 0 }) end,
 	AL7On = function() ALStep("7on", "al7_vis", { on = 1 }) end,
+	VIS1 = function() VISStep(1) end,
+	VIS2 = function() VISStep(2) end,
+	VIS3 = function() VISStep(3) end,
+	KFull = KFullKick,
 }
 
 local BUTTONS = {
@@ -1220,17 +1492,29 @@ local BUTTONS = {
 	{ label = "V3 Domination: keeper", cmd = "v3_setup", who = "keeper" },
 	{ label = "V3 Domination: target", cmd = "v3_setup", who = "target" },
 	{ label = "V8 War allowed?", ui = "V8Info" },
-	{ header = "AL alliance tests (load TX2_split before each !)" },
+	{ header = "AL alliance tests (load TX3_split before each !)" },
 	{ label = "AL0 Read state (UI+G)", ui = "ALRead", tip = "read only: diplo state both ways, HasAllied, friendship, war, vision" },
 	{ label = "AL1 Friendship off (!)", ui = "AL1", tip = "SetHasDeclaredFriendship false, keeper and target, both ways" },
 	{ label = "AL2 Probe APIs (no calls)", ui = "AL2", tip = "existence only of the alliance and peace calls" },
 	{ label = "AL3 War then peace (!)", ui = "AL3", tip = "keeper declares war on target, then makes peace" },
+	{ label = "AL3b War(false) then peace (!)", ui = "AL3b", tip = "as AL3, with DeclareWarOn third argument false" },
 	{ label = "AL4 Alliance deal 1 turn (!)", ui = "AL4", tip = "research alliance keeper-target, duration 1 turn" },
+	{ label = "AL4L Alliance, friends off (!)", ui = "AL4L",
+		tip = "AL4, then AL1 friendship off. End turns past the expiry: every turn start reads the state" },
 	{ label = "AL5 SetHasAllied toggle (!)", ui = "AL5", tip = "SetHasAllied true both ways, then false. May stick for good." },
 	{ label = "AL6 War/denounce valid? (UI)", ui = "AL6", tip = "read only: may keeper declare war on or denounce target?" },
 	{ label = "AL7 Vision OFF (all teams!)", ui = "AL7Off",
 		tip = "GLOBAL: switches team vision off for EVERY team, the intact one too. Press AL7 Vision ON after." },
 	{ label = "AL7 Vision ON (restore)", ui = "AL7On", tip = "GLOBAL: switches team vision back on for every team" },
+	{ label = "AL8 Unmeet both ways (!)", ui = "AL8", tip = "clean break probe: SetHasMet(other, false), keeper and target" },
+	{ label = "AL9 Unmeet then meet (!)", ui = "AL9", tip = "clean break probe: SetHasMet(false) both ways, then SetHasMet again" },
+	{ header = "VIS vision tests (load TX3_split, V5 Marker, end turn)" },
+	{ label = "VIS1 Remove outgoing vis (!)", ui = "VIS1", tip = "RemoveOutgoingVisibility keeper->target and target->keeper" },
+	{ label = "VIS2 Recheck visibility (!)", ui = "VIS2", tip = "RecheckVisibilityOnAll and RecheckVisibilityOn, keeper and target" },
+	{ label = "VIS3 SetVisibilityOn 0 (!)", ui = "VIS3", tip = "diplomatic visibility level 0, both ways (GetVisibilityOn logged)" },
+	{ header = "K full kick (load TX3_base, armed at BASE)" },
+	{ label = "K Full kick (S3+VIS1) (!)", ui = "KFull",
+		tip = "S3 set + broadcast, then RemoveOutgoingVisibility both ways (no war). Then save TX3_kick and load it." },
 	{ header = "Misc" },
 	{ label = "Diplo matrix", cmd = "diplo" },
 	{ label = "Clear spike state", cmd = "clear" },

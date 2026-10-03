@@ -4880,6 +4880,27 @@
     "TX_Dev/"
    ],
    "source": "TX"
+  },
+  "DiplomaticVisibilitySources": {
+   "ctx": {
+    "G": {
+     "level": "L",
+     "tests": []
+    },
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "Gossip.xml:74-82 (BASE24 Gameplay/Data: SOURCE_TECH, SOURCE_TRADER, SOURCE_DELEGATE, SOURCE_TRAIT, SOURCE_ALLY, SOURCE_SPY, SOURCE_GREAT_PERSON_JOURNALISM)",
+    "DiplomacyActionView.lua:996-997 (BASE24 UI: for row in GameInfo.DiplomaticVisibilitySources() ... IsVisibilitySourceActive(other, row.Index))"
+   ],
+   "note": "TX_Dev 0.0.1.3 VIS read-out: the rows feed the IsVisibilitySourceActive probe (both contexts). GameInfo tables are the same DB in both contexts.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
   }
  },
  "base_includes": {

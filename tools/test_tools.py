@@ -582,6 +582,34 @@ class TestSummarizeLog(unittest.TestCase):
         self.assertIn("[AL3] 1 line(s)", text)
         self.assertIn("[AL7] 1 line(s)", text)
 
+    def test_tx_dev_vis_k_shapes(self):
+        """TX_Dev 0.0.1.3 lines: VIS<n> / Kvis / K / AL3b / AL4L / AL8 IDs with stages, <item>fx IDs, sections VIS1 / K / AL3b."""
+        lines = [
+            "TX_Dev_Panel: [TX][CHECK] VIS1-UI.S3RELOAD1.before INFO T7 UI before: marker keeper sees=yes target sees=yes nearest target asset=12; city keeper sees=yes target sees=yes nearest target asset=9: vision still shared",
+            "TX_Dev_Gameplay: [TX][CHECK] VIS1-G.S3RELOAD1.after PASS T7 G after: marker keeper sees=yes target sees=no",
+            "TX_Dev_Gameplay: [TX][CHECK] VIS0-G.S3RELOAD1 INFO T7 G marker keeper sees=no target sees=no (marker missing: the keeper does not see it)",
+            "TX_Dev_Panel: [TX][CHECK] AL3bfx-UI.S3RELOAD1.after INFO T7 UI after: keeper P0 target P1; grievances k->t=0 t->k=100",
+            "TX_Dev_Gameplay: [TX][CHECK] AL3b-G.S3RELOAD1.after PASS T7 G after: state now target->keeper=DIPLO_STATE_UNFRIENDLY",
+            "TX_Dev_Gameplay: [TX][CHECK] AL4L-G.S3RELOAD1.turn INFO T27 G turn: state now target->keeper=DIPLO_STATE_ALLIED",
+            "TX_Dev_Gameplay: [TX][CHECK] AL8-G.S3RELOAD1.after INFO T7 G after: state now target->keeper=DIPLO_STATE_ALLIED",
+            "TX_Dev_Gameplay: [TX][CHECK] K-G.S3LIVE.after INFO T4 G after: state now target->keeper=DIPLO_STATE_ALLIED",
+            "TX_Dev_Panel: [TX][CHECK] Kvis-UI.S3RELOAD1.turn PASS T5 UI turn: marker keeper sees=yes target sees=no",
+            "TX_Dev_Gameplay: [TX][SPIKE][VIS1] G PROBE VIS1 remove PlayersVisibility[0]:RemoveOutgoingVisibility(1) exists=function ok=true ret=() err=-",
+            "TX_Dev_Gameplay: [TX][SPIKE][K] G done. NOW save the game as TX3_kick and load TX3_kick (the base UI is stale until a load).",
+            "TX_Dev_Gameplay: [TX][SPIKE][AL3b] G P0 declares war on P1 (DeclareWarOn third arg false) at war=true",
+        ]
+        code, text = self.run_lines(lines)
+        self.assertEqual(code, 0, text)
+        self.assertRegex(text, r"VIS1-G\.S3RELOAD1\.after +PASS +T7 G after:")
+        self.assertRegex(text, r"VIS0-G\.S3RELOAD1 +INFO +T7 G marker keeper sees=no")
+        self.assertRegex(text, r"AL3bfx-UI\.S3RELOAD1\.after +INFO +T7 UI after:")
+        self.assertRegex(text, r"Kvis-UI\.S3RELOAD1\.turn +PASS +T5 UI turn:")
+        self.assertRegex(text, r"AL4L-G\.S3RELOAD1\.turn +INFO +T27 G turn:")
+        self.assertIn("summarize_log: PASS - 9 check(s)", text)
+        self.assertIn("[VIS1] 1 line(s)", text)
+        self.assertIn("[K] 1 line(s)", text)
+        self.assertIn("[AL3b] 1 line(s)", text)
+
     def test_missing_log(self):
         code, text = self.run_log(os.path.join(LOGS, "no_such_Lua.log"))
         self.assertEqual(code, 2)

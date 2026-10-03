@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Dev_Lib.lua  (TX_Dev 0.0.1.2, spike kit for Team Expulsion 0.0.1)
+-- TX_Dev_Lib.lua  (TX_Dev 0.0.1.3, spike kit for Team Expulsion 0.0.1)
 -- TX:CONTEXT both
 -- TX:GLOBALS TXD TX_Probe
 --
@@ -29,7 +29,7 @@
 local M = {}
 TXD = M
 
-M.VERSION = "0.0.1.2"
+M.VERSION = "0.0.1.3"
 M.FOR_TX = "0.0.1"
 M.ctx = "?"
 M.roots = {}
@@ -189,28 +189,68 @@ M.NEVER = {
 	"DiplomacyManager.CloseSession",
 	"DiplomacyManager.AddResponse",
 	"DiplomacyManager.AddStatement",
+	-- Session 2 S1 dump (G): retires a player for good (MC2 A-GameRetirePlayer).
+	"Game.RetirePlayer",
 }
 -- SetPermanentAlliance: permanent, no un-setter (PiratesScenario_StartScript.lua:384).
 -- NeverMakePeaceWith: blocks the AL3 exit (PiratesScenario_StartScript.lua:389,395).
 M.NEVER_MEMBER = { "SetWinningTeam", "SetToDefaults", "SetSlotStatus", "SetMajorCiv",
-	"SetPermanentAlliance", "NeverMakePeaceWith" }
+	"SetPermanentAlliance", "NeverMakePeaceWith", "RetirePlayer" }
 
 -- Gated members: a call (":" or ".") only from a probe whose label starts
--- with the gate word (research/ALLIANCE.md 5). Existence ("?") is always allowed.
+-- with a gate word (research/ALLIANCE.md 5). Existence ("?") is always allowed.
+-- A gate is one word or a list of words. A word that ends in a letter also
+-- admits itself plus digits ("VIS" admits "VIS1", "VIS2"; "AL7" admits only "AL7").
 --   SetAlliesShareVisFlag: global, switches vision off for every real team (AL7 only).
 --   SetHasAllied: no way back once true (EFV Session F T27; AL5 only).
-M.GATED = { SetAlliesShareVisFlag = "AL7", SetHasAllied = "AL5" }
+--   SetHasMet: verified only as SetHasMet(b) (meet); the unmeet probes
+--     SetHasMet(b, false) run only from AL8 / AL9 (the gameplay MeetPair calls
+--     it directly, not through the probe).
+--   Visibility actions from the Session 2 S1 dump (G, no shipped use, argument
+--   shapes unknown): VIS probes only; RemoveOutgoingVisibility also from K (full kick).
+M.GATED = {
+	SetAlliesShareVisFlag = "AL7",
+	SetHasAllied = "AL5",
+	SetHasMet = { "AL8", "AL9" },
+	RemoveOutgoingVisibility = { "VIS", "K" },
+	AddOutgoingVisibility = "VIS",
+	RecheckVisibilityOn = "VIS",
+	RecheckVisibilityOnAll = "VIS",
+	SetVisibilityOn = "VIS",
+}
 
--- nil when the call is allowed, else the gate word it needs.
+local function GateWordOk(word, gate)
+	if word == gate then
+		return true
+	end
+	if string.match(gate, "%a$") == nil or string.sub(word, 1, string.len(gate)) ~= gate then
+		return false
+	end
+	return string.match(string.sub(word, string.len(gate) + 1), "^%d+$") ~= nil
+end
+
+-- nil when the call is allowed, else the gate word(s) it needs ("VIS/K").
 function M.GateBlocks(label, member)
 	local gate = M.GATED[StripModeName(member)]
 	if gate == nil then
 		return nil
 	end
-	if type(label) == "string" and string.match(label, "^%s*(%S+)") == gate then
-		return nil
+	local words = gate
+	if type(gate) ~= "table" then
+		words = { gate }
 	end
-	return gate
+	local first = nil
+	if type(label) == "string" then
+		first = string.match(label, "^%s*(%S+)")
+	end
+	if first ~= nil then
+		for _, w in ipairs(words) do
+			if GateWordOk(first, w) then
+				return nil
+			end
+		end
+	end
+	return table.concat(words, "/")
 end
 
 local StripMode = StripModeName
@@ -1060,22 +1100,33 @@ end
 M.ALLIED = "DIPLO_STATE_ALLIED"
 M.WAR = "DIPLO_STATE_WAR"
 
--- AL<n>-<ctx>.<phase>[.<stage>]; stage: before | after | turn | nil.
-function M.ALId(n, arm, stage)
-	local id = "AL" .. M.Str(n) .. "-" .. M.ctx .. "." .. M.PhaseLabel(arm)
+-- <item>-<ctx>.<phase>[.<stage>]; stage: before | after | turn | a mid stage | nil.
+-- Items: AL0..AL7, AL3b, AL<n>fx, VIS0..VIS3, K, Kvis.
+function M.StepId(item, arm, stage)
+	local id = M.Str(item) .. "-" .. M.ctx .. "." .. M.PhaseLabel(arm)
 	if stage ~= nil then
 		id = id .. "." .. M.Str(stage)
 	end
 	return id
 end
 
+-- AL<n>-<ctx>.<phase>[.<stage>]
+function M.ALId(n, arm, stage)
+	return M.StepId("AL" .. M.Str(n), arm, stage)
+end
+
 -- sTK: the target's state toward the keeper, sKT: the keeper's toward the target
 -- (StateType strings or nil). PASS when neither is ALLIED nor WAR; INFO otherwise
 -- (WAR is no exit: AL3 must end in peace).
-function M.Verdict.AL(phase, sTK, sKT)
+-- metKT / metTK (optional): HasMet keeper->target / target->keeper. false in
+-- either way gives INFO INCONCLUSIVE: the state of an unmet pair is no exit (AL8).
+function M.Verdict.AL(phase, sTK, sKT, metKT, metTK)
 	local facts = "state now target->keeper=" .. M.Str(sTK) .. " keeper->target=" .. M.Str(sKT)
 	if M.IsBase(phase) then
 		return "INFO", facts .. " (before the change: still teammates)"
+	end
+	if metKT == false or metTK == false then
+		return "INFO", INC .. "not met (k->t=" .. M.YN(metKT) .. " t->k=" .. M.YN(metTK) .. "), no verdict; " .. facts
 	end
 	if sTK == nil or sKT == nil then
 		return "INFO", INC .. "state unreadable; " .. facts
@@ -1087,6 +1138,57 @@ function M.Verdict.AL(phase, sTK, sKT)
 		return "PASS", facts .. ": no longer ALLIED"
 	end
 	return "INFO", facts .. ": still ALLIED"
+end
+
+-- ---------------------------------------------------------------------------
+-- VIS: the leftover shared vision between ex-teammates (Session 2: it survives
+-- the split, AL3 and AL7). Two readings, each { has, k, t, near }:
+--   m: the V5 marker (a keeper unit far from the target),
+--   c: the keeper city farthest from every target asset.
+-- has: the thing exists; k / t: keeper / target sees its plot (nil unreadable);
+-- near: distance to the target's nearest city or unit.
+-- PASS when every usable reading has the keeper seeing it and the target not.
+-- INFO otherwise: "vision still shared", or INCONCLUSIVE when nothing is usable.
+-- A marker the keeper does not see is "marker missing", never a verdict.
+-- ---------------------------------------------------------------------------
+local function VisPart(name, r)
+	if type(r) ~= "table" or not r.has then
+		return "no " .. name, nil
+	end
+	local s = name .. " keeper sees=" .. M.YN(r.k) .. " target sees=" .. M.YN(r.t) .. " nearest target asset=" .. M.Str(r.near)
+	if r.k == false then
+		return s .. " (" .. name .. " missing: the keeper does not see it)", nil
+	end
+	if r.k == nil or r.t == nil then
+		return s .. " (unreadable)", nil
+	end
+	if r.near ~= nil and r.near <= 3 then
+		return s .. " (a target asset within 3 tiles)", nil
+	end
+	return s, r.t
+end
+
+function M.Verdict.VIS(phase, m, c)
+	local mText, mT = VisPart("marker", m)
+	local cText, cT = VisPart("city", c)
+	local facts = mText .. "; " .. cText
+	if M.IsBase(phase) then
+		return "INFO", facts .. " (before the change: still one team)"
+	end
+	if mT == nil and cT == nil then
+		return "INFO", INC .. "no usable reading; " .. facts
+	end
+	if mT == true or cT == true then
+		local what = {}
+		if mT == true then
+			what[#what + 1] = "marker"
+		end
+		if cT == true then
+			what[#what + 1] = "city"
+		end
+		return "INFO", facts .. ": vision still shared (target sees the keeper's " .. table.concat(what, " and ") .. ")"
+	end
+	return "PASS", facts .. ": the target no longer sees the keeper's assets, the keeper does"
 end
 
 -- Short printable form of a value; tables one level deep (plus a count for
