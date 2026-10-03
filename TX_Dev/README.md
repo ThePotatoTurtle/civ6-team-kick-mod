@@ -78,37 +78,39 @@ Same game, after the reload.
 
 ## Session 2 (hotseat, new game)
 
+Done 2026-10-03 with TX_Dev 0.0.1.2.
+
 Setup: same as Session 1. Hotseat, GS rules, Tiny, Quick. P0, P1, P2 human, P3 AI. Teams {P0,P1} {P2,P3}. Fewest city-states.
 
 **Live split (no reload)**
 
 1. Found capitals with P0, P1, P2. End turns to turn 3.
    - Expect: the DEV button.
-   - Result:
+   - Result: yes
 2. As P0: S1 Dump (UI), S1 Dump (G), S1 Team map.
    - Expect: New team filled (10 in Session 1). The log lists the methods of `Players[0]:GetDiplomacy()`.
-   - Result:
+   - Result: yes "new team: 10"
 3. Q Setup Session 2. Sleep the marker Warrior.
    - Expect: P1-P2 friends and deals, a P0 Warrior far from P1.
-   - Result:
+   - Result: yes
 4. End turn (all). As P0: Arm BASE + snapshot.
    - Expect: phase BASE, `V5-UI.BASE`: P1 sees the marker.
-   - Result:
+   - Result: didnt notice if P1 saw the marker. didnt want to end turn and mess up the order again to check. (Log: `V5-UI.BASE` P1 sees it.)
 5. Target P1, New team as suggested. S3 Set Target's team. Don't save or load.
    - Expect: phase S3LIVE. `V1-G.S3LIVE PASS`, `V1-UI.S3LIVE FAIL` (the UI lags until a load).
-   - Result:
+   - Result: phase S3LIVE
 6. Save as `TX2_split`. Don't load it yet.
    - Expect: the alliance tests start from this save.
-   - Result:
+   - Result: saved
 7. V6 Other declares war on keeper. End turn (all).
    - Expect: `V6-G.S3LIVE PASS`: P2 at war with P0, not with P1.
-   - Result:
+   - Result: the P1 banner was weird on the top left (cant see the yields and stuff). I clicked it and it removed my game's UI. I can only esc and see the menu, I can still move my units but can't even see their labels. I went back to main menu and reloaded TX2_split. Before clicking V6, UI banner is back for T1, and we are still allied. Clicking his banner/portrait went to diplomatic screen, nothing glitched out. Then, I clicked V6 again. Still, no glitched banner or diplo screen. Indeed, P0 a war with P2 and P3. P1 allied with P0 but not at war with anyone. P2 at war with P0. (Log: 18 `LeaderIcon.lua:143` errors before the reload. The V6 verdict came after the reload, `V6-G.S3RELOAD1 PASS`, so the live war split was not measured.)
 8. V3 Domination: keeper. As P0, take both enemy capitals with the Tanks. End turn (all).
    - Expect: no victory screen. `V3-UI.S3LIVE PASS` at P0's next turn.
-   - Result:
+   - Result: defeat screen for P3. No victory screens. (`V3-UI.S3RELOAD1 PASS`, after the reload.)
 9. Still no load: look at the leader ribbon, World Rankings (all pages), the P0-P1 diplomacy screen. Any error popups?
    - Expect: write down what you see.
-   - Result:
+   - Result: leader ribbon appears normal, with P0 alied with P2. In world rankings, both players are shown separate in overall and all categories. No error popups. In P0 diplo screen, shows "allied" for our relationship with P1, but no expiry date when hovering over the "allied". P1 screen towards P0 is the same.
 
 **Alliance tests**
 
@@ -116,24 +118,26 @@ Every test starts by loading `TX2_split` (the split, before any war). The phase 
 
 10. Load `TX2_split`. AL0 Read state (UI+G) ("AL0" below), AL2 Probe APIs (no calls), AL6 War/denounce valid? (UI).
     - Expect: AL0 says ALLIED both ways. AL2 and AL6 list what exists and what is allowed.
-    - Result:
+    - Result: see logs. AL0: ALLIED both ways, HasAllied no, GetAllianceType -1. AL6: war refused ("Some member of your team is a friend or ally"), denounce refused. AL2: G has `PlayersVisibility[p]:RemoveOutgoingVisibility`, `GetDiplomacy():SetVisibilityOn/RecheckVisibilityOnAll`, `SetHasMet`.
 11. AL3: load `TX2_split`. AL0. AL3 War then peace (!). End turn (all). AL0.
     - Expect: `AL3-*.after` PASS (UNFRIENDLY both ways).
-    - Result:
+    - Result: see logs. `AL3 PASS`: ALLIED, then WAR, then UNFRIENDLY right after peace, NEUTRAL next turn. Vision still shared.
 12. AL4: load `TX2_split`. AL0. AL4 Alliance deal 1 turn (!). End turn (all) twice. AL0.
     - Expect: the alliance starts, then expires to FRIENDLY (`AL4-*.turn` PASS). Note TurnsUntilExpiration.
-    - Result:
+    - Result: see logs. after AL4 I saw in diplo screen that alliance had 20 turns left. After 2 end turns, this was 18 turns. however AL4 brings up a historic moment because of the boost to diplomatic service by having an alliance with another civilization (not good). after the "20 turns" was over, the alliance went back to a no limit alliance (nothing when hovering). (FAIL: duration 1 ignored, a real 20-turn research alliance.)
 13. AL5: load `TX2_split`. AL0. AL5 SetHasAllied toggle (!). End turn (all). AL0.
     - Expect: HasAllied stays yes after "off". State likely still ALLIED (INFO).
-    - Result:
+    - Result: after end turn once, see in diplo screen alliance has 20 turns left. (FAIL: SetHasAllied(true) made a real alliance and (false) did nothing.)
 14. AL1: load `TX2_split`. AL0. AL1 Friendship off (!). End turn (all). AL0.
     - Expect: friends no both ways. State likely still ALLIED (INFO).
-    - Result:
+    - Result: after AL1, diplo screen "alliance" still has no expiry (nothing when hovering). (Friendship off works, state stays ALLIED.)
 15. AL7: load `TX2_split`. AL0. AL7 Vision OFF (all teams!). End turn (all). AL0. AL7 Vision ON (restore). End turn (all). AL0.
     - Expect: if P1 loses the marker with the flag off, the shared vision is team vision. P3 probably loses P2's capital too (the flag is global).
-    - Result:
+    - Result: I kept testing after with multiple turns, and the shared vision stayed for all despite Al7 vision OFF! EVEN AFTER AL3 war then peace (now no relationships between P0 and P1, not even friendship) and then AL7, shared vision remained (but the other guy's unit badges were a bit translucent, but can still see around their units even far from capital). (FAIL: the flag changes nothing. Vision is not from the alliance either.)
 
 Then quit to the desktop and send the raw Lua.log file, not only the summary.
+
+Summary: before a reload the base UI breaks (`LeaderIcon.lua:143`, clicking P1's banner killed the UI), so a kick needs a save and reload right away. After it, war and victory are split. Only war then peace (AL3) ends the ALLIED state. Shared vision survives everything tried, including AL3 and AL7. V9/V10 FAIL at turn 35 is the normal 30-turn expiry of the deals and friendship made on turn 3, not the split.
 
 ## Session 3 outline (hotseat, other team shapes)
 
