@@ -714,3 +714,69 @@ test("chunking: no line longer than maxChars, long words alone", function()
 	H.deq(lines, { "aaaa bbbb", "cccc", string.rep("x", 12), "d" })
 	H.deq(TXD.Chunk({}, 10), {})
 end)
+
+-- ---------------------------------------------------------------------------
+-- TX_Dev 0.0.1.4: the R gate, save entry names, the P-Teams write
+-- ---------------------------------------------------------------------------
+test("gate: SaveGame, LeaveGame, LoadGame only from R; LeaveGame stays a never-call for S1/S2", function()
+	Load("UI")
+	local calls = {}
+	local net = {
+		SaveGame = function() calls[#calls + 1] = "save" end,
+		LeaveGame = function() calls[#calls + 1] = "leave" end,
+		LoadGame = function() calls[#calls + 1] = "load" end,
+	}
+	TXD.SetRoots({ Network = function() return net end })
+	H.eq(TX_Probe(false, "Network", nil, ".LeaveGame").refused, true, "quiet mode")
+	H.eq(TX_Probe("S2 CALL", "Network", nil, ".LeaveGame").err, "never-call")
+	H.eq(TX_Probe("K load", "Network", nil, ".LoadGame", {}, 0).refused, true)
+	H.eq(TX_Probe("RK save", "Network", nil, ".SaveGame", {}).refused, true, "RK is not the gate word")
+	H.eq(TX_Probe("R2 leave", "Network", nil, ".LeaveGame").refused, false, "R admits R plus digits")
+	H.deq(calls, { "leave" })
+	calls = {}
+	H.eq(TX_Probe("R save", "Network", nil, ".SaveGame", {}).ok, true)
+	H.eq(TX_Probe("R leave", "Network", nil, ".LeaveGame").ok, true)
+	H.eq(TX_Probe("R load", "Network", nil, ".LoadGame", {}, 0).ok, true)
+	H.deq(calls, { "save", "leave", "load" })
+	H.eq(TX_Probe("R exist", "Network", nil, "?LoadGame").exists, "function")
+	H.ok(TXD.IsNever("Network", ".LeaveGame"), "S1 / S2 still leave it out")
+	H.ok(TXD.NeverOpen("R leave", ".LeaveGame"))
+	H.ok(not TXD.NeverOpen("R x", "SetWinningTeam"), "an ungated never-call never opens")
+	H.eq(TX_Probe("R x", { SetWinningTeam = function() end }, nil, ":SetWinningTeam", 1).refused, true)
+	AssertShapes()
+end)
+
+test("SaveEntryName / FindSave: DisplayName, path and extension, case, directories", function()
+	Load()
+	H.eq(TXD.SaveEntryName({ Name = "C:/Users/x/Saves/hotseat/TX_autoreload.Civ6Save" }), "TX_autoreload")
+	H.eq(TXD.SaveEntryName({ Name = "C:\\S\\a.b.Civ6Save" }), "a.b")
+	H.eq(TXD.SaveEntryName({ Name = "plain" }), "plain")
+	H.eq(TXD.SaveEntryName({ Name = "x.Civ6Save", DisplayName = "Shown" }), "Shown")
+	H.isnil(TXD.SaveEntryName({ Name = "dir", IsDirectory = true }))
+	H.isnil(TXD.SaveEntryName("x"))
+	local list = { { Name = "dir", IsDirectory = true }, { Name = "/s/TX3b_base.Civ6Save" },
+		{ Name = "/s/tx_AUTOreload.Civ6Save", n = 1 }, { Name = "/s/TX_autoreload.Civ6Save", n = 2 } }
+	local e, seen = TXD.FindSave(list, "TX_autoreload")
+	H.eq(e.n, 1, "first match, case-insensitive")
+	H.deq(seen, { "TX3b_base", "tx_AUTOreload" })
+	e, seen = TXD.FindSave({ { Name = "/s/other.Civ6Save" } }, "TX_autoreload")
+	H.isnil(e)
+	H.deq(seen, { "other" })
+	H.isnil((TXD.FindSave(nil, "x")))
+end)
+
+test("PatchTeams: the target into Teams[new], out of Teams[orig], on the given table only", function()
+	Load()
+	local T = { [0] = { 0, 1 }, [1] = { 2, 3 } }
+	H.eq(TXD.PatchTeams(T, 0, 10, 1), "Teams[10]={1} (new list), removed P1 from Teams[0] x1")
+	H.deq(T[0], { 0 })
+	H.deq(T[10], { 1 })
+	H.deq(T[1], { 2, 3 })
+	H.eq(TXD.PatchTeams(T, 0, 10, 1), "Teams[10] had P1, removed P1 from Teams[0] x0")
+	H.deq(T[10], { 1 })
+	local U = { [0] = { 0, 1 }, [5] = { 4 } }
+	TXD.PatchTeams(U, 0, 5, 1)
+	H.deq(U[5], { 4, 1 })
+	local frozen = setmetatable({}, { __newindex = function() error("read-only") end })
+	H.ok(not pcall(TXD.PatchTeams, frozen, 0, 10, 1), "a refused write throws (the panel uses pcall)")
+end)

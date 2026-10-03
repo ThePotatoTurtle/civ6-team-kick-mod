@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Dev_Gameplay.lua  (TX_Dev 0.0.1.3, spike kit for Team Expulsion 0.0.1)
+-- TX_Dev_Gameplay.lua  (TX_Dev 0.0.1.4, spike kit for Team Expulsion 0.0.1)
 -- Context: gameplay (AddGameplayScripts). TESTING ONLY. PLAN I.5.
 --
 -- One handler, GameEvents.TX_Dev(playerID, params), dispatching on params.cmd
@@ -1115,7 +1115,8 @@ end
 
 CMD.changed = function(playerID, p)
 	local path = p.path
-	if path ~= "S3" and path ~= "S2" and path ~= "S3b" then
+	-- S3n: the config write without a broadcast (0.0.1.4, research/RELOAD.md 3 probe)
+	if path ~= "S3" and path ~= "S2" and path ~= "S3b" and path ~= "S3n" then
 		path = "S3"
 	end
 	Changed(playerID, p, path)

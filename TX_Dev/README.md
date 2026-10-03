@@ -1,6 +1,6 @@
 # Team Expulsion Dev Tools (TX_Dev)
 
-Spike panel for Team Expulsion. Version 0.0.1.3, mod id `813c09c2-7476-4882-b8d6-7a0708b0891d`. Needs Gathering Storm only. Never enable it in a real game: it changes teams, declares wars and spawns units. Results go to Lua.log as `[TX][SPIKE]` and `[TX][CHECK]` lines. Read them with `python tools\summarize_log.py`.
+Spike panel for Team Expulsion. Version 0.0.1.4, mod id `813c09c2-7476-4882-b8d6-7a0708b0891d`. Needs Gathering Storm only. Never enable it in a real game: it changes teams, declares wars and spawns units. Results go to Lua.log as `[TX][SPIKE]` and `[TX][CHECK]` lines. Read them with `python tools\summarize_log.py`.
 
 All sessions are hotseat (one copy of the game).
 
@@ -19,7 +19,7 @@ Panel rows:
 
 Roles: keeper = the Target's lowest teammate, other = the lowest major on another team. Session 1 setup: keeper P0, target P1, other P2.
 
-Check IDs: `V1-G.S3LIVE` = item, context (G gameplay, UI panel), phase. Phases: `BASE` (armed, before the change), `S3LIVE` (after the change, no load yet), `S3RELOAD<n>` (after the n-th load since the change). AL, VIS and K IDs add a stage: `AL3-G.S3RELOAD1.after` (`before`, `after`, `turn` = every later turn start). `VIS<n>` and `Kvis` lines are the vision read-out, `AL0fx` / `AL3fx` / `AL3bfx` the war side effects.
+Check IDs: `V1-G.S3LIVE` = item, context (G gameplay, UI panel), phase. Phases: `BASE` (armed, before the change), `S3LIVE` (after the change, no load yet), `S3RELOAD<n>` (after the n-th load since the change). AL, VIS and K IDs add a stage: `AL3-G.S3RELOAD1.after` (`before`, `after`, `turn` = every later turn start). `VIS<n>` and `Kvis` lines are the vision read-out, `AL0fx` / `AL3fx` / `AL3bfx` the war side effects. S3n uses the path `S3n` (`S3nLIVE`, `S3nRELOAD1`). R lines are `R-UI.<step>` (`RK-UI.<step>`), steps `prep`, `apply`, `save`, `query`, `load`.
 
 ## Buttons
 
@@ -56,6 +56,11 @@ Check IDs: `V1-G.S3LIVE` = item, context (G gameplay, UI panel), phase. Phases: 
 | VIS2 Recheck visibility (!) | asks the game to recompute keeper's and target's visibility |
 | VIS3 SetVisibilityOn 0 (!) | diplomatic visibility level 0, both ways |
 | K Full kick (S3+VIS1) (!) | the real kick: S3 Set Target's team, then VIS1. No war. Only at BASE |
+| S3n Set team, no broadcast (!) | S3 Set Target's team without the broadcast |
+| P-Teams read | read only: the panel's own `Teams` table for the Target's old and new team |
+| P-Teams WRITE panel copy (!) | after S3: moves the Target to its new team in the panel's own `Teams`, then a broadcast. May change only the panel's copy |
+| R Apply + reload (hotseat) (!) | at BASE, on your turn: S3 Set Target's team, saves `TX_autoreload_<date>_<time>` (a new name each run), loads it by itself. Not in network MP |
+| RK Kick + VIS1 + reload (!) | the same with K (S3 + VIS1) |
 | Diplo matrix | war, allied, friend, open borders, met, team per pair |
 | Clear spike state | forgets the arm |
 
@@ -216,6 +221,31 @@ TX_Dev 0.0.1.3. Leon's order for ending the leftover alliance: a clean break, th
 16. AI teammate: P0 human, P1 AI on one team; P2 human, P3 AI. Target P1. Arm BASE. S3 Set Target's team. V6.
     - Expect: `V1` PASS, the AI keeps playing, P2 at war with P0 only.
     - Result:
+
+Then quit to the desktop and send the raw Lua.log.
+
+## Session 3b (hotseat, new game)
+
+TX_Dev 0.0.1.4. Can the broken ribbon be avoided, and can one button do the save and reload?
+
+1. Setup as Session 1, turn 3. As P0: S1 Team map. Arm BASE + snapshot. Save as `TX3b_base`.
+   - Expect: New team filled (10), phase BASE.
+   - Result:
+2. S3n Set team, no broadcast (!). End turn (all). Look at the ribbon as P0, P1 and P2.
+   - Expect: `S3n-UI.S3nLIVE PASS`. Does `V1-G.S3nLIVE` say the teams differ? Any `LeaderIcon` error or broken ribbon?
+   - Result:
+3. Save as `TX3b_s3n`. Load `TX3b_s3n`.
+   - Expect: does P1 have the new team after the load (`V1-*.S3nRELOAD1 PASS`)?
+   - Result:
+4. Load `TX3b_base`. S1 Team map. S3 Set Target's team. P-Teams read. P-Teams WRITE panel copy (!). Click P1's portrait.
+   - Expect: `PTeams-UI.*.write` says changed=yes. Does the ribbon still break (a new `LeaderIcon.lua:143` error after the `ribbon refresh` line)?
+   - Result:
+5. Load `TX3b_base`. R Apply + reload (hotseat) (!).
+   - Expect: the game reloads by itself into `TX_autoreload_<date>_<time>` (the `R-UI.prep` line names it), then `V1-*.S3RELOAD1 PASS`, no ribbon errors. A `MANUAL` line means: load the save it names from Menu > Load Game by hand.
+   - Result:
+6. Optional: load `TX3b_base`. RK Kick + VIS1 + reload (!). End turn (all). AL0.
+   - Expect: as 5, plus `Kvis-*.turn PASS`.
+   - Result:
 
 Then quit to the desktop and send the raw Lua.log.
 

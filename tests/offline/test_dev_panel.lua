@@ -21,6 +21,7 @@ local function Setup(opts)
 	FAKE_DEV.AddCity(2, 18, 10)
 	FAKE_DEV.AddCity(3, 20, 4)
 	FAKE_UI.Enable()
+	FAKE_DEV.InstallSaves(opts.saveOpts)
 	FAKE.localPlayer = opts.localPlayer or 0
 	FAKE_UI.AsGameplay(function() FAKE.dofile(G) end)
 	ENV = FAKE_UI.LoadContext(PANEL)
@@ -77,13 +78,15 @@ local LABELS = {
 	"AL3b War(false) then peace (!)", "VIS1 Remove outgoing vis (!)", "VIS2 Recheck visibility (!)",
 	"VIS3 SetVisibilityOn 0 (!)", "K Full kick (S3+VIS1) (!)", "AL4L Alliance, friends off (!)",
 	"AL8 Unmeet both ways (!)", "AL9 Unmeet then meet (!)",
+	"S3n Set team, no broadcast (!)", "P-Teams read", "P-Teams WRITE panel copy (!)", "R Apply + reload (hotseat) (!)",
+	"RK Kick + VIS1 + reload (!)",
 }
 
 test("init: context shown, Main hidden, hotkey and Esc, every button", function()
 	Setup()
 	H.eq(ENV.ContextPtr:IsHidden(), false, "ContextPtr:SetHide(false) in init")
 	H.eq(ENV.Controls.Main:IsHidden(), true)
-	H.ok(#H.lines("[TX][SPIKE][INIT] UI TX_Dev 0.0.1.3 loaded (for TX 0.0.1 spike)", true) == 1)
+	H.ok(#H.lines("[TX][SPIKE][INIT] UI TX_Dev 0.0.1.4 loaded (for TX 0.0.1 spike)", true) == 1)
 	FAKE_UI.KeyTo(ENV, Keys.D, { ctrl = true, shift = true })
 	H.eq(ENV.Controls.Main:IsHidden(), false, "Ctrl+Shift+D opens")
 	H.ok(string.find(ENV.Controls.RolesLabel:GetText(), "keeper=P0 target=P1 other=P2", 1, true), ENV.Controls.RolesLabel:GetText())
@@ -643,5 +646,342 @@ test("AL4L, AL8, AL9 from the panel: UI before/after, the hash for AL4L, UI turn
 	Frames(1)
 	H.ok(H.hasLine("[TX][CHECK] AL9-UI.S3LIVE.after"))
 	H.len(H.lines("REFUSED"), 0)
+	NoErrors()
+end)
+
+-- ---------------------------------------------------------------------------
+-- TX_Dev 0.0.1.4: S3n, P-Teams, R / RK reload chain (research/RELOAD.md)
+-- ---------------------------------------------------------------------------
+local R_LABEL = "R Apply + reload (hotseat) (!)"
+local RK_LABEL = "RK Kick + VIS1 + reload (!)"
+local RNAME = "TX_autoreload_20261003_120000"
+local AUTO = "C:/Saves/hotseat/" .. RNAME .. ".Civ6Save"
+
+-- A fixed clock for the per-run save name (os.date in the panel's context).
+local function FixClock()
+	ENV.os = { date = function() return "20261003_120000" end }
+end
+
+-- No [TX][CHECK] R-UI.* / RK-UI.* line is a FAIL.
+local function NoRFail()
+	for _, l in ipairs(H.lines("-UI.")) do
+		if string.find(l, "[TX][CHECK] R", 1, true) then
+			H.ok(not string.find(l, " FAIL ", 1, true), l)
+		end
+	end
+end
+
+local function ArmedForR(opts)
+	Setup(opts)
+	FixClock()
+	Events.LoadGameViewStateDone()
+	ArmNow()
+	H.clean()
+	H.markBody()
+end
+
+test("S3n: config write without a broadcast, S3n-UI PASS, changed path S3n, UI and G reads labelled S3nLIVE", function()
+	Setup()
+	ArmNow()
+	local nb = #FAKE.broadcasts
+	SetTeamEdit(2)
+	Click("S3n Set team, no broadcast (!)")
+	H.deq(FAKE.teamSets[1], { pid = 1, team = 2, turn = 1, context = "UI" })
+	H.eq(#FAKE.broadcasts, nb, "no broadcast")
+	H.ok(H.hasLine("[TX][SPIKE][S3n] UI PROBE S3n set PlayerConfigurations[1]:SetTeam(2) exists=function ok=true"))
+	H.ok(H.hasLine("[TX][CHECK] S3n-UI.S3nLIVE PASS T1 UI config team of P1 0 -> 2 (want 2); live team 0 -> 0; " ..
+		"#Teams[2]=nil #Teams[0]=2 target in Teams[0]=yes GetTeamPlayerCount(2)=1; set ok, no broadcast;"))
+	H.ok(H.hasLine("[TX][CHECK] S3nLIVE-UI.S3nLIVE INFO T1 UI Players[1]:GetTeam() changed live=no; Leon:"))
+	local r = LastRequest("changed")
+	H.eq(r.params.path, "S3n")
+	H.eq(r.params.orig, 0)
+	H.ok(H.hasLine("[TX][CHECK] V1-G.S3nLIVE"))
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] V1-UI.S3nLIVE"))
+	H.eq(Game:GetProperty("TX_DEV_ARM").path, "S3n")
+	-- after a load (config teams applied) the label is S3nRELOAD1
+	FAKE_UI.AsGameplay(function() H.reload(G, { "TXD", "TX_Probe" }, { applyConfigTeams = true }) end)
+	ENV = FAKE_UI.LoadContext(PANEL)
+	H.markBody()
+	Events.LoadGameViewStateDone()
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] V1-G.S3nRELOAD1 PASS"))
+	H.ok(H.hasLine("[TX][CHECK] V1-UI.S3nRELOAD1 PASS"))
+	NoErrors()
+end)
+
+test("P-Teams: read only; the write is refused before S3, then patches this context's Teams and broadcasts", function()
+	Setup()
+	local plain = { [0] = { 0, 1 }, [1] = { 2, 3 } }
+	Teams = plain
+	Click("P-Teams read")
+	local l = H.lines("[TX][CHECK] PTeams-UI.BASE INFO T1 UI read: live team 0, config team 0; tostring(Teams)=" ..
+		tostring(plain) .. " #Teams[orig 0]=2 Teams[new 0] exists=yes")[1]
+	H.notnil(l, H.Ser(H.lines("PTeams")))
+	Click("P-Teams WRITE panel copy (!)")
+	H.ok(H.hasLine("[TX][SPIKE][PTeams] UI refused: P1 config team 0 = live team 0: press S3 Set Target's team first"))
+	H.deq(plain[0], { 0, 1 })
+	ArmNow()
+	SetTeamEdit(2)
+	Click("S3 Set Target's team")
+	Frames(1)
+	H.deq(plain[0], { 0, 1 }, "S3 itself does not touch Teams")
+	local nb = #FAKE.broadcasts
+	Click("P-Teams WRITE panel copy (!)")
+	H.deq(plain[0], { 0 })
+	H.deq(plain[2], { 1 })
+	l = H.lines("[TX][CHECK] PTeams-UI.S3LIVE.write INFO T1 UI write ok=true Teams[2]={1} (new list), removed P1 from Teams[0] x1")[1]
+	H.notnil(l, H.Ser(H.lines("PTeams")))
+	H.ok(string.find(l, "Teams in this context changed=yes (same table object yes)", 1, true), l)
+	H.ok(string.find(l, "only this panel's copy is known to change", 1, true), l)
+	H.eq(#FAKE.broadcasts, nb + 1)
+	H.ok(H.hasLine("[TX][SPIKE][PTeams] UI ribbon refresh: BroadcastPlayerInfo(1) ok. Leon:"))
+	NoErrors()
+end)
+
+test("P-Teams write: an engine Teams that refuses the write gives FAIL, nothing else breaks", function()
+	Setup()
+	Teams = setmetatable({}, {
+		__index = function(_, t) if t == 0 then return { 0, 1 } end return nil end,
+		__newindex = function() error("read-only") end,
+	})
+	SetTeamEdit(2)
+	Click("S3 Set Target's team")
+	Click("P-Teams WRITE panel copy (!)")
+	H.ok(H.hasLine("[TX][CHECK] PTeams-UI.BASE.write FAIL T1 UI write ok=false"))
+	H.ok(H.hasLine("Teams in this context changed=no"))
+	NoErrors()
+end)
+
+test("R: refused unarmed, off the local turn, without the Saving feature, in network MP; nothing changes", function()
+	Setup()
+	Events.LoadGameViewStateDone()
+	Click(R_LABEL)
+	H.ok(H.hasLine("[TX][SPIKE][R] UI refused: R starts at BASE (load TX3b_base, or press Arm BASE first)"))
+	ArmNow()
+	FAKE_DEV.turnActive = false
+	Click(R_LABEL)
+	H.ok(H.hasLine("[TX][SPIKE][R] UI refused: not P0's active turn"))
+	FAKE_DEV.turnActive = true
+	FAKE_DEV.features.Saving = false
+	Click(R_LABEL)
+	H.ok(H.hasLine("[TX][SPIKE][R] UI refused: UI.HasFeature(\"Saving\") is false"))
+	FAKE_DEV.features.Saving = nil
+	FAKE_DEV.netMP = true
+	Click(RK_LABEL)
+	H.ok(H.hasLine("[TX][SPIKE][R] UI refused: network multiplayer."))
+	H.len(FAKE.teamSets, 0)
+	H.len(FAKE_DEV.saveCalls, 0)
+	H.isnil(LastRequest("changed"))
+	H.isnil(LastRequest("k_kick"))
+	NoErrors()
+end)
+
+test("R: a missing enum stops the chain before the team write (R-UI.prep FAIL, nothing changed)", function()
+	ArmedForR()
+	local saved = ServerType
+	ServerType = nil
+	Click(R_LABEL)
+	H.ok(H.hasLine("[TX][CHECK] R-UI.prep FAIL T1 UI ServerType.SERVER_TYPE_NONE=MISSING"))
+	H.ok(H.hasLine("[TX][SPIKE][R] UI nothing changed: R stopped before the team write. Nothing to load."))
+	H.len(FAKE.teamSets, 0)
+	ServerType = saved
+	Click(R_LABEL)
+	H.len(FAKE.teamSets, 1, "a new R runs once the enum is back")
+	NoErrors()
+end)
+
+test("R full chain: S3 write, changed, save TX_autoreload, SaveComplete, file list, LeaveGame + LoadGame; then S3RELOAD1 V1 PASS", function()
+	ArmedForR()
+	Click(R_LABEL)
+	H.ok(H.hasLine("[TX][CHECK] R-UI.prep INFO T1 UI P1 -> team 2; save '" .. RNAME .. "' type 2; turn active=true " ..
+		"Saving=true Loading=true;"))
+	H.deq(FAKE.teamSets[1], { pid = 1, team = 2, turn = 1, context = "UI" })
+	H.eq(FAKE.broadcasts[#FAKE.broadcasts].pid, 1)
+	H.ok(H.hasLine("[TX][CHECK] S3-UI.S3LIVE PASS T1 UI config team of P1 0 -> 2 (want 2)"))
+	local r = LastRequest("changed")
+	H.notnil(r)
+	H.eq(r.params.path, "S3")
+	H.eq(r.params.orig, 0)
+	H.len(FAKE_DEV.saveCalls, 0, "no save before the gameplay answer")
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] R-UI.apply PASS T1 UI config team of P1 = 2, gameplay phase S3LIVE"))
+	H.ok(H.hasLine("[TX][SPIKE][SNAP] UI S3LIVE reason=changed"))
+	H.deq(FAKE_DEV.saveCalls[1], { Name = RNAME, Location = 1, Type = 2, FileType = 1, IsAutosave = false,
+		IsQuicksave = false })
+	H.ok(H.hasLine("[TX][SPIKE][R] UI PROBE R save Network.SaveGame(table: "))
+	H.ok(H.hasLine("[TX][CHECK] R-UI.save INFO T1 UI Network.SaveGame{Name=" .. RNAME .. ", Location=1, Type=2, FileType=1} sent"))
+	Frames(5)
+	H.len(FAKE_DEV.queries, 0, "no query before SaveComplete")
+	FAKE_DEV.FinishSave()
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] R-UI.save PASS T1 UI Events.SaveComplete args=()"))
+	H.deq(FAKE_DEV.queries[1], { id = 41, loc = 1, saveType = 2, options = 19, fileType = 1, path = "" })
+	FAKE_DEV.FinishQuery(99)   -- another menu's query: ignored
+	Frames(2)
+	H.len(FAKE_DEV.leaves, 0)
+	FAKE_DEV.FinishQuery()
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] R-UI.query PASS T1 UI found " .. RNAME .. " (Name=" .. AUTO .. ") among 2 files"))
+	H.deq(FAKE_DEV.closed, { 41 })
+	H.len(FAKE_DEV.leaves, 1)
+	H.len(FAKE_DEV.loads, 1)
+	H.eq(FAKE_DEV.loads[1].entry.Name, AUTO)
+	H.eq(FAKE_DEV.loads[1].server, 0)
+	H.ok(H.hasLine("[TX][CHECK] R-UI.load INFO T1 UI Network.LoadGame(" .. RNAME .. ", SERVER_TYPE_NONE) requested"))
+	H.len(H.lines("MANUAL"), 0)
+	H.len(H.lines("REFUSED"), 0)
+	NoRFail()
+	NoErrors()
+	-- the load: fresh Lua states, config teams applied (Mode B)
+	FAKE_UI.AsGameplay(function() H.reload(G, { "TXD", "TX_Probe" }, { applyConfigTeams = true }) end)
+	ENV = FAKE_UI.LoadContext(PANEL)
+	H.markBody()
+	Events.LoadGameViewStateDone()
+	Frames(1)
+	H.ok(H.hasLine("[TX][SPIKE][SNAP] UI S3RELOAD1 reason=loaded"))
+	H.ok(H.hasLine("[TX][CHECK] V1-G.S3RELOAD1 PASS"))
+	H.ok(H.hasLine("[TX][CHECK] V1-UI.S3RELOAD1 PASS"))
+	NoErrors()
+end)
+
+test("R: no gameplay answer -> R-UI.apply FAIL, do NOT save, no SaveGame", function()
+	ArmedForR()
+	FAKE_UI.deferRequests = true
+	Click(R_LABEL)
+	H.notnil(LastRequest("changed"))
+	Frames(25)
+	H.ok(H.hasLine("[TX][CHECK] R-UI.apply FAIL T1 UI gameplay did not record the change (refused, error or no answer within 5 s)"))
+	H.ok(H.hasLine("[TX][SPIKE][R] UI MANUAL: gameplay did not record the change. Do NOT save. Load TX3b_base"))
+	H.len(FAKE_DEV.saveCalls, 0)
+	FAKE_UI.deferRequests = false
+	FAKE_UI.pending = {}
+	H.clean()
+end)
+
+test("R: no SaveComplete -> R-UI.save FAIL and the manual TX_autoreload line; a late SaveComplete does nothing", function()
+	ArmedForR()
+	Click(R_LABEL)
+	Frames(1)
+	H.len(FAKE_DEV.saveCalls, 1)
+	Frames(40)
+	H.ok(H.hasLine("[TX][CHECK] R-UI.save FAIL T1 UI no Events.SaveComplete within 10 s"))
+	H.ok(H.hasLine("[TX][SPIKE][R] UI MANUAL: open Menu > Load Game and load '" .. RNAME .. "' by hand now"))
+	FAKE_DEV.FinishSave()
+	Frames(2)
+	H.len(FAKE_DEV.queries, 0)
+	H.len(FAKE_DEV.leaves, 0)
+	NoErrors()
+end)
+
+test("R: file list without TX_autoreload -> R-UI.query FAIL, query closed, no leave", function()
+	ArmedForR()
+	Click(R_LABEL)
+	Frames(1)
+	FAKE_DEV.FinishSave()
+	Frames(1)
+	FAKE_DEV.saves = { { Name = "C:/Saves/hotseat/TX3b_base.Civ6Save" }, { Name = "Saves", IsDirectory = true } }
+	FAKE_DEV.FinishQuery()
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] R-UI.query FAIL T1 UI no entry named " .. RNAME .. " among 1 files: TX3b_base"))
+	H.ok(H.hasLine("[TX][SPIKE][R] UI MANUAL: open Menu > Load Game and load '" .. RNAME .. "' by hand now"))
+	H.deq(FAKE_DEV.closed, { 41 })
+	H.len(FAKE_DEV.leaves, 0)
+	NoErrors()
+end)
+
+test("R: no file list in time -> R-UI.query FAIL, the open query is closed", function()
+	ArmedForR()
+	Click(R_LABEL)
+	Frames(1)
+	FAKE_DEV.FinishSave()
+	Frames(40)
+	H.ok(H.hasLine("[TX][CHECK] R-UI.query FAIL T1 UI no LuaEvents.FileListQueryResults for id 41 within 10 s"))
+	H.deq(FAKE_DEV.closed, { 41 })
+	H.len(FAKE_DEV.leaves, 0)
+	NoErrors()
+end)
+
+test("R: still in the game after LoadGame -> R-UI.load FAIL; one chain at a time", function()
+	ArmedForR()
+	Click(R_LABEL)
+	Frames(1)
+	FAKE_DEV.FinishSave()
+	Frames(1)
+	FAKE_DEV.FinishQuery()
+	Frames(1)
+	H.len(FAKE_DEV.loads, 1)
+	Click(R_LABEL)
+	H.ok(H.hasLine("[TX][SPIKE][R] UI refused: an R chain is already running (phase load)"))
+	Frames(60)
+	H.ok(H.hasLine("[TX][CHECK] R-UI.load FAIL T1 UI this game still runs 15 s after Network.LoadGame"))
+	H.ok(H.hasLine("[TX][SPIKE][R] UI MANUAL: open Menu > Load Game and load '" .. RNAME .. "' by hand now"))
+	NoErrors()
+end)
+
+test("RK: K's k_kick (record + VIS1) and the K reads before the save, then the same chain", function()
+	Setup()
+	Events.LoadGameViewStateDone()
+	FAKE.teamModel = "live"
+	FAKE_DEV.AddCity(0, 3, 12)
+	FAKE_DEV.LinkVision(0, 1)
+	MeetTeammates()
+	Click("V5 Marker (keeper)")
+	ArmNow()
+	H.clean()
+	H.markBody()
+	FixClock()
+	Click(RK_LABEL)
+	H.ok(H.hasLine("[TX][CHECK] RK-UI.prep INFO"))
+	H.ok(H.hasLine("[TX][CHECK] K-UI.BASE.before INFO"))
+	H.ok(H.hasLine("[TX][CHECK] Kvis-UI.BASE.before INFO"))
+	H.notnil(LastRequest("k_kick"))
+	H.isnil(LastRequest("changed"), "k_kick records the change itself")
+	H.ok(H.hasLine("[TX][CHECK] Kvis-G.S3LIVE.after PASS"))
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] RK-UI.apply PASS T1 UI config team of P1 = 2, gameplay phase S3LIVE"))
+	H.ok(H.hasLine("[TX][CHECK] Kvis-UI.S3LIVE.after PASS"))
+	H.eq(FAKE_DEV.saveCalls[1].Name, RNAME)
+	FAKE_DEV.FinishSave()
+	Frames(1)
+	FAKE_DEV.FinishQuery()
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] RK-UI.query PASS"))
+	H.ok(H.hasLine("[TX][CHECK] RK-UI.load INFO"))
+	H.len(FAKE_DEV.loads, 1)
+	H.len(FAKE_DEV.dows, 0, "no war in RK")
+	H.len(H.lines("REFUSED"), 0)
+	NoRFail()
+	NoErrors()
+end)
+
+test("R: a stray SaveComplete never loads a file left by an earlier run (per-run save name)", function()
+	-- step 5's save and an old fixed-name save are on disk; ours is not written yet
+	ArmedForR({ saveOpts = { saves = {
+		{ Name = "C:/Saves/hotseat/TX3b_base.Civ6Save" },
+		{ Name = "C:/Saves/hotseat/TX_autoreload.Civ6Save" },
+		{ Name = "C:/Saves/hotseat/TX_autoreload_20261003_110000.Civ6Save" },
+	} } })
+	Click(R_LABEL)
+	Frames(1)
+	H.eq(FAKE_DEV.saveCalls[1].Name, RNAME)
+	Events.SaveComplete()   -- someone else's save (autosave, F5) before ours is written
+	Frames(1)
+	H.len(FAKE_DEV.queries, 1)
+	FAKE_DEV.FinishQuery()
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] R-UI.query FAIL T1 UI no entry named " .. RNAME .. " among 3 files"))
+	H.len(FAKE_DEV.leaves, 0)
+	H.len(FAKE_DEV.loads, 0)
+	NoErrors()
+end)
+
+test("R: no clock for the save name -> R-UI.prep FAIL before the team write", function()
+	ArmedForR()
+	ENV.os = { date = function() error("no os.date") end }
+	Click(R_LABEL)
+	H.ok(H.hasLine("[TX][CHECK] R-UI.prep FAIL T1 UI os.date for a unique save name"))
+	H.len(FAKE.teamSets, 0)
+	H.len(FAKE_DEV.saveCalls, 0)
 	NoErrors()
 end)

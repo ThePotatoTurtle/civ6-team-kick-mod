@@ -883,6 +883,71 @@
     "TX_Dev/"
    ],
    "source": "TX"
+  },
+  "SaveLocations": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "BASE24 UI/InGame.lua:194 and Menus/SaveGameMenu.lua:57 (gameFile.Location = SaveLocations.LOCAL_STORAGE, in-game UI)",
+    "BASE24 UI/FrontEnd/LoadSaveMenu_Shared.lua:1060 (UI.QuerySaveGameList(saveLocation, ...)); research/RELOAD.md 2"
+   ],
+   "note": "TX_Dev 0.0.1.4 R reload chain: root of the probe resolver only, read as '=<NAME>' through TX_Probe.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "SaveFileTypes": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "BASE24 UI/FrontEnd/LoadSaveMenu_Shared.lua:331 (g_FileType = SaveFileTypes.GAME_STATE); Menus/SaveGameMenu.lua:64 (gameFile.FileType); research/RELOAD.md 2"
+   ],
+   "note": "TX_Dev 0.0.1.4 R reload chain: root of the probe resolver only, read as '=<NAME>' through TX_Probe.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "SaveLocationOptions": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "BASE24 UI/FrontEnd/LoadSaveMenu_Shared.lua:1042-1058 (NORMAL + QUICKSAVE + LOAD_METADATA for the load list); FrontEnd/LoadGameMenu.lua:459; research/RELOAD.md 2"
+   ],
+   "note": "TX_Dev 0.0.1.4 R reload chain: root of the probe resolver only, read as '=<NAME>' through TX_Probe.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "ServerType": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "BASE24 UI/Menus/InGameTopOptionsMenu.lua:204-209 (SetLoadGameServerType(ServerType.SERVER_TYPE_NONE) in game); FrontEnd/MainMenu.lua:67-73 (Network.LoadGame(save, ServerType.SERVER_TYPE_NONE)); research/RELOAD.md 2"
+   ],
+   "note": "TX_Dev 0.0.1.4 R reload chain: root of the probe resolver only, read as '=<NAME>' through TX_Probe.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
   }
  },
  "static": {

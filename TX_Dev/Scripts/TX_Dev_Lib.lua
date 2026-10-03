@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Dev_Lib.lua  (TX_Dev 0.0.1.3, spike kit for Team Expulsion 0.0.1)
+-- TX_Dev_Lib.lua  (TX_Dev 0.0.1.4, spike kit for Team Expulsion 0.0.1)
 -- TX:CONTEXT both
 -- TX:GLOBALS TXD TX_Probe
 --
@@ -29,7 +29,7 @@
 local M = {}
 TXD = M
 
-M.VERSION = "0.0.1.3"
+M.VERSION = "0.0.1.4"
 M.FOR_TX = "0.0.1"
 M.ctx = "?"
 M.roots = {}
@@ -208,6 +208,9 @@ M.NEVER_MEMBER = { "SetWinningTeam", "SetToDefaults", "SetSlotStatus", "SetMajor
 --     it directly, not through the probe).
 --   Visibility actions from the Session 2 S1 dump (G, no shipped use, argument
 --   shapes unknown): VIS probes only; RemoveOutgoingVisibility also from K (full kick).
+--   Save and load (0.0.1.4, research/RELOAD.md 2-3): only the R chain ("R save",
+--   "R leave", "R load"). Network.LeaveGame stays on the never list (S1/S2 never
+--   offer it); a never-call whose member is gated runs only from its gate word.
 M.GATED = {
 	SetAlliesShareVisFlag = "AL7",
 	SetHasAllied = "AL5",
@@ -217,6 +220,9 @@ M.GATED = {
 	RecheckVisibilityOn = "VIS",
 	RecheckVisibilityOnAll = "VIS",
 	SetVisibilityOn = "VIS",
+	SaveGame = "R",
+	LeaveGame = "R",
+	LoadGame = "R",
 }
 
 local function GateWordOk(word, gate)
@@ -254,6 +260,12 @@ function M.GateBlocks(label, member)
 end
 
 local StripMode = StripModeName
+
+-- true when member is gated and label opens its gate. Lets a never-call that is
+-- also gated (Network.LeaveGame) run from its gate word only (TX_Probe).
+function M.NeverOpen(label, member)
+	return M.GATED[StripModeName(member)] ~= nil and M.GateBlocks(label, member) == nil
+end
 
 function M.IsNever(rootName, member)
 	if member == nil then
@@ -418,7 +430,7 @@ local function Probe(label, root, sel, member, ...)
 		end
 		return Finish()
 	end
-	if (mode == ":" or mode == ".") and M.IsNever(rootName, name) then
+	if (mode == ":" or mode == ".") and M.IsNever(rootName, name) and not M.NeverOpen(label, name) then
 		r.refused = true
 		r.err = "never-call"
 		return Finish()
@@ -1406,4 +1418,86 @@ function M.SetterText(c)
 		sel = "[" .. M.Str(c.sel) .. "]"
 	end
 	return M.Str(c.root) .. sel .. M.Str(c.style) .. M.Str(c.name) .. "(" .. M.Str(c.args) .. ")"
+end
+
+-- ---------------------------------------------------------------------------
+-- R reload and P-Teams helpers (0.0.1.4, research/RELOAD.md)
+-- ---------------------------------------------------------------------------
+-- The name the load menu shows for a file list entry (LoadSaveMenu_Shared.lua:383-397):
+-- DisplayName, else Name without directories and extension. nil for a directory.
+function M.SaveEntryName(entry)
+	if type(entry) ~= "table" or entry.IsDirectory == true then
+		return nil
+	end
+	if type(entry.DisplayName) == "string" and entry.DisplayName ~= "" then
+		return entry.DisplayName
+	end
+	if type(entry.Name) ~= "string" then
+		return nil
+	end
+	local n = string.match(entry.Name, "([^/\\]*)$") or entry.Name
+	local base = string.match(n, "^(.*)%.[^%.]*$")
+	if base ~= nil and base ~= "" then
+		return base
+	end
+	return n
+end
+
+-- The first entry of a FileListQueryResults list named name (case-insensitive),
+-- plus the names seen (for the log). entry is nil when none matches.
+function M.FindSave(list, name)
+	local seen = {}
+	local want = string.lower(M.Str(name))
+	if type(list) ~= "table" then
+		return nil, seen
+	end
+	for _, e in ipairs(list) do
+		local n = M.SaveEntryName(e)
+		if n ~= nil then
+			seen[#seen + 1] = n
+			if string.lower(n) == want then
+				return e, seen
+			end
+		end
+	end
+	return nil, seen
+end
+
+-- P-Teams write: tbl[new] gets t, tbl[orig] loses t (in place, then written
+-- back). tbl is the caller's own Teams table; may throw (caller uses pcall).
+-- Returns a short text of what it did.
+function M.PatchTeams(tbl, orig, new, t)
+	local done = {}
+	local listN = tbl[new]
+	if type(listN) ~= "table" then
+		tbl[new] = { t }
+		done[#done + 1] = "Teams[" .. M.Str(new) .. "]={" .. M.Str(t) .. "} (new list)"
+	else
+		local has = false
+		for _, m in ipairs(listN) do
+			if m == t then
+				has = true
+			end
+		end
+		if not has then
+			listN[#listN + 1] = t
+		end
+		tbl[new] = listN
+		done[#done + 1] = "Teams[" .. M.Str(new) .. "] had " .. (has and "" or "no ") .. "P" .. M.Str(t)
+	end
+	local listO = tbl[orig]
+	if type(listO) == "table" then
+		local n = 0
+		for i = #listO, 1, -1 do
+			if listO[i] == t then
+				table.remove(listO, i)
+				n = n + 1
+			end
+		end
+		tbl[orig] = listO
+		done[#done + 1] = "removed P" .. M.Str(t) .. " from Teams[" .. M.Str(orig) .. "] x" .. n
+	else
+		done[#done + 1] = "Teams[" .. M.Str(orig) .. "] is " .. type(listO)
+	end
+	return table.concat(done, ", ")
 end

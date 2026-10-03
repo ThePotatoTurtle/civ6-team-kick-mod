@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Dev_Panel.lua  (TX_Dev 0.0.1.3, spike kit for Team Expulsion 0.0.1)
+-- TX_Dev_Panel.lua  (TX_Dev 0.0.1.4, spike kit for Team Expulsion 0.0.1)
 -- Context: UI (AddUserInterfaces, Context InGame). TESTING ONLY. PLAN I.6.
 --
 -- Panel toggled by Ctrl+Shift+D or the "DEV" launch bar button (copied from
@@ -36,6 +36,14 @@ TXD.SetRoots({
 	DiplomacyActionTypes = function() return DiplomacyActionTypes end,
 	WarTypes = function() return WarTypes end,
 	DB = function() return DB end,
+	-- R reload chain (0.0.1.4, research/RELOAD.md 2-3): reached only through TX_Probe
+	UI = function() return UI end,
+	Events = function() return Events end,
+	LuaEvents = function() return LuaEvents end,
+	SaveLocations = function() return SaveLocations end,
+	SaveFileTypes = function() return SaveFileTypes end,
+	SaveLocationOptions = function() return SaveLocationOptions end,
+	ServerType = function() return ServerType end,
 })
 
 local Str = TXD.Str
@@ -700,6 +708,48 @@ local function S3Undo()
 		"); live team " .. Str(TeamOf(t)) .. "; set " .. Res(r1) .. " broadcast " .. Res(r2) .. "; machine " .. Machine())
 end
 
+-- S3n (0.0.1.4, research/RELOAD.md 3 "Probe first"): the S3 config write WITHOUT
+-- Network.BroadcastPlayerInfo. Same immediate re-reads as S3 (UI getters and
+-- Teams here, G getters through "changed" with path S3n). If gameplay still
+-- switches and nothing fires PlayerInfoChanged, the ribbon may never break.
+local function S3nSet()
+	local t = CurrentTarget()
+	local team = tonumber(EditText(Controls.TeamEdit))
+	if team == nil then
+		Spike("S3n", "set: type a New team first (S1 Team map suggests one)")
+		return
+	end
+	local arm = ArmRead()
+	local mach = Machine()
+	local cfgBefore, liveBefore = CfgTeamOf(t), TeamOf(t)
+	Spike("S3n", "about to set the config team of P" .. t .. " " .. Str(cfgBefore) .. " -> " .. team ..
+		" WITHOUT a broadcast (a native crash loses the buffered log: write it in Result); machine " .. mach)
+	local rSet = TX_Probe("S3n set", "PlayerConfigurations", t, ":SetTeam", team)
+	local cfg, live = CfgTeamOf(t), TeamOf(t)
+	local label = TXD.PhaseLabel({ path = "S3n", phase = "LIVE", mp = MpFlag(arm) })
+	local verdict = "FAIL"
+	if cfg == team then
+		verdict = "PASS"
+	end
+	Check("S3n-UI." .. label, verdict, "config team of P" .. t .. " " .. Str(cfgBefore) .. " -> " .. Str(cfg) ..
+		" (want " .. team .. "); live team " .. Str(liveBefore) .. " -> " .. Str(live) ..
+		"; #Teams[" .. team .. "]=" .. TeamsLen(team) .. " #Teams[" .. Str(liveBefore) .. "]=" .. TeamsLen(liveBefore) ..
+		" target in Teams[" .. Str(liveBefore) .. "]=" .. TXD.YN(InTeam(liveBefore, t)) ..
+		" GetTeamPlayerCount(" .. team .. ")=" .. TeamCount(team) .. "; set " .. Res(rSet) .. ", no broadcast; machine " .. mach)
+	local changedLive = "no"
+	if live ~= liveBefore then
+		changedLive = "yes"
+	end
+	Check("S3nLIVE-UI." .. label, "INFO", "Players[" .. t .. "]:GetTeam() changed live=" .. changedLive ..
+		"; Leon: any new LeaderIcon.lua error, or a broken ribbon, right after this line?")
+	local p = BaseParams("changed")
+	p.path, p.target, p.team = "S3n", t, team
+	if liveBefore ~= nil then
+		p.orig = liveBefore
+	end
+	SendAndWait(p, function() SnapshotUI("changed") end, "arm")
+end
+
 -- ---------------------------------------------------------------------------
 -- Checklist (PLAN I.8, UI snapshot)
 -- ---------------------------------------------------------------------------
@@ -1338,6 +1388,447 @@ local function KFullKick()
 	end, "arm")
 end
 
+-- ---------------------------------------------------------------------------
+-- P-Teams (0.0.1.4, research/RELOAD.md 1 "Mitigations"). Teams is an engine
+-- global; each UI context has its own binding. Whether the ribbon's binding is
+-- the same table object is unknown, so the write may change only this panel's copy.
+-- ---------------------------------------------------------------------------
+local PTW_LABEL_TEXT = "P-Teams WRITE panel copy (!)"
+
+-- target, live (UI) team, config team
+local function PTeamsRoles()
+	local arm = ArmRead()
+	local t = CurrentTarget()
+	if IsArmed(arm) then
+		t = arm.target
+	end
+	return t, TeamOf(t), CfgTeamOf(t)
+end
+
+local function PTeamsText(t, orig, new)
+	local tbl = "nil"
+	pcall(function() tbl = tostring(Teams) end)
+	return "tostring(Teams)=" .. tbl .. " #Teams[orig " .. Str(orig) .. "]=" .. TeamsLen(orig) ..
+		" Teams[new " .. Str(new) .. "] exists=" .. TXD.YN(TeamList(new) ~= nil) .. " #Teams[new]=" .. TeamsLen(new) ..
+		" target P" .. Str(t) .. " in Teams[orig]=" .. TXD.YN(InTeam(orig, t)) .. " in Teams[new]=" .. TXD.YN(InTeam(new, t))
+end
+
+local function PTeamsRead()
+	local t, orig, new = PTeamsRoles()
+	Check("PTeams-UI." .. TXD.PhaseLabel(ArmRead()), "INFO", "read: live team " .. Str(orig) .. ", config team " .. Str(new) ..
+		"; " .. PTeamsText(t, orig, new))
+end
+
+-- The gated write: only from its own button (def.label). Needs the S3 config
+-- write first (config team ~= UI live team). Then a broadcast re-runs the ribbon.
+local function PTeamsWrite(def)
+	if type(def) ~= "table" or def.label ~= PTW_LABEL_TEXT then
+		Spike("PTeams", "REFUSED: the Teams write runs only from its own button '" .. PTW_LABEL_TEXT .. "'")
+		return
+	end
+	local t, orig, new = PTeamsRoles()
+	local label = TXD.PhaseLabel(ArmRead())
+	if orig == nil or new == nil or orig == new then
+		Spike("PTeams", "refused: P" .. Str(t) .. " config team " .. Str(new) .. " = live team " .. Str(orig) ..
+			": press S3 Set Target's team first")
+		return
+	end
+	local before = PTeamsText(t, orig, new)
+	local tblBefore = "nil"
+	pcall(function() tblBefore = tostring(Teams) end)
+	local ok, res = pcall(function() return TXD.PatchTeams(Teams, orig, new, t) end)
+	local after = PTeamsText(t, orig, new)
+	local tblAfter = "nil"
+	pcall(function() tblAfter = tostring(Teams) end)
+	local changed = "no"
+	if InTeam(new, t) == true and InTeam(orig, t) ~= true then
+		changed = "yes"
+	elseif InTeam(new, t) == true or InTeam(orig, t) ~= true then
+		changed = "partly"
+	end
+	local verdict = "INFO"
+	if not ok then
+		verdict = "FAIL"
+	end
+	Check("PTeams-UI." .. label .. ".write", verdict, "write ok=" .. tostring(ok) .. " " .. Str(res) ..
+		"; Teams in this context changed=" .. changed .. " (same table object " .. TXD.YN(tblBefore == tblAfter) ..
+		"); before: " .. before .. "; after: " .. after ..
+		"; only this panel's copy is known to change (RELOAD.md 1)")
+	local rCast = TX_Probe("PTeams broadcast", "Network", nil, ".BroadcastPlayerInfo", t)
+	Spike("PTeams", "ribbon refresh: BroadcastPlayerInfo(" .. t .. ") " .. Res(rCast) ..
+		". Leon: a NEW LeaderIcon.lua:143 error after this line means the ribbon does not see this write. Then click P" ..
+		t .. "'s portrait.")
+end
+
+-- ---------------------------------------------------------------------------
+-- R: apply + save + reload in one click (0.0.1.4, research/RELOAD.md 3, hotseat).
+-- Each call copies a shipped shape (RELOAD.md 2): the S3 write; Network.SaveGame
+-- (SaveGameMenu.lua:52-66, InGame.lua:189-201); Events.SaveComplete
+-- (Automation_StandardTests.lua:37); UI.QuerySaveGameList + LuaEvents.FileListQueryResults
+-- (LoadSaveMenu_Shared.lua:1041-1073); Network.LeaveGame + Network.LoadGame(entry,
+-- SERVER_TYPE_NONE) (LoadGameMenu.lua:96-114, InGameTopOptionsMenu.lua:204-209).
+-- Running the chain from a mod context is unverified: every call is a probe,
+-- every step has a timeout (OnUpdate clock), every failure logs
+-- <kind>-UI.<phase> FAIL and what Leon must do by hand.
+-- Only armed at BASE (as K): one change, one save, no stale LIVE state saved twice.
+-- RK = K's gameplay step (k_kick: record + VIS1) instead of "changed".
+-- ---------------------------------------------------------------------------
+-- Each run saves under its own name (R_SAVE_<local date_time>, os.date as
+-- TopPanel.lua:283): the file list match can never pick a file left by an
+-- earlier run (e.g. step 5's save while step 6 waits on a stray or failed save).
+local R_SAVE = "TX_autoreload"
+local R_SAVE_MAX = 10     -- s for Events.SaveComplete
+local R_QUERY_MAX = 10    -- s for LuaEvents.FileListQueryResults
+local R_LOAD_MAX = 15     -- s: this context should be gone after Network.LoadGame
+local m_R = nil           -- the running chain
+local m_RSubSave = false  -- listeners added in this Lua state
+local m_RSubList = false
+
+local function RId(phase)
+	local kind = "R"
+	if m_R ~= nil then
+		kind = m_R.kind
+	end
+	return kind .. "-UI." .. phase
+end
+
+local function RManual(r)
+	local name = R_SAVE .. "_<time>"
+	if r ~= nil and r.e ~= nil and r.e.saveName ~= nil then
+		name = r.e.saveName
+	end
+	if r == nil or not r.applied then
+		Spike("R", "nothing changed: R stopped before the team write. Nothing to load.")
+	elseif not r.recorded then
+		Spike("R", "MANUAL: gameplay did not record the change. Do NOT save. Load TX3b_base (Menu > Load Game) and read the G lines.")
+	else
+		Spike("R", "MANUAL: open Menu > Load Game and load '" .. name .. "' by hand now (if it is missing, " ..
+			"first save as '" .. name .. "'). Don't click leader portraits until then.")
+	end
+end
+
+local function RFail(phase, reason)
+	local r = m_R
+	Check(RId(phase), "FAIL", reason)
+	m_R = nil
+	if r ~= nil and r.queryId ~= nil and not r.closed then
+		TX_Probe(false, "UI", nil, ".CloseFileListQuery", r.queryId)
+	end
+	RManual(r)
+end
+
+local function ArgsText(...)
+	local parts = {}
+	for i = 1, select("#", ...) do
+		parts[i] = Str((select(i, ...)))
+	end
+	return table.concat(parts, ",")
+end
+
+local function ROnSaveComplete(...)
+	local args = { n = select("#", ...), ... }
+	local ok, err = pcall(function()
+		if m_R ~= nil and m_R.phase == "save" then
+			m_R.saved = true
+			m_R.saveArgs = ArgsText(unpack(args, 1, args.n))
+		end
+	end)
+	if not ok then
+		Spike("R", "ERROR SaveComplete listener " .. Str(err))
+	end
+end
+
+-- Results are filed by id; RTick picks ours (the id may come after the results).
+local function ROnFileList(fileList, id)
+	local ok, err = pcall(function()
+		if m_R ~= nil and m_R.phase == "query" then
+			m_R.lists[Str(id)] = fileList or {}
+		end
+	end)
+	if not ok then
+		Spike("R", "ERROR FileListQueryResults listener " .. Str(err))
+	end
+end
+
+-- Adds a listener through the probe (the events are not verified). nil or the error.
+local function RSub(rootName, evName, fn)
+	local re = TX_Probe(false, rootName, nil, "=" .. evName)
+	if not re.ok or re.rets[1] == nil then
+		return rootName .. "." .. evName .. "=" .. TXD.Tok(re)
+	end
+	local ra = TX_Probe("R sub", re.rets[1], nil, ".Add", fn)
+	if not ra.ok then
+		return rootName .. "." .. evName .. ".Add " .. TXD.Tok(ra)
+	end
+	return nil
+end
+
+-- Enums and the save type, read before anything changes. e or nil, error.
+local function RPrep()
+	local e, bad = {}, {}
+	local function Enum(key, root, name)
+		local r = TX_Probe(false, root, nil, "=" .. name)
+		if r.ok and r.rets[1] ~= nil then
+			e[key] = r.rets[1]
+		else
+			bad[#bad + 1] = root .. "." .. name .. "=" .. TXD.Tok(r)
+		end
+	end
+	Enum("loc", "SaveLocations", "LOCAL_STORAGE")
+	Enum("gameState", "SaveFileTypes", "GAME_STATE")
+	Enum("optNormal", "SaveLocationOptions", "NORMAL")
+	Enum("optQuick", "SaveLocationOptions", "QUICKSAVE")
+	Enum("optMeta", "SaveLocationOptions", "LOAD_METADATA")
+	Enum("serverNone", "ServerType", "SERVER_TYPE_NONE")
+	local st = TX_Probe(false, "Network", nil, ".GetGameConfigurationSaveType")
+	if st.ok and st.rets[1] ~= nil then
+		e.saveType = st.rets[1]
+	else
+		bad[#bad + 1] = "Network.GetGameConfigurationSaveType()=" .. TXD.Tok(st)
+	end
+	local okN, stampText = pcall(function() return os.date("%Y%m%d_%H%M%S") end)
+	if okN and type(stampText) == "string" and stampText ~= "" then
+		e.saveName = R_SAVE .. "_" .. stampText
+	else
+		bad[#bad + 1] = "os.date for a unique save name " .. Str(stampText)
+	end
+	for _, k in ipairs({ "QuerySaveGameList", "CloseFileListQuery" }) do
+		if TX_Probe(false, "UI", nil, "?" .. k).exists ~= "function" then
+			bad[#bad + 1] = "UI." .. k .. " missing"
+		end
+	end
+	for _, k in ipairs({ "SaveGame", "LeaveGame", "LoadGame" }) do
+		if TX_Probe(false, "Network", nil, "?" .. k).exists ~= "function" then
+			bad[#bad + 1] = "Network." .. k .. " missing"
+		end
+	end
+	if #bad == 0 then
+		local okO, opts = pcall(function() return e.optNormal + e.optQuick + e.optMeta end)
+		if okO then
+			e.opts = opts
+		else
+			bad[#bad + 1] = "SaveLocationOptions sum " .. Str(opts)
+		end
+	end
+	if #bad == 0 and not m_RSubSave then
+		local err = RSub("Events", "SaveComplete", ROnSaveComplete)
+		if err == nil then
+			m_RSubSave = true
+		else
+			bad[#bad + 1] = err
+		end
+	end
+	if #bad == 0 and not m_RSubList then
+		local err = RSub("LuaEvents", "FileListQueryResults", ROnFileList)
+		if err == nil then
+			m_RSubList = true
+		else
+			bad[#bad + 1] = err
+		end
+	end
+	if #bad > 0 then
+		return nil, table.concat(bad, "; ")
+	end
+	return e, nil
+end
+
+local function RLoad(list)
+	local r = m_R
+	local name = r.e.saveName
+	local entry, seen = TXD.FindSave(list, name)
+	TX_Probe(false, "UI", nil, ".CloseFileListQuery", r.queryId)
+	r.closed = true
+	local names = {}
+	for i = 1, math.min(#seen, 12) do
+		names[i] = seen[i]
+	end
+	if entry == nil then
+		RFail("query", "no entry named " .. name .. " among " .. #seen .. " files: " .. table.concat(names, ", "))
+		return
+	end
+	Check(RId("query"), "PASS", "found " .. name .. " (Name=" .. Str(entry.Name) .. ") among " .. #seen .. " files")
+	r.phase = "load"
+	r.untilAt = m_Clock + R_LOAD_MAX
+	Spike("R", "leaving the session and loading " .. name .. " (LoadGameMenu.lua:96-114). The game should reload now.")
+	local rl = TX_Probe("R leave", "Network", nil, ".LeaveGame")
+	if not rl.ok then
+		RFail("load", "Network.LeaveGame " .. TXD.Tok(rl))
+		return
+	end
+	local rd = TX_Probe("R load", "Network", nil, ".LoadGame", entry, r.e.serverNone)
+	if not rd.ok then
+		RFail("load", "Network.LoadGame " .. TXD.Tok(rd))
+		return
+	end
+	Check(RId("load"), "INFO", "Network.LoadGame(" .. name .. ", SERVER_TYPE_NONE) requested; expect the load screen, then " ..
+		"phase S3RELOAD1 and V1 PASS")
+end
+
+local function RQuery()
+	local r, e = m_R, m_R.e
+	Check(RId("save"), "PASS", "Events.SaveComplete args=(" .. Str(r.saveArgs) .. ")")
+	r.phase = "query"
+	r.untilAt = m_Clock + R_QUERY_MAX
+	local q = TX_Probe("R query", "UI", nil, ".QuerySaveGameList", e.loc, e.saveType, e.opts, e.gameState, "")
+	if not q.ok or q.rets[1] == nil then
+		RFail("query", "UI.QuerySaveGameList " .. TXD.Tok(q))
+		return
+	end
+	r.queryId = q.rets[1]
+	Check(RId("query"), "INFO", "UI.QuerySaveGameList id=" .. Str(r.queryId) .. "; waiting for LuaEvents.FileListQueryResults (" ..
+		R_QUERY_MAX .. " s)")
+end
+
+local function RSave()
+	local r, e = m_R, m_R.e
+	local file = { Name = e.saveName, Location = e.loc, Type = e.saveType, FileType = e.gameState, IsAutosave = false,
+		IsQuicksave = false }
+	r.phase = "save"
+	r.saved = false
+	r.untilAt = m_Clock + R_SAVE_MAX
+	local s = TX_Probe("R save", "Network", nil, ".SaveGame", file)
+	if not s.ok then
+		RFail("save", "Network.SaveGame " .. TXD.Tok(s))
+		return
+	end
+	Check(RId("save"), "INFO", "Network.SaveGame{Name=" .. e.saveName .. ", Location=" .. Str(e.loc) .. ", Type=" .. Str(e.saveType) ..
+		", FileType=" .. Str(e.gameState) .. "} sent; waiting for Events.SaveComplete (" .. R_SAVE_MAX .. " s)")
+end
+
+-- The OnUpdate step of the chain: save -> query -> load, each with a timeout.
+local function RTick()
+	local r = m_R
+	if r == nil then
+		return
+	end
+	if r.phase == "save" then
+		if r.saved then
+			RQuery()
+		elseif m_Clock > r.untilAt then
+			RFail("save", "no Events.SaveComplete within " .. R_SAVE_MAX .. " s")
+		end
+	elseif r.phase == "query" then
+		local list = r.lists[Str(r.queryId)]
+		if list ~= nil then
+			RLoad(list)
+		elseif m_Clock > r.untilAt then
+			RFail("query", "no LuaEvents.FileListQueryResults for id " .. Str(r.queryId) .. " within " .. R_QUERY_MAX .. " s")
+		end
+	elseif r.phase == "load" then
+		if m_Clock > r.untilAt then
+			RFail("load", "this game still runs " .. R_LOAD_MAX .. " s after Network.LoadGame")
+		end
+	end
+end
+
+-- Runs fn; an error stops the chain with a FAIL (never a chain stuck in a phase).
+local function RGuard(fn, ...)
+	local ok, err = pcall(fn, ...)
+	if not ok then
+		Spike("R", "ERROR " .. Str(err))
+		if m_R ~= nil then
+			RFail(Str(m_R.phase), "ERROR " .. Str(err))
+		end
+	end
+end
+
+-- The gameplay answer to "changed" / "k_kick": the change must be recorded before the save.
+local function RAfterApply(stamp)
+	local r = m_R
+	if r == nil or r.phase ~= "apply" then
+		return
+	end
+	local now = ArmRead()
+	if not IsArmed(now) or now.phase ~= "LIVE" or now.stamp ~= stamp or (r.kind == "RK" and type(now.k) ~= "table") then
+		RFail("apply", "gameplay did not record the change (refused, error or no answer within " .. WAIT_MAX ..
+			" s); phase " .. TXD.PhaseLabel(now))
+		return
+	end
+	r.recorded = true
+	Check(RId("apply"), "PASS", "config team of P" .. r.t .. " = " .. Str(CfgTeamOf(r.t)) .. ", gameplay phase " ..
+		TXD.PhaseLabel(now))
+	SnapshotUI("changed")
+	if r.kind == "RK" then
+		ALReadUI(now, "K", "after")
+		VisReadUI(now, "Kvis", "after")
+	end
+	RSave()
+end
+
+-- The button. kind "R" (changed) or "RK" (k_kick). Every refusal comes before any change.
+local function RStart(kind)
+	if m_R ~= nil then
+		Spike("R", "refused: an R chain is already running (phase " .. Str(m_R.phase) .. ")")
+		return
+	end
+	local arm = ArmRead()
+	if not IsArmed(arm) or arm.phase ~= "BASE" then
+		Spike("R", "refused: " .. kind .. " starts at BASE (load TX3b_base, or press Arm BASE first)")
+		return
+	end
+	if NetMP() == 1 then
+		Spike("R", "refused: network multiplayer. The host loads from the front end, clients rejoin (RELOAD.md 2)")
+		return
+	end
+	local me = LocalID()
+	local act = TX_Probe(false, "Players", me, ":IsTurnActive")
+	if act.ok and act.rets[1] ~= true then
+		Spike("R", "refused: not P" .. Str(me) .. "'s active turn (save and load need it, LocalPlayerActionSupport.lua:6-44)")
+		return
+	end
+	local feats = {}
+	for _, f in ipairs({ "Saving", "Loading" }) do
+		local rf = TX_Probe(false, "UI", nil, ".HasFeature", f)
+		if rf.ok and rf.rets[1] == false then
+			Spike("R", "refused: UI.HasFeature(\"" .. f .. "\") is false")
+			return
+		end
+		feats[#feats + 1] = f .. "=" .. TXD.Tok(rf)
+	end
+	local t = arm.target
+	local team = tonumber(EditText(Controls.TeamEdit)) or tonumber(arm.newTeam)
+	if team == nil then
+		Spike("R", "refused: no New team (S1 Team map suggests one)")
+		return
+	end
+	if CurrentTarget() ~= t then
+		Spike("R", "the panel Target is P" .. Str(CurrentTarget()) .. "; " .. kind .. " uses the armed target P" .. Str(t))
+	end
+	m_R = { kind = kind, phase = "prep", t = t, team = team, lists = {}, applied = false, recorded = false }
+	local e, err = RPrep()
+	if e == nil then
+		RFail("prep", Str(err))
+		return
+	end
+	m_R.e = e
+	Check(RId("prep"), "INFO", "P" .. t .. " -> team " .. team .. "; save '" .. e.saveName .. "' type " .. Str(e.saveType) ..
+		"; turn active=" .. TXD.Tok(act) .. " " .. table.concat(feats, " ") .. "; " .. Machine())
+	if kind == "RK" then
+		ALReadUI(arm, "K", "before")
+		VisReadUI(arm, "Kvis", "before")
+	end
+	m_R.phase = "apply"
+	m_R.applied = true
+	local liveBefore = S3Write(t, team, arm)
+	if CfgTeamOf(t) ~= team then
+		RFail("apply", "config team of P" .. t .. " is " .. Str(CfgTeamOf(t)) .. ", want " .. team)
+		return
+	end
+	local p = BaseParams("changed")
+	if kind == "RK" then
+		p = BaseParams("k_kick")
+	end
+	p.path, p.target, p.team = "S3", t, team
+	if liveBefore ~= nil then
+		p.orig = liveBefore
+	end
+	if not Send(p) then
+		RFail("apply", "request " .. p.cmd .. " not sent")
+		return
+	end
+	WaitFor(p.stamp, function() RGuard(RAfterApply, p.stamp) end, "arm", p.cmd)
+end
+
 -- AL2 UI half: existence only (no calls), then the G half.
 local function AL2Exist()
 	local arm = ALRoles()
@@ -1466,6 +1957,11 @@ local UIFN = {
 	VIS2 = function() VISStep(2) end,
 	VIS3 = function() VISStep(3) end,
 	KFull = KFullKick,
+	S3n = S3nSet,
+	PTeamsRead = PTeamsRead,
+	PTeamsWrite = PTeamsWrite,
+	RApply = function() RGuard(RStart, "R") end,
+	RKApply = function() RGuard(RStart, "RK") end,
 }
 
 local BUTTONS = {
@@ -1515,6 +2011,16 @@ local BUTTONS = {
 	{ header = "K full kick (load TX3_base, armed at BASE)" },
 	{ label = "K Full kick (S3+VIS1) (!)", ui = "KFull",
 		tip = "S3 set + broadcast, then RemoveOutgoingVisibility both ways (no war). Then save TX3_kick and load it." },
+	{ header = "Session 3b: S3n, P-Teams, R reload (hotseat)" },
+	{ label = "S3n Set team, no broadcast (!)", ui = "S3n",
+		tip = "config team of the Target = New team, WITHOUT Network.BroadcastPlayerInfo. Leon: watch the ribbon" },
+	{ label = "P-Teams read", ui = "PTeamsRead", tip = "read only: this panel's Teams table, #Teams[orig], Teams[new]" },
+	{ label = PTW_LABEL_TEXT, ui = "PTeamsWrite",
+		tip = "after S3: Teams[new] = {target}, target out of Teams[orig], in THIS panel's context only; then a broadcast" },
+	{ label = "R Apply + reload (hotseat) (!)", ui = "RApply",
+		tip = "at BASE: S3 set + broadcast, save TX_autoreload_<date_time>, then load it by itself. Hotseat, your turn only" },
+	{ label = "RK Kick + VIS1 + reload (!)", ui = "RKApply",
+		tip = "at BASE: K (S3 + VIS1), then save TX_autoreload_<date_time> and load it by itself" },
 	{ header = "Misc" },
 	{ label = "Diplo matrix", cmd = "diplo" },
 	{ label = "Clear spike state", cmd = "clear" },
@@ -1523,7 +2029,8 @@ local BUTTONS = {
 local function OnButton(def)
 	RebuildTargets()
 	if def.ui ~= nil then
-		local ok, err = pcall(UIFN[def.ui])
+		-- def goes along: the P-Teams write checks its own button label
+		local ok, err = pcall(UIFN[def.ui], def)
 		if not ok then
 			Spike("REQ", "ERROR " .. Str(def.label) .. " " .. Str(err))
 		end
@@ -1626,6 +2133,9 @@ end
 -- ---------------------------------------------------------------------------
 local function OnUpdate(dt)
 	m_Clock = m_Clock + (tonumber(dt) or 0)
+	if m_R ~= nil then
+		RGuard(RTick)
+	end
 	if #m_Waits == 0 then
 		return
 	end

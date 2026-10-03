@@ -63,7 +63,7 @@ end
 
 test("init line and the handler", function()
 	World()
-	H.ok(#H.lines("[TX][SPIKE][INIT] G TX_Dev 0.0.1.3 loaded (for TX 0.0.1 spike) turn=1 armed=0", true) == 1)
+	H.ok(#H.lines("[TX][SPIKE][INIT] G TX_Dev 0.0.1.4 loaded (for TX 0.0.1 spike) turn=1 armed=0", true) == 1)
 	H.eq(GameEvents.TX_Dev.Count(), 1)
 	H.eq(GameEvents.OnGameTurnStarted.Count(), 1)
 	NoErrors()

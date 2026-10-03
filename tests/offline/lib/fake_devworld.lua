@@ -33,6 +33,11 @@
 --     DeclareWarOn records its arguments, sets the war turn and gives the
 --     defender 100 grievances against the attacker. SetHasMet(b, false) unmeets
 --     (no state change: what the engine does is the AL8 / AL9 question).
+--   Saves (TX_Dev 0.0.1.4, FAKE_DEV.InstallSaves after FAKE_UI.Enable): the R
+--     chain's save, file list, leave and load. Nothing is asynchronous on its
+--     own: FAKE_DEV.FinishSave() writes the pending saves and fires
+--     Events.SaveComplete; FAKE_DEV.FinishQuery() fires
+--     LuaEvents.FileListQueryResults(list, id). LeaveGame / LoadGame only record.
 -- ===========================================================================
 
 FAKE_DEV = {}
@@ -600,4 +605,72 @@ function FAKE_DEV.Install(opts)
 	for _, id in ipairs(FAKE.SortedKeys(FAKE.players)) do
 		Attach(id, FAKE.players[id])
 	end
+end
+
+-- Save, file list and load fakes (R chain). opts: saves (existing files, as
+-- file list entries), turnActive (false: no player's turn is active),
+-- features ({ Saving = false } etc.). Call after FAKE_UI.Enable (adds to UI).
+function FAKE_DEV.InstallSaves(opts)
+	opts = opts or {}
+	local D = FAKE_DEV
+	D.saves = opts.saves or { { Name = "C:/Saves/hotseat/TX3b_base.Civ6Save", Location = 1 } }
+	D.saveCalls, D.queries, D.closed, D.leaves, D.loads = {}, {}, {}, {}, {}
+	D.pendingSaves, D.nextQuery = {}, 41
+	D.turnActive = opts.turnActive ~= false
+	D.features = opts.features or {}
+	SaveLocations = { LOCAL_STORAGE = 1 }
+	SaveFileTypes = { GAME_STATE = 1, GAME_CONFIGURATION = 2 }
+	SaveLocationOptions = { NO_OPTIONS = 0, NORMAL = 1, QUICKSAVE = 2, AUTOSAVE = 4, LOAD_METADATA = 16 }
+	ServerType = { SERVER_TYPE_NONE = 0, SERVER_TYPE_INTERNET = 2 }
+	SaveTypes = { SINGLE_PLAYER = 0, HOTSEAT = 2 }
+	Network.GetGameConfigurationSaveType = function()
+		if D.hotseat then return SaveTypes.HOTSEAT end
+		return SaveTypes.SINGLE_PLAYER
+	end
+	Network.SaveGame = function(file)
+		D.saveCalls[#D.saveCalls + 1] = FAKE.DeepCopy(file)
+		D.pendingSaves[#D.pendingSaves + 1] = FAKE.DeepCopy(file)
+	end
+	Network.LeaveGame = function() D.leaves[#D.leaves + 1] = FAKE.turn end
+	Network.LoadGame = function(entry, server)
+		D.loads[#D.loads + 1] = { entry = FAKE.DeepCopy(entry), server = server }
+	end
+	UI.HasFeature = function(name) return D.features[name] ~= false end
+	UI.QuerySaveGameList = function(loc, saveType, options, fileType, path)
+		local id = D.nextQuery
+		D.nextQuery = id + 1
+		D.queries[#D.queries + 1] = { id = id, loc = loc, saveType = saveType, options = options, fileType = fileType, path = path }
+		return id
+	end
+	UI.CloseFileListQuery = function(id) D.closed[#D.closed + 1] = id end
+	for _, id in ipairs(FAKE.SortedKeys(FAKE.players)) do
+		local pid = id
+		Players[pid].IsTurnActive = function() return D.turnActive and pid == FAKE.localPlayer end
+	end
+end
+
+-- Writes the pending saves into the file list (same name replaced), then fires
+-- Events.SaveComplete once.
+function FAKE_DEV.FinishSave()
+	local D = FAKE_DEV
+	for _, f in ipairs(D.pendingSaves) do
+		local name = "C:/Saves/hotseat/" .. tostring(f.Name) .. ".Civ6Save"
+		local kept = {}
+		for _, e in ipairs(D.saves) do
+			if e.Name ~= name then kept[#kept + 1] = e end
+		end
+		kept[#kept + 1] = { Name = name, Location = f.Location, Type = f.Type }
+		D.saves = kept
+	end
+	D.pendingSaves = {}
+	Events.SaveComplete()
+end
+
+-- Fires LuaEvents.FileListQueryResults(list, id) for id (default: the last query).
+function FAKE_DEV.FinishQuery(id)
+	local D = FAKE_DEV
+	if id == nil then
+		id = D.queries[#D.queries].id
+	end
+	LuaEvents.FileListQueryResults(FAKE.DeepCopy(D.saves), id)
 end
