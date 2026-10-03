@@ -257,6 +257,23 @@ test("probe: never-call list refuses, existence is allowed", function()
 	H.ok(TXD.IsNever("GameConfiguration", "RemovePlayer"))
 end)
 
+test("never-call: Network session controls are no S2 candidates", function()
+	Load("UI")
+	-- MC2 lists Network.JoinGame / JoinGameByJoinCode / LeaveGame (UI); they match the Join/Leave grep.
+	local net = { JoinGame = function() error("called") end, JoinGameByJoinCode = function() error("called") end,
+		LeaveGame = function() error("called") end, BroadcastPlayerInfo = function() end }
+	local res = TXD.Dump("Network", net)
+	H.len(res.setters, 0, H.Ser(res.setters))
+	H.ok(HasNote(res, "never-call key LeaveGame"), H.Ser(res.notes))
+	H.ok(HasNote(res, "never-call key JoinGame"), H.Ser(res.notes))
+	H.ok(TXD.IsNever("Network", ".LeaveGame"))
+	local c = TXD.SetterCandidates({ { obj = "Network", key = "LeaveGame" }, { obj = "Network", key = "JoinGame" } })
+	H.eq(#c, #TXD.SETTERS, "S1 keys on the never list are not offered")
+	TXD.SetRoots({ Network = function() return net end })
+	local r = TX_Probe(false, "Network", nil, ".LeaveGame", 1, 2)
+	H.eq(r.refused, true)
+end)
+
 test("probe: exact log line shape", function()
 	Load("UI")
 	ProbeRoots()

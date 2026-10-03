@@ -133,7 +133,7 @@ The same day, from `TX_s3`. Only if V1 passed after the reload or S2 found a set
     - Why: V11, the second reload. The reload count is stored in the save, so loading `TX_s3` again would only give `S3RELOAD1` again.
     - Expect: the `S3RELOAD2` lines match `RELOAD1`.
     - Result:
-16. Only if S2 listed a setter: load `TX_baseline`, pick it in the S2 setter row, press S2 CALL selected setter (!). Then Snapshot now, save `TX_s2`, reload, end turn.
+16. Only if S2 listed a setter: load `TX_baseline`. The panel forgets New team and the S2 setter row on every load, so press S1 Team map, S1 Dump (UI) and S2 Probe setters (no calls) again. Pick the setter in the S2 setter row, press S2 CALL selected setter (!). Then Snapshot now, save `TX_s2`, reload, end turn.
     - Why: Mode A.
     - Expect: `V1-G.S2LIVE` PASS. If the game crashes, write that down.
     - Result:
@@ -162,7 +162,7 @@ Setup:
    - Why: can a client set its own config?
    - Expect: as step 3.
    - Result:
-5. Client: S3 Undo (Target). Host: Target P1, S3 Set Target's team. Both: Snapshot now.
+5. Client: Target P1 (the client itself), then S3 Undo (Target). Host: Target P1, S3 Set Target's team. Both: Snapshot now.
    - Why: can only the host set it (Q2)?
    - Expect: as step 3.
    - Result:

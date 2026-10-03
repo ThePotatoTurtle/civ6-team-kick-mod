@@ -168,6 +168,11 @@ M.NEVER = {
 	"GameConfiguration.SetToDefaults",
 	"PlayerConfigurations.SetSlotStatus",
 	"PlayerConfigurations.SetMajorCiv",
+	-- Session controls (MC2 "Objects": Network, UI). Their names match the
+	-- Join/Leave grep, so S1 would offer them to S2 CALL as "setters".
+	"Network.JoinGame",
+	"Network.JoinGameByJoinCode",
+	"Network.LeaveGame",
 }
 M.NEVER_MEMBER = { "SetWinningTeam", "SetToDefaults", "SetSlotStatus", "SetMajorCiv" }
 
@@ -424,6 +429,10 @@ end
 -- ---------------------------------------------------------------------------
 -- Dumper (S1)
 -- ---------------------------------------------------------------------------
+-- No shipped Civ VI Lua uses rawget. For a key that pairs() returned, t[k]
+-- gives the same value without metamethods (__index runs only for absent keys).
+local rawget = rawget or function(t, k) return t[k] end
+
 local TYPECHAR = { ["function"] = "f", table = "t", userdata = "u", number = "n", string = "s", boolean = "b" }
 local GREP_WORDS = { "team", "join", "leave", "assign", "merge" }
 local SETTER_PREFIX = { "Set", "Change", "Join", "Leave", "Assign", "Merge", "Add", "Remove", "Move", "Switch" }
@@ -1116,7 +1125,7 @@ end
 function M.SetterCandidates(found)
 	local out, seen = {}, {}
 	local function Push(c)
-		if c == nil then
+		if c == nil or M.IsNever(c.root, c.name) then
 			return
 		end
 		local id = M.Str(c.root) .. "|" .. M.Str(c.sel) .. "|" .. M.Str(c.name)

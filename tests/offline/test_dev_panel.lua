@@ -176,6 +176,25 @@ test("S2 list merges UI and G hits and drops never-list names", function()
 	NoErrors()
 end)
 
+test("S1 Dump (UI) + S2 Probe never offer Network.JoinGame / LeaveGame", function()
+	Setup()
+	local called = {}
+	Network.LeaveGame = function() called[#called + 1] = "LeaveGame" end
+	Network.JoinGame = function() called[#called + 1] = "JoinGame" end
+	Network.JoinGameByJoinCode = function() called[#called + 1] = "JoinGameByJoinCode" end
+	Click("S1 Dump (UI)")
+	H.ok(not H.hasLine("[TX][SPIKE][S1] UI Network setters:"), "no Network setters line")
+	local s1 = H.lines("[TX][CHECK] S1-UI INFO")[1]
+	H.ok(s1 ~= nil and not string.find(s1, "Network", 1, true), s1)
+	Click("S2 Probe setters (no calls)")
+	Frames(1)
+	local line = H.lines("[TX][SPIKE][S2] UI setter list (UI+G):")[1]
+	H.notnil(line)
+	H.ok(not string.find(line, "Network", 1, true), line)
+	H.len(called, 0)
+	NoErrors()
+end)
+
 test("Arm BASE waits for the stamp, then sends store_ui with u_ values", function()
 	Setup()
 	FAKE_UI.deferRequests = true
@@ -251,8 +270,35 @@ test("Events.TeamVictory: members {0,1} FAIL, {0} PASS", function()
 	NoErrors()
 end)
 
+test("reload: no UI turn snapshot before LoadGameViewStateDone, the loaded snapshot has the RELOAD label", function()
+	Setup()
+	Events.LoadGameViewStateDone()   -- new game
+	ArmNow()
+	SetTeamEdit(2)
+	Click("S3 Set Target's team")
+	Frames(1)
+	-- save and reload: fresh Lua states for gameplay and the panel
+	FAKE_UI.AsGameplay(function() H.reload(G, { "TXD", "TX_Probe" }, { applyConfigTeams = true }) end)
+	ENV = FAKE_UI.LoadContext(PANEL)
+	H.markBody()
+	Events.PlayerTurnActivated(0, false)   -- replayed before the view is ready
+	H.len(H.lines("reason=turn"), 0, "no turn snapshot with the old S3LIVE label")
+	Events.LoadGameViewStateDone()
+	Frames(1)
+	H.ok(H.hasLine("[TX][SPIKE][SNAP] UI S3RELOAD1 reason=loaded"))
+	H.ok(H.hasLine("[TX][CHECK] V1-UI.S3RELOAD1 PASS"))
+	Events.PlayerTurnActivated(0, true)
+	H.len(H.lines("reason=turn"), 0, "the loaded snapshot covers this turn")
+	H.len(H.lines("UI S3LIVE"), 0)
+	EndTurn()
+	Events.PlayerTurnActivated(0, true)
+	H.ok(H.hasLine("[TX][SPIKE][SNAP] UI S3RELOAD1 reason=turn"))
+	NoErrors()
+end)
+
 test("checklist flow: setups, arm, live split, turn snapshot verdicts in UI", function()
 	Setup()
+	Events.LoadGameViewStateDone()   -- new game: the view is ready before any turn snapshot
 	FAKE.teamModel = "live"
 	Click("V10 Friends target-other")
 	Click("V9 Deals target-other")

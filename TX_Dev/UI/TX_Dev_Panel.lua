@@ -56,6 +56,11 @@ local m_Clock = 0
 local m_Waits = {}
 local m_StampN = 0
 local m_SnapTurn = -1
+-- false until Events.LoadGameViewStateDone (EFV_Tracker.lua m_ViewReady pattern:
+-- on load the engine replays events before that event, EFV Session A T21).
+-- A turn snapshot before it would carry the label of the save (e.g. S3LIVE),
+-- because gameplay has not counted the load yet.
+local m_ViewReady = false
 local m_S1Found = {}        -- setter-like keys of the UI dump { {obj, key} }
 local m_UISetters = {}      -- S2 hits in UI
 local m_SetterList = {}     -- UI + G hits, never-list names left out
@@ -947,7 +952,7 @@ end
 -- Events
 -- ---------------------------------------------------------------------------
 local function OnTurnActivated(pid)
-	if pid ~= LocalID() or m_SnapTurn == TXD.Turn() then
+	if not m_ViewReady or pid ~= LocalID() or m_SnapTurn == TXD.Turn() then
 		return
 	end
 	if IsArmed(ArmRead()) then
@@ -956,7 +961,10 @@ local function OnTurnActivated(pid)
 end
 
 local function OnLoadDone()
+	m_ViewReady = true
 	if IsArmed(ArmRead()) then
+		-- the "loaded" follow-up is this turn's UI snapshot (with the RELOAD label)
+		m_SnapTurn = TXD.Turn()
 		SendAndWait(BaseParams("loaded"), function() SnapshotUI("loaded") end, "arm")
 	end
 end
