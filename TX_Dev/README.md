@@ -1,185 +1,162 @@
 # Team Expulsion Dev Tools (TX_Dev)
 
-The spike panel for Team Expulsion. Mod id `813c09c2-7476-4882-b8d6-7a0708b0891d`, version 0.0.1.1, built for the TX 0.0.1 spike. It needs Gathering Storm and nothing else. Never enable it in a real game: it changes teams, declares wars and spawns units. Every result goes to Lua.log as `[TX][SPIKE]` and `[TX][CHECK]` lines. Read them with `python tools\summarize_log.py`.
+Spike panel for Team Expulsion. Version 0.0.1.2, mod id `813c09c2-7476-4882-b8d6-7a0708b0891d`. Needs Gathering Storm only. Never enable it in a real game: it changes teams, declares wars and spawns units. Results go to Lua.log as `[TX][SPIKE]` and `[TX][CHECK]` lines. Read them with `python tools\summarize_log.py`.
 
-## Install and open
+All sessions are hotseat (one copy of the game).
 
-- Close the game. Run `powershell -ExecutionPolicy Bypass -File tools\install.ps1 -DevOnly`.
-- In Additional Content, enable Gathering Storm and Team Expulsion Dev Tools. Nothing else.
-- Open the panel with Ctrl+Shift+D or the DEV button on the launch bar. Esc closes it.
+## Install
 
-The panel has three rows above the buttons:
-- Target: the player the S3 and S2 buttons change. Only living majors. Default P1.
-- New team: the team ID to move the target to. S1 Team map fills it in. You can type another one.
-- S2 setter: the setter S2 CALL uses. S2 Probe setters fills the list.
+- Close Civ.
+- `git pull`
+- `powershell -ExecutionPolicy Bypass -File tools\install.ps1 -DevOnly`
+- Additional Content: enable Team Expulsion Dev Tools (TX Dev Tools) and Gathering Storm. Nothing else.
+- In game: Ctrl+Shift+D or the DEV button on the launch bar. Esc closes.
 
-The roles line shows keeper, target and other. The keeper is the target's lowest teammate, the other is the lowest major on another team. With the Session 1 setup that is keeper P0, target P1, other P2.
+Panel rows:
+- Target: the player S3 changes. Default P1.
+- New team: the team ID for the Target. S1 Team map fills it. You can type another.
+- S2 setter: the setter S2 CALL uses.
 
-## Files
+Roles: keeper = the Target's lowest teammate, other = the lowest major on another team. Session 1 setup: keeper P0, target P1, other P2.
 
-| File | What |
-|---|---|
-| `TX_Dev.modinfo` | the mod |
-| `Scripts/TX_Dev_Lib.lua` | shared helpers: the probe, the key dumper, log lines, verdicts. Loaded by both scripts. |
-| `Scripts/TX_Dev_Gameplay.lua` | gameplay side: button commands and the turn start snapshot |
-| `UI/TX_Dev_Panel.xml`, `UI/TX_Dev_Panel.lua` | the panel |
+Check IDs: `V1-G.S3LIVE` = item, context (G gameplay, UI panel), phase. Phases: `BASE` (armed, before the change), `S3LIVE` (after the change, no load yet), `S3RELOAD<n>` (after the n-th load since the change). AL IDs add a stage: `AL3-G.S3RELOAD1.after` (`before`, `after`, `turn` = next turn start).
 
 ## Buttons
 
-Context: UI runs in the panel, G runs in the gameplay script (sent as a request). Check IDs look like `V1-G.S3LIVE`: item, context, then the phase (`BASE`, `S3LIVE`, `S3RELOAD1`, ... with `MP-` in network games).
+| Button | What it does |
+|---|---|
+| S1 Dump (UI) / S1 Dump (G) | every key of the S1 objects, incl. the diplomacy object methods |
+| S1 Team map | team of every slot, fills New team |
+| S2 Probe setters (no calls) / S2 CALL selected setter (!) | engine team setters (none found) |
+| S3 Set Target's team | config team of the Target = New team, then broadcast |
+| S3 Set MY team / S3 Undo (Target) | the same for you / back to the BASE team |
+| Q Setup Session 2 | V10 friends, V9 deals, V5 marker in one press |
+| Arm BASE + snapshot | records roles and the "before" values |
+| Snapshot now | all checks now |
+| V4 Boost (keeper) | units for a tech boost (control failed in Session 1: skip) |
+| V5 Marker (keeper) | a keeper Warrior far from the target |
+| V6 Other declares war on keeper | refused at BASE |
+| V9 Deals target-other / V10 Friends target-other | setups, also in Q Setup |
+| V3 Domination: keeper | war, Tanks and weak capitals for the keeper. Needs V6 first |
+| V3 Domination: target | not used (V10 friends block the war) |
+| V8 War allowed? | may keeper and target declare war on each other? |
+| AL0 Read state (UI+G) | read only: diplo state both ways, HasAllied, friendship, war, marker vision |
+| AL1 Friendship off (!) | keeper-target friendship off, both ways |
+| AL2 Probe APIs (no calls) | which alliance and peace calls exist |
+| AL3 War then peace (!) | keeper declares war on target, then makes peace |
+| AL4 Alliance deal 1 turn (!) | a research alliance keeper-target for 1 turn, so it can expire |
+| AL5 SetHasAllied toggle (!) | alliance flag on, then off. May stick for good |
+| AL6 War/denounce valid? (UI) | read only: does the game allow war or denounce? |
+| AL7 Vision OFF (all teams!) / AL7 Vision ON (restore) | GLOBAL team vision flag. Affects every team. Always press ON after OFF |
+| Diplo matrix | war, allied, friend, open borders, met, team per pair |
+| Clear spike state | forgets the arm |
 
-| Button | cmd | Context | What it does | Check IDs | TP item |
-|---|---|---|---|---|---|
-| S1 Dump (UI) | | UI | lists every key of the 14 S1 objects, team keys and setter-like keys first | `S1-UI` | 1.1 |
-| S1 Dump (G) | `s1_dump` | G | the same in gameplay | `S1-G` | 1.1 |
-| S1 Team map | `s1_map` | UI + G | team of every slot, live and config, and the lowest unused team ID. Fills New team. | `S1TEAM-UI`, `S1TEAM-G` | 1.1, 1.2 |
-| S2 Probe setters (no calls) | `s2_probe` | UI + G | checks which candidate team setters exist. Calls nothing. | `S2-UI`, `S2-G` | 1.2 |
-| S2 CALL selected setter (!) | `s2_call` | UI or G | calls the selected setter once on the Target with the New team, then snapshots | `S2-*`, `V1-*.S2LIVE` | 1.2, 1.4 |
-| S3 Set Target's team | `changed` | UI (+ G read) | config team change: `PlayerConfigurations[t]:SetTeam`, then `Network.BroadcastPlayerInfo` | `S3-UI.*`, `S4-G.*` | 1.3, 1.4 |
-| S3 Set MY team | `changed` | UI (+ G read) | the same for your own player | `S3-UI.*`, `S4-G.*` | 1.3 |
-| S3 Undo (Target) | | UI | puts the Target's config team back to its value at Arm BASE | | 1.3 |
-| Arm BASE + snapshot | `arm` | G + UI | records roles, teams, capitals and the "before" values | `V*-G.BASE`, `V*-UI.BASE` | 1.5 |
-| Snapshot now | `snap` | G + UI | all checks right now | `V*-*` | 1.5 |
-| V4 Boost (keeper) | `v4_boost` | UI + G | spawns the units of an "own X units" tech boost for the keeper | `V4-UI.*` | V4 |
-| V5 Marker (keeper) | `v5_marker` | G | a keeper Warrior on the free plot farthest from the target | `V5-UI.*`, `V5-G.*` | V5 |
-| V6 Other declares war on keeper | `v6_war` | G | the other declares war on the keeper. Refused before the change. | `V6-G.*` | V6 |
-| V9 Deals target-other | `v9_deals` | G | open borders both ways plus 1 gold per turn, target to other | `V9-G.*`, `V9-UI.*` | V9 |
-| V10 Friends target-other | `v10_friend` | G | declared friendship target and other | `V10-G.*`, `V10-UI.*` | V10 |
-| V3 Domination: keeper | `v3_setup` | G | war, 3 Tanks and a weakened capital next to every enemy capital, for the keeper | `V3-*` | V3 |
-| V3 Domination: target | `v3_setup` | G | the same for the target. Not used in the sessions: V10 makes the target and the other declared friends, so the target can't go to war with them | `V3-*` | V3 |
-| V8 War allowed? | | UI | may keeper and target declare war on each other? | `V8-UI.*` | V8 |
-| Diplo matrix | `diplo` | G | war, alliance, friendship, open borders, met and team per pair | | V7 |
-| Clear spike state | `clear` | G | forgets the arm and the S1/S2 lists | | |
+AL1, AL3, AL4, AL5 and AL7 are refused before the split. Each logs a `before` and `after` line, and a `turn` line at every next turn start. PASS = keeper and target are no longer `DIPLO_STATE_ALLIED` either way.
 
-V2, V3, V8, V11 and V12 also need your eyes. The steps below say what to look at.
+## Saves
 
-## Saves in this spike
+The spike saves and reloads its own game (`TX_*`, `TX2_*`). That is the one exception to "never load old saves". Never load a save from another game. Don't change Additional Content between saving and loading.
 
-- The spike has to save and reload the game it tests: `TX_baseline`, `TX_s3`, `TX_s3r1`, `TX_s2`, `TX_mp`.
-- That's fine, and it's the one exception to "never load old saves". All of them come from the same new game in the same session, with the same mod set.
-- Never load a save from any other game, and don't change Additional Content between saving and loading.
+## Session 1 (done 2026-10-03, 0.0.1.1)
 
-## Session 1: Hotseat (about 20 min)
+Setup: Hotseat, GS rules, Tiny, Quick. P0, P1, P2 human, P3 AI. Teams {P0,P1} {P2,P3}.
+- S1: only UI setter is `PlayerConfigurations:SetTeam`. No G setter. Solo players own team IDs. Unused team = 10.
+- S2: no candidate setter exists.
+- Setups: friends and deals P1-P2, marker 40 tiles from P1. V4 control failed (boost not shared even as teammates).
+- S3 live: config 0 -> 10 ok. G reads team 10 at once. UI still reads 0 and `Teams[10]` is nil. `LeaderIcon.lua:143` error, P1 lost its team banner. World Rankings still grouped P1 with P0.
+- After reload: G and UI read team 10, `Teams[10]={1}`. World Rankings splits them. V9, V10 PASS.
+- V5 FAIL: P1 still sees the keeper's marker. V7: P0-P1 stay `DIPLO_STATE_ALLIED` both ways.
 
-Done 2026-10-03 with TX_Dev 0.0.1.1. Results are Leon's notes plus the `summarize_log.py` lines.
+## Session 1b (done 2026-10-03)
 
-Setup:
-- Multiplayer, Hotseat, Create Game. Gathering Storm rules, Tiny map, Quick speed.
-- Players: P0, P1 and P2 human, P3 AI. Teams: P0 and P1 on Team 1, P2 and P3 on Team 2.
-- The fewest city-states the setup allows.
+Same game, after the reload.
+- V6 PASS: P2 at war with P0 (and P3, its intact teammate). P1 not at war.
+- V8: `CanDeclareWarOn` false both ways. Diplomacy screen: P0-P1 allied.
+- V3 PASS: P0 took P2's and P3's capitals. No victory. Captures not pooled.
+- V11 PASS: the second reload matches the first.
+- Open: does the split work live (no reload)? The leftover alliance. Shared vision.
 
-1. Turn 1: found the capital with P0, P1 and P2. End turns until turn 3.
-   - Why: the setup buttons need capitals.
-   - Expect: the DEV button on the launch bar.
-   - Result: as expected.
-2. As P0, open the panel. Press S1 Dump (UI), S1 Dump (G), then S1 Team map.
-   - Why: find team setters in both contexts, and how team IDs are numbered.
-   - Expect: the panel shows a suggested New team.
-   - Result: "new team: 10". UI setters: only `PlayerConfigurations[0]:SetTeam`. G setters: none. Solo players own team IDs (slot 4 is team 2 and so on, Free Cities 8, Barbarians 9), empty slots are -1. The config team can't be read in G.
-3. Press S2 Probe setters (no calls).
-   - Why: which candidate setters exist.
-   - Expect: the S2 setter row lists the hits, if any.
-   - Result: (none: press S2 Probe setters). No candidate exists in G or UI.
-4. Press V10 Friends target-other, V9 Deals target-other, V5 Marker (keeper), V4 Boost (keeper). Put the marker Warrior to sleep. Don't move it.
-   - Why: build the "before" state.
-   - Expect: SPIKE lines with ok=true, a P0 Warrior far from P1, new P0 units near P0's capital.
-   - Result: warriors and archers seen. Deals P1-P2: open borders both ways plus GPT, friendship both ways. Marker at 19,29, 40 tiles from anything of P1's.
-5. End turn with all three humans. As P0, press Arm BASE + snapshot.
-   - Why: record the "before" column.
-   - Expect: `V4-UI.BASE` says P1 got the boost too, and `V5-UI.BASE` says P1 sees the marker.
-   - Result: phase BASE. `V5-UI.BASE`: P1 sees the marker, as expected. `V4-UI.BASE`: P0 boosted, P1 not, so the boost was not shared even before the change. V4 can't be measured this way.
-6. Save as `TX_baseline`.
-   - Why: S2 and the lobby test start from here.
-   - Expect: -
-   - Result: okay
-7. Target P1, New team as suggested. Press S3 Set Target's team.
-   - Why: the config level change (TP 1.3).
-   - Expect: `S3-UI.S3LIVE PASS`. The live team probably doesn't change yet.
-   - Result: phase S3LIVE; P1 lost the team banner! `S3-UI.S3LIVE PASS` (config 0 to 10, set and broadcast ok). G reads `Players[1]:GetTeam()` = 10 at once (`V1-G.S3LIVE PASS`). UI still reads 0 and has no `Teams[10]` (`V1-UI.S3LIVE FAIL`). The base game's `LeaderIcon.lua:143` threw a runtime error because `Teams[10]` was nil in the UI: that's the lost banner.
-8. Open World Rankings and look at the leader ribbon. Press Snapshot now.
-   - Why: V2 and the "after, live" column.
-   - Expect: write down what the screens show.
-   - Result: didn't end turn yet. P1 still on my team on the world rankings. `V5-UI.S3LIVE FAIL`: vision still shared. V9 and V10 PASS.
-9. Save as `TX_s3`. Exit to the main menu and load `TX_s3`.
-   - Why: does the config team apply on reload (Mode B)?
-   - Expect: `V1-G.S3RELOAD1` PASS if it does.
-   - Result: "S3RELOAD1". Player 1 no longer on my team on the world ranking (all pages). `V1-G` and `V1-UI.S3RELOAD1` PASS, `Teams[10]={1}`, P1 no longer in `Teams[0]`.
-10. End turn once (all players). Then save as `TX_s3r1`.
-    - Why: the turn start checks after the reload. The new save carries the reload count for step 14.
-    - Expect: V1 and V5 PASS, V9 and V10 PASS.
-    - Result: V1, V9 and V10 PASS. `V5-UI.S3RELOAD1 FAIL`: P1 still sees the marker. P0 and P1 are still `DIPLO_STATE_ALLIED` both ways (V7), which may be where the shared vision comes from.
+## Session 2 (hotseat, new game)
 
-Summary: the config change sticks, and after a reload every getter and World Rankings agree P1 is on its own team. Vision is still shared. War (V6) and victory (V3) are not tested yet; they decide whether the split is real.
+Setup: same as Session 1. Hotseat, GS rules, Tiny, Quick. P0, P1, P2 human, P3 AI. Teams {P0,P1} {P2,P3}. Fewest city-states.
 
-## Session 1b: Hotseat, continued
+**Live split (no reload)**
 
-Continue in the same game after step 10 (or load `TX_s3r1`). Only if V1 passed after the reload or S2 found a setter: V1 passed, so run it.
-
-11. Press V6 Other declares war on keeper. End turn. Skip V4 Boost: its control failed in step 5.
-    - Why: V6, is war still shared?
-    - Expect: `V6 PASS`: P2 at war with P0, P1 not at war with anyone. FAIL means war is still shared and the split is only a label.
-    - Result: WE WERE ALLIED SOMEHOW WHEN I LOADED TX_s3r1 (NOT THE SAME TEAM, BUT THE IN GAME ALLIANCE FUNCTION), but since it was an offensive war by player 0, player 1 DID NOT automatically join (in fact, he still haven't even MET P3). I reloaded TX_s3r1 to make sure--same result. Reloaded TX_s3 and we were already allied by then. Realoded TX_baseline (while we were still TEAMMATES) and we were still already allied then. This muddles the result. Anyways result after clicking button is: P0 at war with P2 and P3; T1 not at war, didnt even meet P3 yet. `V6-G.S3RELOAD2 PASS`: war matrix 0-2 and 0-3 yes (P3 joined its intact team, the control), 1-2 and 1-3 no.
-    - Note: the alliance doesn't muddle V6. The engine already kept teammates in `DIPLO_STATE_ALLIED` at BASE (V7), and the split leaves that state in place, so it now shows as an alliance. A base-game alliance never joins wars on its own (its description: allies can't declare war on each other, get open borders, and get a casus belli if an ally loses a city; only a Defensive Pact declares war automatically). Teammates share every war, whoever declared it. So P1 staying out of the war means war is no longer shared. The log line `V6-G.*` and the `[DIPLO]` line say who declared.
-12. Press V8 War allowed?, then as P0 open diplomacy with P1.
-    - Why: V8, and what the game now thinks P0 and P1 are to each other.
-    - Expect: write down the relationship the screen shows (allied, friends, something else) and whether war is offered.
-    - Result: I ended turn for everyone once before this step. Relationship with P1 shows allied (as we know). `V8-UI`: `CanDeclareWarOn` false both ways.
-13. Press V3 Domination: keeper. As P0, take both enemy capitals with the Tanks. End turn.
-    - Why: V3, shared victory. This is the core promise.
-    - Expect: no victory screen, because P1 still holds its own capital as a rival. A victory that names P1 too means the core promise fails.
-    - Result: P3 got defeat screen. P0 no victory screen. Domination victory says P1 has 2 capitals captured, P2 has 0 capitals captured. (Reading: hotseat names players from 1, so "P1" here is Player 1 = slot P0 and "P2" is slot P1. Captures are not pooled and no team victory fired: PASS, pending Leon's confirmation of the names.)
-14. Load `TX_s3r1` and end turn once.
-    - Why: V11, the second reload. The reload count is stored in the save, so loading `TX_s3` again would only give `S3RELOAD1` again.
-    - Expect: the `S3RELOAD2` lines match `RELOAD1`.
-    - Result: "S3RELOAD2" after ending turn once. Every RELOAD2 verdict matches RELOAD1 (V1, V9, V10 PASS, V5 FAIL).
-15. Skip: S2 found no setter. (Only if S2 listed a setter: load `TX_baseline`, press S1 Team map, S1 Dump (UI) and S2 Probe setters again, pick the setter, press S2 CALL selected setter (!), then Snapshot now, save `TX_s2`, reload, end turn.)
-    - Why: Mode A.
-    - Expect: -
-    - Result: skipped, no setter.
-
-Then quit to the desktop and send Lua.log.
-
-Summary of 1b: war is no longer shared (V6 PASS, with P3 joining its own intact team as the control), no shared domination victory (V3 PASS), and everything holds after a second reload (V11 PASS). Vision is still shared and P0 and P1 stay allied with no way to declare war on each other (V5 FAIL, V7, V8). Hotseat result: Mode B works. Open: the leftover alliance, whether war and victory already split live before the reload, and network MP (Session 2).
-
-## Session 2: network MP (about 20 min)
-
-Run it only if Session 1 shows that S3 or S2 changes the team.
-
-Setup:
-- Two PCs, both with the same TX_Dev, LAN or Internet.
-- Host = Leon = P0, client = P1, AI = P2. Teams: P0 and P1 against P2. Tiny map, Quick speed.
-
-1. Found the capitals. On turn 2, press S1 Team map on both PCs.
-   - Why: the same IDs on both machines.
-   - Expect: the same suggestion on both.
+1. Found capitals with P0, P1, P2. End turns to turn 3.
+   - Expect: the DEV button.
    - Result:
-2. Host: V5 Marker (keeper). End turn. Host: Arm BASE + snapshot.
-   - Why: the "before" column in MP.
-   - Expect: `V*-*.MP-BASE` INFO lines.
+2. As P0: S1 Dump (UI), S1 Dump (G), S1 Team map.
+   - Expect: New team filled (10 in Session 1). The log lists the methods of `Players[0]:GetDiplomacy()`.
    - Result:
-3. Client: Target P0, S3 Set Target's team. Both: Snapshot now.
-   - Why: can a client set another player's config (Q1)?
-   - Expect: compare the `S3` and `V1` lines on both PCs. Watch for a desync or a "player info mismatch" (Q3).
+3. Q Setup Session 2. Sleep the marker Warrior.
+   - Expect: P1-P2 friends and deals, a P0 Warrior far from P1.
    - Result:
-4. Client: S3 Undo (Target), then S3 Set MY team. Both: Snapshot now.
-   - Why: can a client set its own config?
-   - Expect: as step 3.
+4. End turn (all). As P0: Arm BASE + snapshot.
+   - Expect: phase BASE, `V5-UI.BASE`: P1 sees the marker.
    - Result:
-5. Client: Target P1 (the client itself), then S3 Undo (Target). Host: Target P1, S3 Set Target's team. Both: Snapshot now.
-   - Why: can only the host set it (Q2)?
-   - Expect: as step 3.
+5. Target P1, New team as suggested. S3 Set Target's team. Don't save or load.
+   - Expect: phase S3LIVE. `V1-G.S3LIVE PASS`, `V1-UI.S3LIVE FAIL` (the UI lags until a load).
    - Result:
-6. Host saves `TX_mp`. Both exit to the main menu. Host loads `TX_mp` from the multiplayer menu and the client rejoins.
-   - Why: Q4, the change survives a host reload for everyone.
-   - Expect: the `MP-S3RELOAD1` lines on both PCs agree, with the same `fp`.
+6. Save as `TX2_split`. Don't load it yet.
+   - Expect: the alliance tests start from this save.
    - Result:
-7. Host: V6 Other declares war on keeper. Play 10 turns.
-   - Why: V6 in MP, and V12.
-   - Expect: no desync, the same `V12` fp every turn in both logs.
+7. V6 Other declares war on keeper. End turn (all).
+   - Expect: `V6-G.S3LIVE PASS`: P2 at war with P0, not with P1.
    - Result:
+8. V3 Domination: keeper. As P0, take both enemy capitals with the Tanks. End turn (all).
+   - Expect: no victory screen. `V3-UI.S3LIVE PASS` at P0's next turn.
+   - Result:
+9. Still no load: look at the leader ribbon, World Rankings (all pages), the P0-P1 diplomacy screen. Any error popups?
+   - Expect: write down what you see.
+   - Result:
+
+**Alliance tests**
+
+Every test starts by loading `TX2_split` (the split, before any war). The phase is then `S3RELOAD1`.
+
+10. Load `TX2_split`. AL0 Read state (UI+G) ("AL0" below), AL2 Probe APIs (no calls), AL6 War/denounce valid? (UI).
+    - Expect: AL0 says ALLIED both ways. AL2 and AL6 list what exists and what is allowed.
+    - Result:
+11. AL3: load `TX2_split`. AL0. AL3 War then peace (!). End turn (all). AL0.
+    - Expect: `AL3-*.after` PASS (UNFRIENDLY both ways).
+    - Result:
+12. AL4: load `TX2_split`. AL0. AL4 Alliance deal 1 turn (!). End turn (all) twice. AL0.
+    - Expect: the alliance starts, then expires to FRIENDLY (`AL4-*.turn` PASS). Note TurnsUntilExpiration.
+    - Result:
+13. AL5: load `TX2_split`. AL0. AL5 SetHasAllied toggle (!). End turn (all). AL0.
+    - Expect: HasAllied stays yes after "off". State likely still ALLIED (INFO).
+    - Result:
+14. AL1: load `TX2_split`. AL0. AL1 Friendship off (!). End turn (all). AL0.
+    - Expect: friends no both ways. State likely still ALLIED (INFO).
+    - Result:
+15. AL7: load `TX2_split`. AL0. AL7 Vision OFF (all teams!). End turn (all). AL0. AL7 Vision ON (restore). End turn (all). AL0.
+    - Expect: if P1 loses the marker with the flag off, the shared vision is team vision. P3 probably loses P2's capital too (the flag is global).
+    - Result:
+
+Then quit to the desktop and send the raw Lua.log file, not only the summary.
+
+## Session 3 outline (hotseat, other team shapes)
+
+Same buttons. Set Target with the < > arrows and New team in its box. After each S3: save, load, end turn (all).
+
+**3a. Three-player team.** Setup: P0, P1, P2 human on Team 1. P3 human or AI on Team 2.
+1. Capitals, turn 3. S1 Team map. Target P2. Q Setup Session 2. End turn. Arm BASE.
+2. S3 Set Target's team (New team as suggested). Save, load, end turn.
+   - Expect: `V1` PASS. P0 and P1 still one team.
+3. V6 Other declares war on keeper (P3 on P0). End turn. Diplo matrix.
+   - Expect: P0 and P1 both at war with P3. P2 not.
+4. Second kick: S1 Team map (suggests the next ID, 11 if the first was 10). Target P1, New team as suggested. Arm BASE. S3 Set Target's team. Save, load, end turn.
+   - Expect: `V1` PASS, P1 alone on the new team. Every player on its own team.
+
+**3b. AI teammate.** Setup: P0 human and P1 AI on Team 1. P2 human and P3 AI on Team 2.
+1. Capitals, turn 3. Target P1. Q Setup Session 2. End turn. Arm BASE.
+2. S3 Set Target's team (New team as suggested). Save, load, end turn.
+   - Expect: `V1` PASS. The AI keeps playing, no errors.
+3. V6 Other declares war on keeper. End turn. Diplo matrix.
+   - Expect: P2 at war with P0, not with P1.
 
 ## Afterwards
 
 - Quit to the desktop. Lua.log is buffered until the game exits.
-- Send Lua.log from `%LOCALAPPDATA%\Firaxis Games\Sid Meier's Civilization VI\Logs`. In Session 2, send it from both PCs.
-- Run `python tools\summarize_log.py` (or `--log <path>` for a copied log). It prints one line per check ID with its latest verdict, then the spike lines by section.
+- Send `Lua.log` from `%LOCALAPPDATA%\Firaxis Games\Sid Meier's Civilization VI\Logs`.
+- `python tools\summarize_log.py` prints one line per check ID (latest verdict) and the spike lines by section.

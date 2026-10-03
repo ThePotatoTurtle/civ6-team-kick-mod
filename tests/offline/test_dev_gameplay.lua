@@ -63,7 +63,7 @@ end
 
 test("init line and the handler", function()
 	World()
-	H.ok(#H.lines("[TX][SPIKE][INIT] G TX_Dev 0.0.1.1 loaded (for TX 0.0.1 spike) turn=1 armed=0", true) == 1)
+	H.ok(#H.lines("[TX][SPIKE][INIT] G TX_Dev 0.0.1.2 loaded (for TX 0.0.1 spike) turn=1 armed=0", true) == 1)
 	H.eq(GameEvents.TX_Dev.Count(), 1)
 	H.eq(GameEvents.OnGameTurnStarted.Count(), 1)
 	NoErrors()
@@ -354,5 +354,154 @@ test("no Game.GetLocalPlayer and no math.random in gameplay", function()
 	Req("diplo")
 	H.endTurn()
 	H.len(FAKE.forbidden, 0)
+	NoErrors()
+end)
+
+test("q_setup2: V10 friends, V9 deals, V5 marker in that order", function()
+	World()
+	Req("q_setup2", { target = 1 })
+	local function At(prefix)
+		for i, l in ipairs(H.lines()) do
+			if string.find(l, prefix, 1, true) == 1 then return i end
+		end
+		return nil
+	end
+	local a, b, c = At("[TX][SPIKE][V10] G friends=yes/yes"), At("[TX][SPIKE][V9] G ob12=1 ob21=1"), At("[TX][SPIKE][V5] G marker P0")
+	H.ok(a ~= nil and b ~= nil and c ~= nil and a < b and b < c, H.Ser({ a, b, c }))
+	local arm = H.prop("TX_DEV_ARM")
+	H.ok(arm.v5 ~= nil and arm.v9 ~= nil and arm.v10 ~= nil, H.Ser(arm))
+	H.isnil(arm.v4, "no V4")
+	NoErrors()
+end)
+
+-- ---------------------------------------------------------------------------
+-- AL buttons (research/ALLIANCE.md 5). The split, then the leftover ALLIED state.
+-- ---------------------------------------------------------------------------
+local ALLIED = "DIPLO_STATE_ALLIED"
+
+local function Split()
+	World()
+	FAKE.teamModel = "live"
+	Req("v5_marker", { target = 1 })
+	Arm()
+	S3Change(2)
+	FAKE_DEV.SetState(0, 1, ALLIED)
+	FAKE_DEV.SetState(1, 0, ALLIED)
+	H.friend(0, 1, true)
+	H.clean()
+end
+
+test("AL: destructive steps refused at BASE; AL0 read works unarmed and armed", function()
+	World()
+	Req("al_read", { target = 1 })
+	H.ok(H.hasLine("[TX][CHECK] AL0-G.BASE INFO T1 G state now target->keeper=DIPLO_STATE_NEUTRAL"))
+	Arm()
+	for _, c in ipairs({ "al1_friend_off", "al3_war_peace", "al4_alliance", "al5_allied_toggle", "al7_vis" }) do
+		Req(c)
+	end
+	H.eq(#H.lines("refused: arm BASE and split the team first"), 5)
+	H.isnil(H.prop("TX_DEV_ARM").al)
+	H.len(FAKE_DEV.visFlag, 0)
+	NoErrors()
+end)
+
+test("AL0 read after the split: INFO with the G state, HasAllied, friendship, marker", function()
+	Split()
+	Req("al_read")
+	local l = H.lines("[TX][CHECK] AL0-G.S3LIVE INFO T1 G state now target->keeper=DIPLO_STATE_ALLIED keeper->target=DIPLO_STATE_ALLIED: still ALLIED")[1]
+	H.notnil(l, H.Ser(H.lines("AL0")))
+	H.ok(string.find(l, "HasAllied k->t=no t->k=no friends k->t=yes t->k=yes met=", 1, true), l)
+	H.ok(string.find(l, "CanDeclareWarOn k->t=false target sees marker=", 1, true), l)
+	NoErrors()
+end)
+
+test("AL3 war then peace: before, war, after PASS (UNFRIENDLY), next turn read", function()
+	Split()
+	Req("al3_war_peace")
+	H.ok(H.hasLine("[TX][CHECK] AL3-G.S3LIVE.before INFO T1 G before: state now target->keeper=DIPLO_STATE_ALLIED"))
+	H.ok(H.hasLine("[TX][SPIKE][AL3] G P0 declares war on P1 at war=true"))
+	H.ok(H.hasLine("[TX][CHECK] AL3-G.S3LIVE.war INFO T1 G war: state now target->keeper=DIPLO_STATE_WAR"))
+	H.len(H.lines("WARNING peace failed"), 0)
+	H.ok(H.hasLine("[TX][SPIKE][AL3] G PROBE AL3 peace <table>:MakePeaceWith(1,true) exists=function ok=true"))
+	H.eq(#FAKE_DEV.peace, 1, "the first peace call ended the war")
+	H.ok(H.hasLine("[TX][CHECK] AL3-G.S3LIVE.after PASS T1 G after: state now target->keeper=DIPLO_STATE_UNFRIENDLY " ..
+		"keeper->target=DIPLO_STATE_UNFRIENDLY: no longer ALLIED"))
+	H.deq(H.prop("TX_DEV_ARM").al, { n = "3", turn = 1 })
+	H.endTurn()
+	H.ok(H.hasLine("[TX][CHECK] AL3-G.S3LIVE.turn PASS T2 G turn: state now target->keeper=DIPLO_STATE_UNFRIENDLY"))
+	H.ok(H.hasLine("turn 2, AL3 pressed on turn 1"))
+	NoErrors()
+end)
+
+test("AL3 peace fails: still at war is INFO with a WARNING, never PASS", function()
+	Split()
+	for pid = 0, 1 do
+		rawset(FAKE.players[pid].diplomacy, "MakePeaceWith", function() end)
+	end
+	Req("al3_war_peace")
+	H.ok(H.hasLine("[TX][SPIKE][AL3] G peace: at war now=yes"))
+	H.ok(H.hasLine("[TX][SPIKE][AL3] G WARNING peace failed or unreadable: P0 and P1 may still be at war. Load TX2_split."))
+	H.ok(H.hasLine("[TX][CHECK] AL3-G.S3LIVE.after INFO T1 G after: state now target->keeper=DIPLO_STATE_WAR " ..
+		"keeper->target=DIPLO_STATE_WAR: at war (no exit until peace)"))
+	H.len(H.lines("AL3-G.S3LIVE.after PASS"), 0)
+	NoErrors()
+end)
+
+test("AL4 alliance deal: civics, every step a probe, the UI hash, HasAllied after", function()
+	Split()
+	Req("al4_alliance", { hash = 4242 })
+	H.ok(H.hasLine("[TX][SPIKE][AL4] G civic P0 CIVIC_CIVIL_SERVICE ok=true"))
+	H.ok(H.hasLine("[TX][SPIKE][AL4] G PROBE AL4 deal DealAgreementTypes=ALLIANCE exists=number ok=true ret=(9)"))
+	H.ok(H.hasLine("[TX][SPIKE][AL4] G PROBE AL4 deal <table>:SetValueType(4242) exists=function ok=true"))
+	H.ok(H.hasLine("[TX][SPIKE][AL4] G PROBE AL4 deal <table>:SetDuration(1) exists=function ok=true"))
+	H.ok(H.hasLine("[TX][SPIKE][AL4] G PROBE AL4 deal DealManager.EnactWorkingDeal(0,1) exists=function ok=true"))
+	H.ok(H.hasLine("[TX][SPIKE][AL4] G alliance deal P0->P1 (ALLIANCE_RESEARCH, 1 turn) enact ok=true hash=4242 HasAllied k->t=yes t->k=yes"))
+	H.ok(H.hasLine("[TX][CHECK] AL4-G.S3LIVE.after INFO T1 G after: state now target->keeper=DIPLO_STATE_ALLIED"))
+	-- no UI hash: gameplay probes DB.MakeHash itself
+	H.clean()
+	Req("al4_alliance")
+	H.ok(H.hasLine("[TX][SPIKE][AL4] G PROBE AL4 deal DB.MakeHash(\"ALLIANCE_RESEARCH\") exists=function ok=true"))
+	NoErrors()
+end)
+
+test("AL5 SetHasAllied toggle: gated calls run from AL5, false is a no-op in the fake", function()
+	Split()
+	Req("al5_allied_toggle")
+	H.ok(H.hasLine("[TX][SPIKE][AL5] G PROBE AL5 allied <table>:SetHasAllied(1,true) exists=function ok=true"))
+	H.ok(H.hasLine("[TX][SPIKE][AL5] G PROBE AL5 allied <table>:SetHasAllied(0,false) exists=function ok=true"))
+	H.ok(H.hasLine("[TX][CHECK] AL5-G.S3LIVE.set INFO"))
+	local l = H.lines("[TX][CHECK] AL5-G.S3LIVE.after INFO")[1]
+	H.ok(l ~= nil and string.find(l, "HasAllied k->t=yes t->k=yes", 1, true), l)
+	H.len(H.lines("REFUSED"), 0)
+	NoErrors()
+end)
+
+test("AL1 friendship off and AL7 vision off/on (gated, global)", function()
+	Split()
+	Req("al1_friend_off")
+	H.ok(H.hasLine("[TX][SPIKE][AL1] G friendship off P0<->P1 ok=true now k->t=no t->k=no"))
+	H.ok(H.hasLine("[TX][CHECK] AL1-G.S3LIVE.after INFO T1 G after: state now target->keeper=DIPLO_STATE_ALLIED"))
+	Req("al7_vis", { on = 0 })
+	H.ok(H.hasLine("[TX][SPIKE][AL7] G SetAlliesShareVisFlag(false) ok=true (global: every team)"))
+	H.ok(H.hasLine("[TX][CHECK] AL7off-G.S3LIVE.after"))
+	Req("al7_vis", { on = 1 })
+	H.ok(H.hasLine("[TX][CHECK] AL7on-G.S3LIVE.after"))
+	H.deq(FAKE_DEV.visFlag, { false, true })
+	H.eq(H.prop("TX_DEV_ARM").al.n, "7on")
+	NoErrors()
+end)
+
+test("AL2 existence only: no diplomacy call, AL2-G line", function()
+	Split()
+	local before = #FAKE_DEV.peace
+	Req("al2_exist")
+	local l = H.lines("[TX][CHECK] AL2-G.S3LIVE INFO T1 G exist:")[1]
+	H.notnil(l)
+	H.ok(string.find(l, "Diplomacy:SetHasAllied=function Diplomacy:MakePeaceWith=function", 1, true), l)
+	H.ok(string.find(l, "Diplomacy:SetPermanentAlliance=nil", 1, true), l)
+	H.ok(string.find(l, "GameDiplomacy:SetAlliesShareVisFlag=function DealAgreementTypes.ALLIANCE=9 DB.MakeHash=function", 1, true), l)
+	H.eq(#FAKE_DEV.peace, before)
+	H.len(FAKE_DEV.visFlag, 0)
+	H.isnil(H.prop("TX_DEV_ARM").al, "existence checks are no AL step")
 	NoErrors()
 end)

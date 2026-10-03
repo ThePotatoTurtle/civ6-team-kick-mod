@@ -725,6 +725,18 @@
     "G": {
      "level": "C",
      "tests": []
+    },
+    "UI": {
+     "level": "L",
+     "tests": [],
+     "only_paths": [
+      "TX_Dev/"
+     ],
+     "source": "TX",
+     "refs": [
+      "BASE24 UI/Popups/DeclareWarPopup.lua:109-111 (kParams.WarState = eWarType for DiplomacyManager.TestAction)"
+     ],
+     "note": "TX_Dev 0.0.1.2 AL6: read only as '=SURPRISE_WAR' through TX_Probe."
     }
    },
    "refs": [
@@ -829,6 +841,44 @@
     "G: read only as '=NONE' through TX_Probe (V9 GPT deal scan)"
    ],
    "note": "TX_Dev V9: GPT deal read (UI direct, G probe).",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "DB": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    },
+    "G": {
+     "level": "NV",
+     "tests": []
+    }
+   },
+   "refs": [
+    "XP-UI DLC/Expansion2/Replacements/DiplomacyActionView_Expansion1.lua:148,165,182,199 (DB.MakeHash(\"ALLIANCE_RESEARCH\") in the UI; research/ALLIANCE.md 3 rank 2)",
+    "G: no shipped gameplay use; '.MakeHash' only through TX_Probe (AL4 fallback)"
+   ],
+   "note": "TX_Dev 0.0.1.2 AL4: root of the probe resolver only. The UI computes the alliance hash and sends it to gameplay.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "DiplomacyActionTypes": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "BASE24 UI/Popups/DeclareWarPopup.lua:111 (DiplomacyManager.TestAction(..., DiplomacyActionTypes.SET_WAR_STATE, kParams))",
+    "GED Managers.csv:73-80 (DECLARE_FRIEND ... ALLY ... DENOUNCE)"
+   ],
+   "note": "TX_Dev 0.0.1.2 AL2 / AL6: read only as '=SET_WAR_STATE' / '=ALLY' through TX_Probe.",
    "only_paths": [
     "TX_Dev/"
    ],

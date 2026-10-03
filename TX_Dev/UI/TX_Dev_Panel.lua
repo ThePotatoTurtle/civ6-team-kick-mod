@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Dev_Panel.lua  (TX_Dev 0.0.1.1, spike kit for Team Expulsion 0.0.1)
+-- TX_Dev_Panel.lua  (TX_Dev 0.0.1.2, spike kit for Team Expulsion 0.0.1)
 -- Context: UI (AddUserInterfaces, Context InGame). TESTING ONLY. PLAN I.6.
 --
 -- Panel toggled by Ctrl+Shift+D or the "DEV" launch bar button (copied from
@@ -33,6 +33,9 @@ TXD.SetRoots({
 	DealManager = function() return DealManager end,
 	DealItemTypes = function() return DealItemTypes end,
 	DealItemSubTypes = function() return DealItemSubTypes end,
+	DiplomacyActionTypes = function() return DiplomacyActionTypes end,
+	WarTypes = function() return WarTypes end,
+	DB = function() return DB end,
 })
 
 local Str = TXD.Str
@@ -70,6 +73,8 @@ local m_Victory = nil       -- { team, members } of the last Events.TeamVictory
 
 local SnapshotUI           -- forward
 local RefreshInfo          -- forward
+local CfgMembers           -- forward
+local ALReadUI             -- forward
 
 -- ---------------------------------------------------------------------------
 -- Helpers
@@ -687,6 +692,18 @@ local function BaseUI(arm, key)
 	return nil
 end
 
+-- Players whose config team is team (Free Cities and Barbarians left out).
+-- Live, the config team is what gameplay reads; UI Teams[] is stale until a reload.
+CfgMembers = function(team)
+	local out = {}
+	for _, r in ipairs(Rows()) do
+		if r.cfg == team and r.pid < 62 then
+			out[#out + 1] = r.pid
+		end
+	end
+	return out
+end
+
 local function V3UI(arm, label)
 	local who = nil
 	if type(arm.v3) == "table" then
@@ -728,14 +745,16 @@ local function V3UI(arm, label)
 		Check(id, "INFO", "original capitals: " .. (#parts > 0 and table.concat(parts, "; ") or "none"))
 		return
 	end
-	local members = nil
+	local members, cfgMembers = nil, nil
 	local okW, team = pcall(function() return Game.GetWinningTeam() end)
 	if okW and type(team) == "number" and team >= 0 then
 		members = TeamList(team) or {}
+		cfgMembers = CfgMembers(team)
 	elseif m_Victory ~= nil then
 		members = m_Victory.members
+		cfgMembers = CfgMembers(m_Victory.team)
 	end
-	local v, t = TXD.Verdict.V3(label, members, arm.keeper, arm.target, enemies > 0 and ownsAll)
+	local v, t = TXD.Verdict.V3Both(label, members, cfgMembers, arm.keeper, arm.target, enemies > 0 and ownsAll)
 	Check(id, v, t .. "; attacker P" .. Str(who) .. "; capitals: " .. table.concat(parts, "; "))
 end
 
@@ -848,6 +867,14 @@ SnapshotUI = function(reason)
 	Safe("V7", function() V7UI(arm, label, vals) end)
 	Safe("V9", function() V9UI(arm, label, vals) end)
 	Safe("V10", function() V10UI(arm, label, vals) end)
+	if reason == "turn" or reason == "loaded" then
+		Safe("AL", function()
+			if type(arm.al) == "table" and TXD.Turn() > (tonumber(arm.al.turn) or 0) then
+				ALReadUI(arm, Str(arm.al.n), "turn", "turn " .. TXD.Turn() .. ", AL" .. Str(arm.al.n) .. " pressed on turn " ..
+					Str(arm.al.turn))
+			end
+		end)
+	end
 	if TXD.IsBase(label) then
 		return vals
 	end
@@ -949,6 +976,163 @@ local function V8Info()
 end
 
 -- ---------------------------------------------------------------------------
+-- AL: the leftover ALLIED state (research/ALLIANCE.md 5). UI half.
+-- ---------------------------------------------------------------------------
+-- The other's intact teammate: does it see the other's capital (team vision)?
+local function IntactVision(arm)
+	local o = arm.other
+	local oTeam, mate = nil, nil
+	for _, r in ipairs(arm.teamsBase or {}) do
+		if r.pid == o then
+			oTeam = r.team
+		end
+	end
+	for _, r in ipairs(arm.teamsBase or {}) do
+		if mate == nil and oTeam ~= nil and r.team == oTeam and r.pid ~= o and r.pid < 62 then
+			mate = r.pid
+		end
+	end
+	if mate == nil then
+		return "intact team: no teammate of the other"
+	end
+	for _, c in ipairs(arm.caps or {}) do
+		if c.pid == o then
+			return "intact team: P" .. mate .. " sees P" .. o .. "'s capital=" .. TXD.YN(Visible(mate, c.x, c.y)) ..
+				" (nearest P" .. mate .. " asset " .. Str(NearestAsset(mate, c.x, c.y)) .. ")"
+		end
+	end
+	return "intact team: no capital of P" .. Str(o)
+end
+
+-- The UI read-out. n: the AL step; stage: before | after | turn | nil. Step "0" is INFO.
+ALReadUI = function(arm, n, stage, note)
+	local k, t = arm.keeper, arm.target
+	local sTK, sKT = StateName(t, k), StateName(k, t)
+	local d = DiploOf(k)
+	local at = TX_Probe(false, d, nil, ":GetAllianceType", t)
+	local ae = TX_Probe(false, d, nil, ":GetAllianceTurnsUntilExpiration", t)
+	local ft = TX_Probe(false, d, nil, ":GetDeclaredFriendshipTurn", t)
+	local cw = TX_Probe(false, d, nil, ":CanDeclareWarOn", t)
+	local share = TX_Probe(false, "GameConfiguration", nil, ".GetValue", "GAME_ALLIES_SHARE_VISIBILITY")
+	local vis = "-"
+	if type(arm.v5) == "table" then
+		vis = TXD.YN(Visible(t, arm.v5.x, arm.v5.y)) .. " at " .. arm.v5.x .. "," .. arm.v5.y
+	end
+	local facts = "GetAllianceType=" .. TXD.Tok(at) .. " TurnsUntilExpiration=" .. TXD.Tok(ae) ..
+		" DeclaredFriendshipTurn=" .. TXD.Tok(ft) .. " CanDeclareWarOn k->t=" .. TXD.Tok(cw) .. " at war=" .. TXD.YN(AtWar(k, t)) ..
+		" target sees marker=" .. vis .. "; " .. IntactVision(arm) .. "; GAME_ALLIES_SHARE_VISIBILITY=" .. TXD.Tok(share)
+	local v, txt = TXD.Verdict.AL(TXD.PhaseLabel(arm), sTK, sKT)
+	if n == "0" then
+		v = "INFO"
+	end
+	local head = ""
+	if stage ~= nil then
+		head = stage .. ": "
+	end
+	Check(TXD.ALId(n, arm, stage), v, head .. txt .. "; keeper P" .. Str(k) .. " target P" .. Str(t) .. "; " .. facts ..
+		(note and ("; " .. note) or ""))
+end
+
+-- The arm for an AL read: the armed record, or the roles from the panel Target.
+local function ALRoles()
+	local arm = ArmRead()
+	if IsArmed(arm) then
+		return arm
+	end
+	local target, keeper, other = Roles()
+	local a = { target = target, keeper = keeper, other = other }
+	if arm ~= nil then
+		a.v5 = arm.v5
+	end
+	return a
+end
+
+local function ALRead()
+	ALReadUI(ALRoles(), "0")
+	Send(BaseParams("al_read"))
+end
+
+-- A destructive AL step: UI read before, the G command, UI read after the answer.
+-- Refused unarmed and at BASE (gameplay refuses too).
+local function ALStep(n, cmd, extra)
+	local arm = ArmRead()
+	if not IsArmed(arm) or arm.phase == "BASE" then
+		Spike("AL" .. n, "refused: arm BASE and split the team first (or load TX2_split)")
+		return
+	end
+	ALReadUI(arm, n, "before")
+	local p = BaseParams(cmd)
+	extra = extra or {}
+	for _, key in ipairs(TXD.SortedKeys(extra)) do
+		p[key] = extra[key]
+	end
+	SendAndWait(p, function()
+		local now = ArmRead()
+		if IsArmed(now) then
+			ALReadUI(now, n, "after")
+		end
+	end, "arm")
+end
+
+-- AL2 UI half: existence only (no calls), then the G half.
+local function AL2Exist()
+	local arm = ALRoles()
+	local names = {}
+	local function Ex(label, root, sel, member)
+		names[#names + 1] = label .. "=" .. TXD.Tok(TX_Probe("AL2 exist", root, sel, member))
+	end
+	for _, m in ipairs({ "SendAction", "AddCommand", "TestAction", "RequestSession" }) do
+		Ex("DiplomacyManager." .. m, "DiplomacyManager", nil, "?" .. m)
+	end
+	Ex("DiplomacyActionTypes.ALLY", "DiplomacyActionTypes", nil, "=ALLY")
+	local d = DiploOf(arm.keeper)
+	for _, m in ipairs({ "GetAllianceType", "GetAllianceTurnsUntilExpiration", "IsDiplomaticActionValid",
+		"GetDeclaredFriendshipTurn", "CanDeclareWarOn" }) do
+		Ex("Diplomacy:" .. m, d, nil, "?" .. m)
+	end
+	Ex("DB.MakeHash", "DB", nil, "?MakeHash")
+	Check(TXD.ALId("2", arm), "INFO", "exist: " .. table.concat(names, " "))
+	Send(BaseParams("al2_exist"))
+end
+
+-- AL4 UI half: the alliance value hash (DB.MakeHash, DiplomacyActionView_Expansion1.lua:165), then G.
+local function AL4Deal()
+	local r = TX_Probe("AL4 hash", "DB", nil, ".MakeHash", "ALLIANCE_RESEARCH")
+	local extra = {}
+	if r.ok and type(r.rets[1]) == "number" then
+		extra.hash = r.rets[1]
+	end
+	ALStep("4", "al4_alliance", extra)
+end
+
+-- AL6: read-only refusal checks for war and denounce. IsDiplomaticActionValid:
+-- DiplomacyStatementSupport.lua:167; TestAction: DeclareWarPopup.lua:109-111.
+local function AL6Valid()
+	local arm = ALRoles()
+	local k, t = arm.keeper, arm.target
+	local d = DiploOf(k)
+	local parts = {}
+	local function Add(label, r)
+		parts[#parts + 1] = label .. "=" .. TXD.Rets(r)
+	end
+	Add("CanDeclareWarOn k->t", TX_Probe("AL6 valid", d, nil, ":CanDeclareWarOn", t))
+	Add("CanDeclareWarOn t->k", TX_Probe("AL6 valid", DiploOf(t), nil, ":CanDeclareWarOn", k))
+	for _, a in ipairs({ "DIPLOACTION_DECLARE_FORMAL_WAR", "DIPLOACTION_DECLARE_SURPRISE_WAR", "DIPLOACTION_DENOUNCE",
+		"DIPLOACTION_ALLIANCE_RESEARCH" }) do
+		Add(a, TX_Probe("AL6 valid", d, nil, ":IsDiplomaticActionValid", a, t, true))
+	end
+	local rw = TX_Probe(false, "WarTypes", nil, "=SURPRISE_WAR")
+	local ra = TX_Probe(false, "DiplomacyActionTypes", nil, "=SET_WAR_STATE")
+	if rw.rets[1] ~= nil and ra.rets[1] ~= nil then
+		Add("TestAction SET_WAR_STATE", TX_Probe("AL6 valid", "DiplomacyManager", nil, ".TestAction", k, t, ra.rets[1],
+			{ WarState = rw.rets[1] }))
+	else
+		parts[#parts + 1] = "TestAction=skipped (WarTypes.SURPRISE_WAR=" .. TXD.Tok(rw) .. " SET_WAR_STATE=" .. TXD.Tok(ra) .. ")"
+	end
+	Check(TXD.ALId("6", arm), "INFO", "keeper P" .. Str(k) .. " on target P" .. Str(t) .. ": " .. table.concat(parts, "; "))
+end
+
+-- ---------------------------------------------------------------------------
 -- Events
 -- ---------------------------------------------------------------------------
 local function OnTurnActivated(pid)
@@ -982,7 +1166,7 @@ local function OnTeamVictory(team, victory)
 		Spike("V3", text .. " (not armed)")
 		return
 	end
-	local v, t = TXD.Verdict.V3(TXD.PhaseLabel(arm), members, arm.keeper, arm.target, nil)
+	local v, t = TXD.Verdict.V3Both(TXD.PhaseLabel(arm), members, CfgMembers(team), arm.keeper, arm.target, nil)
 	Check(TXD.CheckId("V3", arm), v, text .. "; " .. t)
 end
 
@@ -1001,6 +1185,15 @@ local UIFN = {
 	SnapshotNow = SnapshotNow,
 	PickBoostUI = PickBoostUI,
 	V8Info = V8Info,
+	ALRead = ALRead,
+	AL1 = function() ALStep("1", "al1_friend_off") end,
+	AL2 = AL2Exist,
+	AL3 = function() ALStep("3", "al3_war_peace") end,
+	AL4 = AL4Deal,
+	AL5 = function() ALStep("5", "al5_allied_toggle") end,
+	AL6 = AL6Valid,
+	AL7Off = function() ALStep("7off", "al7_vis", { on = 0 }) end,
+	AL7On = function() ALStep("7on", "al7_vis", { on = 1 }) end,
 }
 
 local BUTTONS = {
@@ -1016,6 +1209,7 @@ local BUTTONS = {
 	{ label = "S3 Set MY team", ui = "S3SetSelf" },
 	{ label = "S3 Undo (Target)", ui = "S3Undo" },
 	{ header = "Checklist" },
+	{ label = "Q Setup Session 2", cmd = "q_setup2", tip = "V10 friends, V9 deals, V5 marker in one press (no V4)" },
 	{ label = "Arm BASE + snapshot", ui = "ArmBase" },
 	{ label = "Snapshot now", ui = "SnapshotNow" },
 	{ label = "V4 Boost (keeper)", ui = "PickBoostUI" },
@@ -1026,6 +1220,17 @@ local BUTTONS = {
 	{ label = "V3 Domination: keeper", cmd = "v3_setup", who = "keeper" },
 	{ label = "V3 Domination: target", cmd = "v3_setup", who = "target" },
 	{ label = "V8 War allowed?", ui = "V8Info" },
+	{ header = "AL alliance tests (load TX2_split before each !)" },
+	{ label = "AL0 Read state (UI+G)", ui = "ALRead", tip = "read only: diplo state both ways, HasAllied, friendship, war, vision" },
+	{ label = "AL1 Friendship off (!)", ui = "AL1", tip = "SetHasDeclaredFriendship false, keeper and target, both ways" },
+	{ label = "AL2 Probe APIs (no calls)", ui = "AL2", tip = "existence only of the alliance and peace calls" },
+	{ label = "AL3 War then peace (!)", ui = "AL3", tip = "keeper declares war on target, then makes peace" },
+	{ label = "AL4 Alliance deal 1 turn (!)", ui = "AL4", tip = "research alliance keeper-target, duration 1 turn" },
+	{ label = "AL5 SetHasAllied toggle (!)", ui = "AL5", tip = "SetHasAllied true both ways, then false. May stick for good." },
+	{ label = "AL6 War/denounce valid? (UI)", ui = "AL6", tip = "read only: may keeper declare war on or denounce target?" },
+	{ label = "AL7 Vision OFF (all teams!)", ui = "AL7Off",
+		tip = "GLOBAL: switches team vision off for EVERY team, the intact one too. Press AL7 Vision ON after." },
+	{ label = "AL7 Vision ON (restore)", ui = "AL7On", tip = "GLOBAL: switches team vision back on for every team" },
 	{ header = "Misc" },
 	{ label = "Diplo matrix", cmd = "diplo" },
 	{ label = "Clear spike state", cmd = "clear" },
@@ -1061,6 +1266,9 @@ local function BuildButtons()
 		else
 			local b = m_ButtonIM:GetInstance()
 			b.Button:SetText(def.label)
+			if def.tip ~= nil then
+				b.Button:SetToolTipString(def.tip)
+			end
 			b.Button:RegisterCallback(Mouse.eLClick, function() OnButton(def) end)
 		end
 	end

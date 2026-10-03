@@ -71,14 +71,16 @@ local LABELS = {
 	"S3 Set Target's team", "S3 Set MY team", "S3 Undo (Target)", "Arm BASE + snapshot", "Snapshot now",
 	"V4 Boost (keeper)", "V5 Marker (keeper)", "V6 Other declares war on keeper", "V9 Deals target-other",
 	"V10 Friends target-other", "V3 Domination: keeper", "V3 Domination: target", "V8 War allowed?",
-	"Diplo matrix", "Clear spike state",
+	"Diplo matrix", "Clear spike state", "Q Setup Session 2", "AL0 Read state (UI+G)", "AL1 Friendship off (!)",
+	"AL2 Probe APIs (no calls)", "AL3 War then peace (!)", "AL4 Alliance deal 1 turn (!)", "AL5 SetHasAllied toggle (!)",
+	"AL6 War/denounce valid? (UI)", "AL7 Vision OFF (all teams!)", "AL7 Vision ON (restore)",
 }
 
 test("init: context shown, Main hidden, hotkey and Esc, every button", function()
 	Setup()
 	H.eq(ENV.ContextPtr:IsHidden(), false, "ContextPtr:SetHide(false) in init")
 	H.eq(ENV.Controls.Main:IsHidden(), true)
-	H.ok(#H.lines("[TX][SPIKE][INIT] UI TX_Dev 0.0.1.1 loaded (for TX 0.0.1 spike)", true) == 1)
+	H.ok(#H.lines("[TX][SPIKE][INIT] UI TX_Dev 0.0.1.2 loaded (for TX 0.0.1 spike)", true) == 1)
 	FAKE_UI.KeyTo(ENV, Keys.D, { ctrl = true, shift = true })
 	H.eq(ENV.Controls.Main:IsHidden(), false, "Ctrl+Shift+D opens")
 	H.ok(string.find(ENV.Controls.RolesLabel:GetText(), "keeper=P0 target=P1 other=P2", 1, true), ENV.Controls.RolesLabel:GetText())
@@ -257,16 +259,24 @@ test("OnLoadDone with an armed property sends loaded", function()
 	NoErrors()
 end)
 
-test("Events.TeamVictory: members {0,1} FAIL, {0} PASS", function()
+test("Events.TeamVictory: stale Teams[] vs config INCONCLUSIVE, {0} PASS, {0,1} FAIL", function()
 	Setup()
 	ArmNow()
 	SetTeamEdit(2)
 	Click("S3 Set Target's team")
+	-- config model = the measured live state: config team 2, Teams[0] still {0,1}
 	Events.TeamVictory(0, "VICTORY_DEFAULT", 1)
-	H.ok(H.hasLine("[TX][CHECK] V3-UI.S3LIVE FAIL T1 UI team victory team=0 type=VICTORY_DEFAULT members=0,1"))
+	H.ok(H.hasLine("[TX][CHECK] V3-UI.S3LIVE INFO T1 UI team victory team=0 type=VICTORY_DEFAULT members=0,1; " ..
+		"INCONCLUSIVE: Teams[] says FAIL, config teams say PASS"))
+	H.ok(H.hasLine("cfg members={0}; Leon: whose name is on the victory screen?"))
 	H.team(1, 2)
 	Events.TeamVictory(0, "VICTORY_DEFAULT", 2)
-	H.ok(H.hasLine("[TX][CHECK] V3-UI.S3LIVE PASS T1 UI team victory team=0 type=VICTORY_DEFAULT members=0"))
+	H.ok(H.hasLine("[TX][CHECK] V3-UI.S3LIVE PASS T1 UI team victory team=0 type=VICTORY_DEFAULT members=0; " ..
+		"victory members={0} keeper=P0 target=P1: only one of them won; cfg members={0}"))
+	H.team(1, 0)
+	Events.TeamVictory(0, "VICTORY_DEFAULT", 3)
+	H.ok(H.hasLine("[TX][CHECK] V3-UI.S3LIVE FAIL T1 UI team victory team=0 type=VICTORY_DEFAULT members=0,1; " ..
+		"victory members={0,1} keeper=P0 target=P1: victory still shared; cfg members={0,1}"))
 	NoErrors()
 end)
 
@@ -338,5 +348,108 @@ test("checklist flow: setups, arm, live split, turn snapshot verdicts in UI", fu
 	Click("Diplo matrix")
 	Click("Clear spike state")
 	H.ok(H.hasLine("[TX][SPIKE][SNAP] G cleared"))
+	NoErrors()
+end)
+
+test("Session 2 live: Q Setup, split, no reload; V6 and V3 verdicts at the next turn starts (S3LIVE)", function()
+	Setup()
+	Events.LoadGameViewStateDone()   -- new game
+	FAKE.teamModel = "live"
+	Click("Q Setup Session 2")
+	H.ok(H.hasLine("[TX][SPIKE][V10] G friends=yes/yes"))
+	H.ok(H.hasLine("[TX][SPIKE][V9] G ob12=1 ob21=1"))
+	H.ok(H.hasLine("[TX][SPIKE][V5] G marker P0 Warrior"))
+	EndTurn()
+	ArmNow()
+	SetTeamEdit(2)
+	Click("S3 Set Target's team")
+	Frames(1)
+	Click("V6 Other declares war on keeper")
+	H.ok(H.hasLine("[TX][SPIKE][V6] G P2 declares war on P0 ok=true"))
+	EndTurn()
+	Events.PlayerTurnActivated(0, true)
+	H.ok(H.hasLine("[TX][CHECK] V6-G.S3LIVE PASS T3 G other at war with keeper=yes, with target=no"))
+	H.ok(H.hasLine("[TX][SPIKE][SNAP] UI S3LIVE reason=turn"))
+	Click("V3 Domination: keeper")
+	-- the keeper takes both enemy capitals
+	FAKE_DEV.CityAt(18, 10).owner = 0
+	FAKE_DEV.CityAt(20, 4).owner = 0
+	EndTurn()
+	Events.PlayerTurnActivated(0, true)
+	H.ok(H.hasLine("[TX][CHECK] V3-UI.S3LIVE PASS T4 UI no victory; attacker holds every enemy original capital=yes " ..
+		"and no victory fired (the target is now a rival)"))
+	H.ok(H.hasLine("[TX][CHECK] V3-G.S3LIVE INFO T4 G original capitals: P0@3,3 owner=0"))
+	H.len(H.lines("RELOAD"), 0, "no reload in this flow")
+	NoErrors()
+end)
+
+local function SplitPanel()
+	Setup()
+	Events.LoadGameViewStateDone()
+	FAKE.teamModel = "live"
+	Click("V5 Marker (keeper)")
+	ArmNow()
+	SetTeamEdit(2)
+	Click("S3 Set Target's team")
+	Frames(1)
+	FAKE_DEV.SetState(0, 1, "DIPLO_STATE_ALLIED")
+	FAKE_DEV.SetState(1, 0, "DIPLO_STATE_ALLIED")
+	H.clean()
+end
+
+test("AL buttons: refused before the split; AL0 logs AL0-UI and AL0-G", function()
+	Setup()
+	Click("AL3 War then peace (!)")
+	H.ok(H.hasLine("[TX][SPIKE][AL3] UI refused: arm BASE and split the team first"))
+	H.isnil(LastRequest("al3_war_peace"), "nothing sent")
+	Click("AL0 Read state (UI+G)")
+	H.ok(H.hasLine("[TX][CHECK] AL0-UI.BASE INFO T1 UI state now target->keeper=DIPLO_STATE_NEUTRAL"))
+	H.ok(H.hasLine("[TX][CHECK] AL0-G.BASE INFO T1 G state now"))
+	local b = FAKE_UI.FindButton("AL7 Vision OFF (all teams!)")
+	H.ok(string.find(b.tooltip or "", "GLOBAL", 1, true), b.tooltip)
+	NoErrors()
+end)
+
+test("AL3 from the panel: UI before and after, G steps, UI and G turn reads", function()
+	SplitPanel()
+	Click("AL0 Read state (UI+G)")
+	local l = H.lines("[TX][CHECK] AL0-UI.S3LIVE INFO")[1]
+	H.ok(l ~= nil and string.find(l, "still ALLIED", 1, true), l)
+	H.ok(string.find(l, "target sees marker=", 1, true) and string.find(l, "intact team: P3 sees P2's capital=", 1, true), l)
+	Click("AL3 War then peace (!)")
+	H.ok(H.hasLine("[TX][CHECK] AL3-UI.S3LIVE.before INFO T1 UI before: state now target->keeper=DIPLO_STATE_ALLIED"))
+	H.ok(H.hasLine("[TX][CHECK] AL3-G.S3LIVE.after PASS"))
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] AL3-UI.S3LIVE.after PASS T1 UI after: state now target->keeper=DIPLO_STATE_UNFRIENDLY"))
+	EndTurn()
+	Events.PlayerTurnActivated(0, true)
+	H.ok(H.hasLine("[TX][CHECK] AL3-G.S3LIVE.turn PASS T2"))
+	H.ok(H.hasLine("[TX][CHECK] AL3-UI.S3LIVE.turn PASS T2 UI turn:"))
+	NoErrors()
+end)
+
+test("AL2, AL4, AL6, AL7 from the panel", function()
+	SplitPanel()
+	Click("AL2 Probe APIs (no calls)")
+	local l = H.lines("[TX][CHECK] AL2-UI.S3LIVE INFO")[1]
+	H.ok(l ~= nil and string.find(l, "DiplomacyActionTypes.ALLY=5", 1, true) and string.find(l, "DB.MakeHash=function", 1, true), l)
+	H.ok(H.hasLine("[TX][CHECK] AL2-G.S3LIVE INFO"))
+	Click("AL4 Alliance deal 1 turn (!)")
+	local hash = string.len("ALLIANCE_RESEARCH") * 1000 + 7
+	H.eq(LastRequest("al4_alliance").params.hash, hash)
+	H.ok(H.hasLine("[TX][SPIKE][AL4] G alliance deal P0->P1 (ALLIANCE_RESEARCH, 1 turn) enact ok=true hash=" .. hash))
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] AL4-UI.S3LIVE.after INFO"))
+	Click("AL6 War/denounce valid? (UI)")
+	l = H.lines("[TX][CHECK] AL6-UI.S3LIVE INFO")[1]
+	H.ok(l ~= nil and string.find(l, "CanDeclareWarOn k->t=", 1, true) and string.find(l, "DIPLOACTION_DENOUNCE=MISSING", 1, true), l)
+	H.ok(string.find(l, "TestAction SET_WAR_STATE=MISSING", 1, true), l)
+	Click("AL7 Vision OFF (all teams!)")
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] AL7off-UI.S3LIVE.after"))
+	Click("AL7 Vision ON (restore)")
+	Frames(1)
+	H.deq(FAKE_DEV.visFlag, { false, true })
+	H.len(H.lines("REFUSED"), 0)
 	NoErrors()
 end)

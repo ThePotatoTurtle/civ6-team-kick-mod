@@ -20,6 +20,12 @@
 --   boostOnCreate (true): creating units can trigger an own-units boost.
 --   sharedBoosts (true): a triggered boost reaches the live teammates.
 --   Teams[t]: the players whose live team is t (nil when none).
+--   AL (TX_Dev 0.0.1.2): FAKE_DEV.SetState(a, b, "DIPLO_STATE_ALLIED") sets a's
+--     state toward b (the leftover state after a split). War wins over it;
+--     MakePeaceWith ends the war and sets UNFRIENDLY both ways (MAKE_PEACE);
+--     SetHasAllied(b, true) sets HasAllied, false is a no-op (EFV T27); an
+--     enacted ALLIANCE deal sets HasAllied and ALLIED both ways;
+--     Game.GetGameDiplomacy():SetAlliesShareVisFlag(v) switches sharedVision.
 -- ===========================================================================
 
 FAKE_DEV = {}
@@ -65,7 +71,8 @@ FAKE_DEV.GAMEINFO = {
 		{ UnitType = "UNIT_GALLEY", Domain = "DOMAIN_SEA" }, { UnitType = "UNIT_TANK", Domain = "DOMAIN_LAND" },
 		{ UnitType = "UNIT_SCOUT", Domain = "DOMAIN_LAND" },
 	} },
-	Civics = { pk = "CivicType", rows = { { CivicType = "CIVIC_CODE_OF_LAWS" }, { CivicType = "CIVIC_EARLY_EMPIRE" } } },
+	Civics = { pk = "CivicType", rows = { { CivicType = "CIVIC_CODE_OF_LAWS" }, { CivicType = "CIVIC_EARLY_EMPIRE" },
+		{ CivicType = "CIVIC_CIVIL_SERVICE" } } },
 	DiplomaticStates = { pk = "StateType", rows = {
 		{ StateType = "DIPLO_STATE_ALLIED" }, { StateType = "DIPLO_STATE_DECLARED_FRIEND" }, { StateType = "DIPLO_STATE_FRIENDLY" },
 		{ StateType = "DIPLO_STATE_NEUTRAL" }, { StateType = "DIPLO_STATE_UNFRIENDLY" }, { StateType = "DIPLO_STATE_DENOUNCED" },
@@ -232,6 +239,7 @@ function Item:SetSubType(s) self.sub = s end
 function Item:SetDuration(d) self.duration = d end
 function Item:SetLocked(v) self.locked = v end
 function Item:SetAmount(a) self.amount = a end
+function Item:SetValueType(v) self.value = v end
 function Item:GetFromPlayerID() return self.from end
 function Item:GetDuration() return self.duration end
 function Item:GetEnactedTurn() return self.enacted end
@@ -283,6 +291,20 @@ local function StateIndex(name)
 	return GameInfo.DiplomaticStates[name].Index
 end
 
+-- AL: explicit per-pair states (a's state toward b).
+function FAKE_DEV.SetState(a, b, name)
+	FAKE_DEV.states[a] = FAKE_DEV.states[a] or {}
+	FAKE_DEV.states[a][b] = name
+end
+
+local function StateTypeOf(pid, other)
+	if FAKE.IsAtWar(pid, other) then return "DIPLO_STATE_WAR" end
+	if FAKE_DEV.states[pid] ~= nil and FAKE_DEV.states[pid][other] ~= nil then return FAKE_DEV.states[pid][other] end
+	if FAKE.PairGet(FAKE.diplo.allied, pid, other) then return "DIPLO_STATE_ALLIED" end
+	if FAKE.PairGet(FAKE.diplo.friend, pid, other) then return "DIPLO_STATE_DECLARED_FRIEND" end
+	return "DIPLO_STATE_NEUTRAL"
+end
+
 local function Attach(pid, p)
 	rawset(p, "GetUnits", function()
 		return {
@@ -327,12 +349,13 @@ local function Attach(pid, p)
 		return {
 			-- p's view of other
 			GetDiplomaticStateIndex = function(_, other)
-				if FAKE.IsAtWar(pid, other) then return StateIndex("DIPLO_STATE_WAR") end
-				if FAKE.PairGet(FAKE.diplo.allied, pid, other) then return StateIndex("DIPLO_STATE_ALLIED") end
-				if FAKE.PairGet(FAKE.diplo.friend, pid, other) then return StateIndex("DIPLO_STATE_DECLARED_FRIEND") end
-				return StateIndex("DIPLO_STATE_NEUTRAL")
+				return StateIndex(StateTypeOf(pid, other))
 			end,
 		}
+	end)
+	-- G: the state as a StateType string (GCO_PlayerScript.lua:1033-1043)
+	rawset(p, "GetAi_Diplomacy", function()
+		return { GetDiplomaticState = function(_, other) return StateTypeOf(pid, other) end }
 	end)
 	local d = p.diplomacy
 	rawset(d, "SetHasMet", function(_, b)
@@ -340,6 +363,15 @@ local function Attach(pid, p)
 	end)
 	rawset(d, "SetHasDeclaredFriendship", function(_, b, v)
 		FAKE.PairSet(FAKE.diplo.friend, pid, b, v)
+	end)
+	rawset(d, "MakePeaceWith", function(_, b)
+		FAKE.SetWar(pid, b, false)
+		FAKE_DEV.SetState(pid, b, "DIPLO_STATE_UNFRIENDLY")
+		FAKE_DEV.SetState(b, pid, "DIPLO_STATE_UNFRIENDLY")
+		FAKE_DEV.peace[#FAKE_DEV.peace + 1] = { a = pid, b = b }
+	end)
+	rawset(d, "SetHasAllied", function(_, b, v)
+		if v then FAKE.PairSet(FAKE.diplo.allied, pid, b, true) end
 	end)
 	rawset(d, "CanDeclareWarOn", function(_, b)
 		local pb = FAKE.players[b]
@@ -359,6 +391,7 @@ function FAKE_DEV.Install(opts)
 	D.visible, D.visCount = {}, {}
 	D.boosts, D.techs, D.civics = {}, {}, {}
 	D.deals, D.working = {}, {}
+	D.states, D.peace, D.visFlag = {}, {}, {}
 	D.sharedVision = opts.sharedVision ~= false
 	D.sharedBoosts = opts.sharedBoosts ~= false
 	D.boostOnCreate = opts.boostOnCreate ~= false
@@ -377,7 +410,9 @@ function FAKE_DEV.Install(opts)
 	DefenseTypes = { DISTRICT_GARRISON = 0, DISTRICT_OUTER = 1 }
 	DealDirection = { OUTGOING = 0, INCOMING = 1 }
 	DealItemTypes = { AGREEMENTS = 1, GOLD = 2 }
-	DealAgreementTypes = { OPEN_BORDERS = 7 }
+	DealAgreementTypes = { OPEN_BORDERS = 7, ALLIANCE = 9 }
+	DiplomacyActionTypes = { SET_WAR_STATE = 3, ALLY = 5 }
+	DB = { MakeHash = function(s) return string.len(s) * 1000 + 7 end }
 	DealItemSubTypes = { NONE = -1 }
 
 	Map = {
@@ -455,6 +490,12 @@ function FAKE_DEV.Install(opts)
 					local receiver = (it.from == a) and b or a
 					FAKE.PairSet(FAKE.diplo.ob, receiver, it.from, true)
 				end
+				if it.type == DealItemTypes.AGREEMENTS and it.sub == DealAgreementTypes.ALLIANCE then
+					FAKE.PairSet(FAKE.diplo.allied, a, b, true)
+					FAKE.PairSet(FAKE.diplo.allied, b, a, true)
+					FAKE_DEV.SetState(a, b, "DIPLO_STATE_ALLIED")
+					FAKE_DEV.SetState(b, a, "DIPLO_STATE_ALLIED")
+				end
 			end
 			D.deals[#D.deals + 1] = w
 		end,
@@ -481,6 +522,12 @@ function FAKE_DEV.Install(opts)
 	Network.GetLocalPlayerID = function() return FAKE.localPlayer end
 	Network.GetGameHostPlayerID = function() return 0 end
 	Game.GetWinningTeam = function() return D.winningTeam, -1 end
+	Game.GetGameDiplomacy = function()
+		return { SetAlliesShareVisFlag = function(_, v)
+			D.visFlag[#D.visFlag + 1] = v
+			D.sharedVision = v == true
+		end }
+	end
 
 	for _, id in ipairs(FAKE.SortedKeys(FAKE.players)) do
 		Attach(id, FAKE.players[id])

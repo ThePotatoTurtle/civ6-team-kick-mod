@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Dev_Lib.lua  (TX_Dev 0.0.1.1, spike kit for Team Expulsion 0.0.1)
+-- TX_Dev_Lib.lua  (TX_Dev 0.0.1.2, spike kit for Team Expulsion 0.0.1)
 -- TX:CONTEXT both
 -- TX:GLOBALS TXD TX_Probe
 --
@@ -29,7 +29,7 @@
 local M = {}
 TXD = M
 
-M.VERSION = "0.0.1.1"
+M.VERSION = "0.0.1.2"
 M.FOR_TX = "0.0.1"
 M.ctx = "?"
 M.roots = {}
@@ -162,6 +162,15 @@ end
 -- Never-call list (R "Never call"). Matched on "root.member" when the root
 -- is a name, and always on the member-only list.
 -- ---------------------------------------------------------------------------
+local function StripModeName(member)
+	local s = member == nil and "nil" or tostring(member)
+	local c = string.sub(s, 1, 1)
+	if c == ":" or c == "." or c == "?" or c == "=" or c == "#" then
+		return string.sub(s, 2)
+	end
+	return s
+end
+
 M.NEVER = {
 	"Game.SetWinningTeam",
 	"GameConfiguration.RemovePlayer",
@@ -173,17 +182,38 @@ M.NEVER = {
 	"Network.JoinGame",
 	"Network.JoinGameByJoinCode",
 	"Network.LeaveGame",
+	-- research/ALLIANCE.md 5: TX opens no diplomacy sessions; SendAction and
+	-- AddCommand have no known argument shape (listing only, MC2 / GED).
+	"DiplomacyManager.SendAction",
+	"DiplomacyManager.AddCommand",
+	"DiplomacyManager.CloseSession",
+	"DiplomacyManager.AddResponse",
+	"DiplomacyManager.AddStatement",
 }
-M.NEVER_MEMBER = { "SetWinningTeam", "SetToDefaults", "SetSlotStatus", "SetMajorCiv" }
+-- SetPermanentAlliance: permanent, no un-setter (PiratesScenario_StartScript.lua:384).
+-- NeverMakePeaceWith: blocks the AL3 exit (PiratesScenario_StartScript.lua:389,395).
+M.NEVER_MEMBER = { "SetWinningTeam", "SetToDefaults", "SetSlotStatus", "SetMajorCiv",
+	"SetPermanentAlliance", "NeverMakePeaceWith" }
 
-local function StripMode(member)
-	local s = M.Str(member)
-	local c = string.sub(s, 1, 1)
-	if c == ":" or c == "." or c == "?" or c == "=" or c == "#" then
-		return string.sub(s, 2)
+-- Gated members: a call (":" or ".") only from a probe whose label starts
+-- with the gate word (research/ALLIANCE.md 5). Existence ("?") is always allowed.
+--   SetAlliesShareVisFlag: global, switches vision off for every real team (AL7 only).
+--   SetHasAllied: no way back once true (EFV Session F T27; AL5 only).
+M.GATED = { SetAlliesShareVisFlag = "AL7", SetHasAllied = "AL5" }
+
+-- nil when the call is allowed, else the gate word it needs.
+function M.GateBlocks(label, member)
+	local gate = M.GATED[StripModeName(member)]
+	if gate == nil then
+		return nil
 	end
-	return s
+	if type(label) == "string" and string.match(label, "^%s*(%S+)") == gate then
+		return nil
+	end
+	return gate
 end
+
+local StripMode = StripModeName
 
 function M.IsNever(rootName, member)
 	if member == nil then
@@ -315,7 +345,7 @@ local function Probe(label, root, sel, member, ...)
 		r.text = desc .. " exists=" .. M.Str(r.exists) .. " ok=" .. tostring(r.ok) .. " ret=(" .. RetText(r) ..
 			") err=" .. (r.err and M.Str(r.err) or "-")
 		if r.refused then
-			r.text = r.text .. " REFUSED never-call"
+			r.text = r.text .. " REFUSED " .. M.Str(r.err)
 		end
 		if type(label) == "string" then
 			local first = string.match(label, "^%s*(%S+)") or "PROBE"
@@ -352,6 +382,14 @@ local function Probe(label, root, sel, member, ...)
 		r.refused = true
 		r.err = "never-call"
 		return Finish()
+	end
+	if mode == ":" or mode == "." then
+		local gate = M.GateBlocks(label, name)
+		if gate ~= nil then
+			r.refused = true
+			r.err = "gated (only from " .. gate .. ")"
+			return Finish()
+		end
 	end
 	local okI, v = pcall(function() return obj[name] end)
 	if not okI then
@@ -992,6 +1030,102 @@ function M.Verdict.V3(phase, members, keeper, target, ownsAll)
 		return "PASS", facts .. " and no victory fired (the target is now a rival)"
 	end
 	return "INFO", facts
+end
+
+-- V3 with two member lists of the winning team: from Teams[team] and from the
+-- config teams (UI). Live, UI Teams[] is stale (Session 1: UI GetTeam stayed 0
+-- until reload) while the config team matches what gameplay reads. When both
+-- lists give the same verdict it stands; otherwise INFO INCONCLUSIVE.
+function M.Verdict.V3Both(phase, members, cfgMembers, keeper, target, ownsAll)
+	local v, t = M.Verdict.V3(phase, members, keeper, target, ownsAll)
+	if type(members) ~= "table" or type(cfgMembers) ~= "table" then
+		return v, t
+	end
+	local v2, t2 = M.Verdict.V3(phase, cfgMembers, keeper, target, ownsAll)
+	local list = {}
+	for _, pid in ipairs(cfgMembers) do
+		list[#list + 1] = M.Str(pid)
+	end
+	local cfgText = "; cfg members={" .. table.concat(list, ",") .. "}"
+	if v == v2 then
+		return v, t .. cfgText
+	end
+	return "INFO", INC .. "Teams[] says " .. v .. ", config teams say " .. v2 .. " (UI Teams[] is stale before a reload); " ..
+		t .. cfgText .. "; Leon: whose name is on the victory screen?"
+end
+
+-- ---------------------------------------------------------------------------
+-- AL: the leftover ALLIED state (research/ALLIANCE.md 5)
+-- ---------------------------------------------------------------------------
+M.ALLIED = "DIPLO_STATE_ALLIED"
+M.WAR = "DIPLO_STATE_WAR"
+
+-- AL<n>-<ctx>.<phase>[.<stage>]; stage: before | after | turn | nil.
+function M.ALId(n, arm, stage)
+	local id = "AL" .. M.Str(n) .. "-" .. M.ctx .. "." .. M.PhaseLabel(arm)
+	if stage ~= nil then
+		id = id .. "." .. M.Str(stage)
+	end
+	return id
+end
+
+-- sTK: the target's state toward the keeper, sKT: the keeper's toward the target
+-- (StateType strings or nil). PASS when neither is ALLIED nor WAR; INFO otherwise
+-- (WAR is no exit: AL3 must end in peace).
+function M.Verdict.AL(phase, sTK, sKT)
+	local facts = "state now target->keeper=" .. M.Str(sTK) .. " keeper->target=" .. M.Str(sKT)
+	if M.IsBase(phase) then
+		return "INFO", facts .. " (before the change: still teammates)"
+	end
+	if sTK == nil or sKT == nil then
+		return "INFO", INC .. "state unreadable; " .. facts
+	end
+	if sTK == M.WAR or sKT == M.WAR then
+		return "INFO", facts .. ": at war (no exit until peace)"
+	end
+	if sTK ~= M.ALLIED and sKT ~= M.ALLIED then
+		return "PASS", facts .. ": no longer ALLIED"
+	end
+	return "INFO", facts .. ": still ALLIED"
+end
+
+-- Short printable form of a value; tables one level deep (plus a count for
+-- nested tables), keys sorted. For probe returns such as TestAction's tResults.
+function M.Brief(v, depth)
+	depth = depth or 2
+	if type(v) ~= "table" then
+		return M.Str(v)
+	end
+	if depth <= 0 then
+		return "{...}"
+	end
+	local parts = {}
+	for _, k in ipairs(M.SortedKeys(v)) do
+		parts[#parts + 1] = M.Str(k) .. "=" .. M.Brief(v[k], depth - 1)
+	end
+	local s = "{" .. table.concat(parts, ",") .. "}"
+	if string.len(s) > 200 then
+		s = string.sub(s, 1, 197) .. "..."
+	end
+	return s
+end
+
+-- All return values of a probe, tables via Brief: "a|b" or the error token.
+function M.Rets(r)
+	if type(r) ~= "table" then
+		return "nil"
+	end
+	if not r.ok or r.mode == "?" then
+		return M.Tok(r)
+	end
+	local parts = {}
+	for i = 1, r.n do
+		parts[i] = M.Brief(r.rets[i])
+	end
+	if #parts == 0 then
+		return "nil"
+	end
+	return table.concat(parts, "|")
 end
 
 -- ---------------------------------------------------------------------------

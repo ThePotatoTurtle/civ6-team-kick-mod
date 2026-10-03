@@ -564,6 +564,24 @@ class TestSummarizeLog(unittest.TestCase):
         self.assertIn("[S2] 1 line(s)", text)
         self.assertIn("[REQ] 1 line(s)", text)
 
+    def test_tx_dev_al_shapes(self):
+        """TX_Dev 0.0.1.2 AL lines: IDs with a stage suffix, one ID per stage, sections AL3 / AL7."""
+        lines = [
+            "TX_Dev_Gameplay: [TX][CHECK] AL0-G.S3RELOAD1 INFO T7 G state now target->keeper=DIPLO_STATE_ALLIED keeper->target=DIPLO_STATE_ALLIED: still ALLIED",
+            "TX_Dev_Gameplay: [TX][CHECK] AL3-G.S3RELOAD1.before INFO T7 G before: state now target->keeper=DIPLO_STATE_ALLIED",
+            "TX_Dev_Gameplay: [TX][CHECK] AL3-G.S3RELOAD1.after PASS T7 G after: state now target->keeper=DIPLO_STATE_UNFRIENDLY",
+            "TX_Dev_Panel: [TX][CHECK] AL3-UI.S3RELOAD1.turn INFO T8 UI turn: state now target->keeper=DIPLO_STATE_ALLIED: still ALLIED",
+            "TX_Dev_Gameplay: [TX][SPIKE][AL3] G PROBE AL3 peace <userdata>:MakePeaceWith(1,true) exists=function ok=true ret=() err=-",
+            "TX_Dev_Gameplay: [TX][SPIKE][AL7] G PROBE AL7 vis <userdata>:SetAlliesShareVisFlag(false) exists=function ok=true ret=() err=-",
+        ]
+        code, text = self.run_lines(lines)
+        self.assertEqual(code, 0, text)
+        self.assertRegex(text, r"AL3-G\.S3RELOAD1\.after +PASS +T7 G after:")
+        self.assertRegex(text, r"AL3-UI\.S3RELOAD1\.turn +INFO +T8 UI turn:")
+        self.assertIn("summarize_log: PASS - 4 check(s)", text)
+        self.assertIn("[AL3] 1 line(s)", text)
+        self.assertIn("[AL7] 1 line(s)", text)
+
     def test_missing_log(self):
         code, text = self.run_log(os.path.join(LOGS, "no_such_Lua.log"))
         self.assertEqual(code, 2)
