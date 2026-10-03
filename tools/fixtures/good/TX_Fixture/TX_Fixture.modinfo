@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fixture mod for tools/test_tools.py: shaped like TX and must pass every check. Not a real mod. -->
+<Mod id="7d0c5f3a-2b1e-4c6d-9a8f-1e2d3c4b5a61" version="1">
+  <Properties>
+    <Name>LOC_TX_MOD_TITLE</Name>
+    <Teaser>LOC_TX_MOD_TEASER</Teaser>
+    <Description>LOC_TX_MOD_DESCRIPTION</Description>
+    <Authors>ThePotatoTurtle</Authors>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <CompatibleVersions>2.0</CompatibleVersions>
+  </Properties>
+  <Dependencies>
+    <Mod id="4873eb62-8ccc-4574-b784-dda455e74e68" title="Expansion: Gathering Storm" />
+  </Dependencies>
+  <ActionCriteria>
+    <Criteria id="TX_XP2">
+      <GameCoreInUse>Expansion2</GameCoreInUse>
+    </Criteria>
+  </ActionCriteria>
+  <InGameActions>
+    <UpdateDatabase id="TX_Data" criteria="TX_XP2">
+      <File>Data/TX_Notifications.sql</File>
+    </UpdateDatabase>
+    <UpdateIcons id="TX_Icons" criteria="TX_XP2">
+      <File>Data/TX_Icons.sql</File>
+    </UpdateIcons>
+    <UpdateText id="TX_Text" criteria="TX_XP2">
+      <File>Data/TX_Text.xml</File>
+    </UpdateText>
+    <ImportFiles id="TX_Imports" criteria="TX_XP2">
+      <File>Scripts/TX_Util.lua</File>
+      <File>Scripts/TX_Rules.lua</File>
+      <File>Scripts/TX_Spike.lua</File>
+      <File>UI/TX_UIShared.lua</File>
+    </ImportFiles>
+    <AddGameplayScripts id="TX_Gameplay" criteria="TX_XP2">
+      <File>Scripts/TX_Gameplay.lua</File>
+    </AddGameplayScripts>
+    <AddUserInterfaces id="TX_UI" criteria="TX_XP2">
+      <Properties>
+        <Context>InGame</Context>
+      </Properties>
+      <File>UI/TX_TeamPanel.xml</File>
+    </AddUserInterfaces>
+    <ReplaceUIScript id="TX_UnitFlags" criteria="TX_XP2">
+      <Properties>
+        <LoadOrder>1000</LoadOrder>
+        <LuaContext>UnitFlagManager</LuaContext>
+        <LuaReplace>UI/TX_UnitFlagManager.lua</LuaReplace>
+      </Properties>
+    </ReplaceUIScript>
+  </InGameActions>
+  <Files>
+    <File>Data/TX_Icons.sql</File>
+    <File>Data/TX_Notifications.sql</File>
+    <File>Data/TX_Text.xml</File>
+    <File>Scripts/TX_Gameplay.lua</File>
+    <File>Scripts/TX_Rules.lua</File>
+    <File>Scripts/TX_Spike.lua</File>
+    <File>Scripts/TX_Util.lua</File>
+    <File>UI/TX_TeamPanel.lua</File>
+    <File>UI/TX_TeamPanel.xml</File>
+    <File>UI/TX_UIShared.lua</File>
+    <File>UI/TX_UnitFlagManager.lua</File>
+  </Files>
+</Mod>

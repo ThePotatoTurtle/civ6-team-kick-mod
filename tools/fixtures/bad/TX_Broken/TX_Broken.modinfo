@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Intentionally broken fixture for tools/test_tools.py. Every problem below must be reported. -->
+<Mod id="5a1d2c3b-0000-4bad-8bad-000000000bad" version="1">
+  <Properties>
+    <Name>LOC_TX_MOD_TITLE</Name>
+    <Description>Broken fixture</Description>
+    <!-- AffectsSavedGames must be 1 -->
+    <AffectsSavedGames>0</AffectsSavedGames>
+  </Properties>
+  <!-- no Gathering Storm dependency -->
+  <Dependencies>
+    <Mod id="1b28771a-c749-434b-9053-d1380c553de9" title="Expansion: Rise and Fall" />
+  </Dependencies>
+  <ActionCriteria>
+    <Criteria id="TX_XP2">
+      <GameCoreInUse>Expansion2</GameCoreInUse>
+    </Criteria>
+  </ActionCriteria>
+  <InGameActions>
+    <UpdateDatabase id="TX_Data" criteria="TX_XP2">
+      <File>Data/TX_Bad.sql</File>
+      <!-- does not exist and is not in Files -->
+      <File>Data/TX_Missing.sql</File>
+    </UpdateDatabase>
+    <UpdateIcons id="TX_Icons" criteria="TX_XP2">
+      <File>Data/TX_Icons.sql</File>
+    </UpdateIcons>
+    <!-- no criteria -->
+    <UpdateText id="TX_Text">
+      <File>Data/TX_Text.xml</File>
+    </UpdateText>
+    <ImportFiles id="TX_Imports" criteria="TX_NOPE">
+      <File>Scripts/TX_Util.lua</File>
+    </ImportFiles>
+    <AddGameplayScripts id="TX_Gameplay" criteria="TX_XP2">
+      <File>Scripts/TX_Gameplay.lua</File>
+      <File>Scripts/TX_Syntax.lua</File>
+      <File>Scripts/TX_Havok.lua</File>
+    </AddGameplayScripts>
+    <!-- duplicate id, no Context -->
+    <AddUserInterfaces id="TX_Gameplay" criteria="TX_XP2">
+      <File>UI/TX_Panel.xml</File>
+    </AddUserInterfaces>
+    <!-- no LuaReplace -->
+    <ReplaceUIScript id="TX_UnitFlags" criteria="TX_XP2">
+      <Properties>
+        <LuaContext>UnitFlagManager</LuaContext>
+      </Properties>
+    </ReplaceUIScript>
+  </InGameActions>
+  <Files>
+    <File>Data/TX_Bad.sql</File>
+    <File>Data/TX_Icons.sql</File>
+    <File>Data/TX_Text.xml</File>
+    <File>Scripts/TX_Util.lua</File>
+    <File>Scripts/TX_Gameplay.lua</File>
+    <File>Scripts/TX_Syntax.lua</File>
+    <File>Scripts/tx_havok.lua</File>
+    <File>UI/TX_Panel.xml</File>
+    <File>UI/TX_Panel.lua</File>
+    <File>UI/TX_Malformed.xml</File>
+    <!-- listed but not on disk -->
+    <File>UI/TX_Gone.lua</File>
+  </Files>
+</Mod>

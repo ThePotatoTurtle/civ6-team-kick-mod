@@ -1,0 +1,15 @@
+[2026-10-03 20:01:00] TX_Dev_Gameplay: [TX][T1][Dev] init: TX_Dev gameplay loaded
+TX_Dev_Panel: [TX][SPIKE] S1 Players[0]: GetTeam
+TX_Dev_Panel: [TX][SPIKE] S1 PlayerConfigurations[0]: GetTeam
+TX_Dev_Panel: [TX][SPIKE] S1 PlayerConfigurations[0]: SetTeam
+TX_Dev_Gameplay: [TX][SPIKE][S1] gameplay context: Players[0]: GetTeam
+TX_Dev_Panel: [TX][SPIKE] S3 before: config team 0, player team 0
+TX_Dev_Panel: [TX][SPIKE] S3 SetTeam(1, 5) ok=true; BroadcastPlayerInfo(1) ok=true
+TX_Dev_Panel: [TX][SPIKE] S3 after: config team 5, player team 0
+TX_Dev_Gameplay: [TX][CHECK] V1 INFO T5 before: P0 team 0, P1 team 0
+TX_Dev_Gameplay: [TX][CHECK] V1 PASS T6 P1 team 5 differs from P0 team 0
+TX_Dev_Gameplay: [TX][CHECK] V6 PASS T6 P2 at war with P0, not with P1
+TX_Dev_Gameplay: [TX][CHECK] V7 INFO T6 P0-P1: peace, no alliance, no open borders
+TX_Dev_Gameplay: [TX][SPIKE] V7 P0-P1 at war=false alliance=false friends=false
+TX_Dev_Gameplay: [TX][SPIKE] V9 deal P1-P2 gold per turn still active
+TX_Dev_Gameplay: [TX][SPIKE] note without a section

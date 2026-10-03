@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GameData>
+	<LocalizedText>
+		<Row Tag="LOC_TX_MOD_TITLE" Language="en_US"><Text>Team Expulsion (fixture)</Text></Row>
+		<Row Tag="LOC_TX_MOD_TEASER" Language="en_US"><Text>Fixture for tools tests.</Text></Row>
+		<Row Tag="LOC_TX_MOD_DESCRIPTION" Language="en_US"><Text>Fixture mod used by tools/test_tools.py. Not a real mod.</Text></Row>
+		<Row Tag="LOC_TX_TEAM_TAB" Language="en_US"><Text>Team</Text></Row>
+		<Row Tag="LOC_TX_EXPEL" Language="en_US"><Text>Expel</Text></Row>
+		<Row Tag="LOC_TX_TURNS_LEFT" Language="en_US"><Text>{1_Num : plural 1?1 turn; other?# turns;} left</Text></Row>
+		<Row Tag="LOC_NOTIFICATION_TX_VOTE_REQUIRED_MESSAGE" Language="en_US"><Text>Vote required</Text></Row>
+		<Row Tag="LOC_NOTIFICATION_TX_VOTE_REQUIRED_SUMMARY" Language="en_US"><Text>{1_Name} wants to expel {2_Target}.</Text></Row>
+		<Row Tag="LOC_NOTIFICATION_TX_EXPELLED_MESSAGE" Language="en_US"><Text>Player expelled</Text></Row>
+		<Row Tag="LOC_NOTIFICATION_TX_EXPELLED_SUMMARY" Language="en_US"><Text>A player left their team.</Text></Row>
+		<Row Tag="LOC_TX_REASON_NOT_HUMAN" Language="en_US"><Text>Only human players can propose.</Text></Row>
+		<Row Tag="LOC_TX_REASON_NOT_TEAMMATE" Language="en_US"><Text>That player is not on your team.</Text></Row>
+	</LocalizedText>
+</GameData>

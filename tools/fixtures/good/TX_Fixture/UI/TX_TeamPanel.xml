@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Context Name="TX_TeamPanel">
+	<Container ID="Main" Anchor="L,T" Size="300,200" Hidden="1">
+		<Label ID="Title" Anchor="L,T" String="LOC_TX_TEAM_TAB"/>
+		<Stack ID="MemberStack" Anchor="L,T" Offset="0,24" StackGrowth="Bottom"/>
+	</Container>
+	<Instance Name="MemberInstance">
+		<Container ID="Root" Size="300,24">
+			<Label ID="MemberLabel" Anchor="L,C" String=""/>
+			<GridButton ID="ExpelButton" Anchor="R,C" Size="80,24" String="LOC_TX_EXPEL"/>
+		</Container>
+	</Instance>
+</Context>

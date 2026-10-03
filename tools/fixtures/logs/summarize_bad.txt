@@ -1,0 +1,9 @@
+TX_Dev_Gameplay: [TX][CHECK] V1 PASS T5 P1 team 5 differs from P0 team 0
+TX_Dev_Gameplay: [TX][CHECK] V1 FAIL T6 after reload: P1 team 0 again
+TX_Dev_Gameplay: [TX][CHECK] V4 CHECK T6 boost sharing: look at P1's tech screen
+TX_Dev_Gameplay: [TX][CHECK] V5 PASS T6 shared vision ended
+TX_Dev_Gameplay: [TX][CHECK] V5 INFO T7 vision counted again
+TX_Dev_Panel: [TX][SPIKE] S2 no engine-level setter found
+Runtime Error: C:/Users/Leon/Documents/My Games/Sid Meier's Civilization VI/Mods/TX_Dev/UI/TX_Dev_Panel.lua:42: attempt to call a nil value
+stack traceback:
+	[C]: in function 'SetTeam'

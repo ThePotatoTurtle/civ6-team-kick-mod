@@ -1,0 +1,6 @@
+[1180.214] [Gameplay] ERROR: table Notifications has no column named NoSuchColumn
+[1180.214] [Gameplay]: In Query - insert into Notifications('NotificationType', 'NoSuchColumn') values (?, ?);
+[1180.214] [Gameplay]: In XMLSerializer while updating table Notifications from file TX_Bad.sql.
+[1180.300] [Gameplay] ERROR: something unrelated in another mod's file Other_Mod.sql
+[1180.400] [Gameplay]: Validating Foreign Key Constraints...
+[1180.401] [Gameplay]: Passed Validation.

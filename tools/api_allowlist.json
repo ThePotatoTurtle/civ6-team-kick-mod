@@ -1,0 +1,4736 @@
+{
+ "_comment": [
+  "TX engine API allowlist, kept by hand (no generator). tools/api_audit.py reads it; check_lua.py reads 'globals' and 'base_includes'.",
+  "Sections: globals (engine global names), static ('Root.Member' / 'Root:Method', wildcards allowed), methods (':Name' without receiver),",
+  "events ('Events.X', 'GameEvents.X', 'LuaEvents.X', wildcards allowed), gameinfo (GameInfo table names), base_includes (base-game include",
+  "name -> globals it defines), forbidden ([{name, why}] extra forbidden identifiers).",
+  "Entry shape: {\"ctx\": {\"G\": {\"level\": \"C\", \"tests\": []}, \"UI\": \"PENDING\"}, \"refs\": [evidence], \"note\": \"...\", \"source\": \"EFV\"|\"TX\", \"only_paths\": [\"TX_Dev/\"]}.",
+  "A context missing from 'ctx' means the call may not be used there (ERROR). 'only_paths' limits a call to files whose path contains one of the strings.",
+  "Status ('level'): C = verified in game. L (likely), NV (new, verify), PENDING and VERIFY are not verified: every use is a WARN and is listed in the checklist.",
+  "Add an entry only with evidence in refs/note: a base-game file:line, a shipped mod, or a spike result (S1..S4, V1..V12).",
+  "Seeded 2026-10-03 from the Expeditionary mod (EFV 1.0.x, source 'EFV'): only calls EFV's own code used (EFV or EFV_Dev), only the contexts where EFV had them at level C, ",
+  "evidence fields kept as EFV wrote them (refs like A47 / U16 / T09 / Session C point into EFV's PLAN and test sessions). GameEvents.EFV_* / LuaEvents.EFV_* became",
+  "GameEvents.TX_* / LuaEvents.TX_*. Calls EFV only allowed in EFV_Dev are limited to TX_Dev/ here. base_includes is copied unchanged (harvested from base-game UI files).",
+  "Spike probes (TX_Probe / Probe calls) are not audited and need no entry; see tools/README.md."
+ ],
+ "globals": {
+  "CityCommandTypes": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U03"
+   ],
+   "source": "EFV"
+  },
+  "CityDestroyDirectives": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U03"
+   ],
+   "source": "EFV"
+  },
+  "CityManager": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A44",
+    "A48",
+    "U03"
+   ],
+   "source": "EFV"
+  },
+  "CityTransferTypes": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A48",
+    "research/phase0_results/SESSION_F_REPORT.md 7.1 (T15 / T16 / T17: 8 transfers in gameplay, KEEP first and without KEEP, a capital with wonders; new city ID, re-fetch by plot)",
+    "research/phase0_results/raw/sessionF_Lua.log:5507-5529, 8696-8789"
+   ],
+   "note": "CONFIRMED-INGAME (Session F T15 / T16). Used by EFV_Entrust (Phase 6).",
+   "source": "EFV"
+  },
+  "ContextPtr": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U07",
+    "U08",
+    "U11"
+   ],
+   "source": "EFV"
+  },
+  "DealAgreementTypes": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A40"
+   ],
+   "source": "EFV"
+  },
+  "DealDirection": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Debug/Diplomacy.ltp:117"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "DealItemTypes": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A40"
+   ],
+   "source": "EFV"
+  },
+  "DealManager": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A40"
+   ],
+   "source": "EFV"
+  },
+  "DefenseTypes": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/PiratesScenario/Scripts/PiratesScenario_StartScript.lua:1342 (gameplay)"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "DirectionTypes": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A12"
+   ],
+   "source": "EFV"
+  },
+  "Events": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A55",
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Game": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [
+      "T03"
+     ]
+    },
+    "UI": {
+     "level": "C",
+     "tests": [
+      "T03"
+     ]
+    }
+   },
+   "refs": [
+    "A04",
+    "A06",
+    "A07",
+    "U01",
+    "U02"
+   ],
+   "source": "EFV"
+  },
+  "GameConfiguration": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A52"
+   ],
+   "source": "EFV"
+  },
+  "GameEvents": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [
+      "T01"
+     ]
+    }
+   },
+   "refs": [
+    "A01",
+    "A02",
+    "A03",
+    "A05",
+    "A35",
+    "A47"
+   ],
+   "source": "EFV"
+  },
+  "GameInfo": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A29",
+    "A51",
+    "A60",
+    "U20"
+   ],
+   "source": "EFV"
+  },
+  "GetUnitFlag": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U14",
+    "UnitFlagManager.lua:1987"
+   ],
+   "source": "EFV"
+  },
+  "InstanceManager": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U12"
+   ],
+   "source": "EFV"
+  },
+  "InterfaceModeTypes": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U22"
+   ],
+   "source": "EFV"
+  },
+  "KeyEvents": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U11"
+   ],
+   "source": "EFV"
+  },
+  "Keys": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U11"
+   ],
+   "source": "EFV"
+  },
+  "Locale": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A54",
+    "U17"
+   ],
+   "source": "EFV"
+  },
+  "LuaEvents": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U05",
+    "U13",
+    "U21"
+   ],
+   "source": "EFV"
+  },
+  "Map": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A08",
+    "A09",
+    "A10",
+    "A11",
+    "A12"
+   ],
+   "source": "EFV"
+  },
+  "MapLayers": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A16"
+   ],
+   "source": "EFV"
+  },
+  "MilitaryFormationTypes": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A33"
+   ],
+   "source": "EFV"
+  },
+  "Modding": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U14"
+   ],
+   "source": "EFV"
+  },
+  "Mouse": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "PLAN 6.1 globals list"
+   ],
+   "source": "EFV"
+  },
+  "NotificationManager": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A53",
+    "U15"
+   ],
+   "source": "EFV"
+  },
+  "ParameterTypes": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A53"
+   ],
+   "source": "EFV"
+  },
+  "PlayerConfigurations": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A62"
+   ],
+   "source": "EFV"
+  },
+  "PlayerManager": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A43"
+   ],
+   "source": "EFV"
+  },
+  "PlayerOperations": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U01"
+   ],
+   "source": "EFV"
+  },
+  "Players": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [
+      "T05",
+      "T07"
+     ]
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A17",
+    "A18",
+    "A20",
+    "A36",
+    "A42",
+    "A45",
+    "A49",
+    "A50",
+    "U04",
+    "U20"
+   ],
+   "source": "EFV"
+  },
+  "PlayersVisibility": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A59",
+    "U06"
+   ],
+   "source": "EFV"
+  },
+  "PopupDialogInGame": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U10"
+   ],
+   "source": "EFV"
+  },
+  "PopupPriority": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": [
+      "T24"
+     ]
+    }
+   },
+   "refs": [
+    "U09"
+   ],
+   "source": "EFV"
+  },
+  "UI": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A58",
+    "U01",
+    "U06",
+    "U18",
+    "U22"
+   ],
+   "note": "bare `UI == nil` context test",
+   "source": "EFV"
+  },
+  "UIManager": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": [
+      "T24"
+     ]
+    }
+   },
+   "refs": [
+    "U09"
+   ],
+   "source": "EFV"
+  },
+  "UnitFlag": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U14"
+   ],
+   "source": "EFV"
+  },
+  "UnitManager": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [
+      "T06",
+      "T07",
+      "T11"
+     ]
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A17",
+    "A19",
+    "A21",
+    "A22",
+    "A34"
+   ],
+   "source": "EFV"
+  },
+  "UnitOperationTypes": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U03"
+   ],
+   "source": "EFV"
+  },
+  "Units": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A15",
+    "A16"
+   ],
+   "source": "EFV"
+  },
+  "WarTypes": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "PLAN 5.0 EFV_Dev war cmd",
+    "NubiaScenario.lua:172"
+   ],
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "include": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A57",
+    "PLAN 3.1 (UI include of EFV_Config/Util/Rules)"
+   ],
+   "source": "EFV"
+  }
+ },
+ "static": {
+  "CityCommandTypes.DESTROY": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U03"
+   ],
+   "source": "EFV"
+  },
+  "CityDestroyDirectives.KEEP": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U03"
+   ],
+   "source": "EFV"
+  },
+  "CityManager.CanStartCommand": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U03"
+   ],
+   "source": "EFV"
+  },
+  "CityManager.GetCity": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A44"
+   ],
+   "source": "EFV"
+  },
+  "CityManager.GetCityAt": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A44"
+   ],
+   "source": "EFV"
+  },
+  "CityManager.GetDistrictAt": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/BlackDeathScenario/Scripts/BlackDeathScenario.lua:437 (CityManager.GetDistrictAt(x, y) in a gameplay script)",
+    "GAME/DLC/PiratesScenario/Scripts/PiratesScenario_StartScript.lua:1342-1343, 1368-1369 (district:GetDamage / GetMaxDamage / SetDamage(DefenseTypes.DISTRICT_OUTER / DISTRICT_GARRISON, v) in a gameplay script)",
+    "GAME/Debug/City.ltp:454-496 (tuner Outer / Garrison Damage)"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "CityManager.RequestCommand": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U03"
+   ],
+   "source": "EFV"
+  },
+  "CityManager.TransferCity": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A48",
+    "research/phase0_results/SESSION_F_REPORT.md 7.1 (T15 / T16 / T17: 8 transfers in gameplay, KEEP first and without KEEP, a capital with wonders; new city ID, re-fetch by plot)",
+    "research/phase0_results/raw/sessionF_Lua.log:5507-5529, 8696-8789"
+   ],
+   "note": "CONFIRMED-INGAME (Session F T15 / T16). Used by EFV_Entrust (Phase 6).",
+   "source": "EFV"
+  },
+  "CityTransferTypes.BY_GIFT": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A48",
+    "research/phase0_results/SESSION_F_REPORT.md 7.1 (T15 / T16 / T17: 8 transfers in gameplay, KEEP first and without KEEP, a capital with wonders; new city ID, re-fetch by plot)",
+    "research/phase0_results/raw/sessionF_Lua.log:5507-5529, 8696-8789"
+   ],
+   "note": "CONFIRMED-INGAME (Session F T15 / T16). Used by EFV_Entrust (Phase 6).",
+   "source": "EFV"
+  },
+  "ContextPtr:BuildInstanceForControl": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U07",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28"
+   ],
+   "source": "EFV"
+  },
+  "ContextPtr:ClearRequestRefresh": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U08",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28"
+   ],
+   "source": "EFV"
+  },
+  "ContextPtr:ClearUpdate": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28"
+   ],
+   "source": "EFV"
+  },
+  "ContextPtr:IsHidden": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28"
+   ],
+   "source": "EFV"
+  },
+  "ContextPtr:LookUpControl": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U07",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28"
+   ],
+   "source": "EFV"
+  },
+  "ContextPtr:RequestRefresh": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U08",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28"
+   ],
+   "source": "EFV"
+  },
+  "ContextPtr:SetHide": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28"
+   ],
+   "source": "EFV"
+  },
+  "ContextPtr:SetInputHandler": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U11",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28"
+   ],
+   "source": "EFV"
+  },
+  "ContextPtr:SetRefreshHandler": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U08",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28"
+   ],
+   "source": "EFV"
+  },
+  "ContextPtr:SetUpdate": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28"
+   ],
+   "source": "EFV"
+  },
+  "DealAgreementTypes.OPEN_BORDERS": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A40"
+   ],
+   "source": "EFV"
+  },
+  "DealDirection.OUTGOING": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Debug/Diplomacy.ltp:115-127 (GameCore_Tuner, gameplay state: ClearWorkingDeal / GetWorkingDeal / AddItemOfType(AGREEMENTS, from) / SetSubType / SetLocked / Validate / EnactWorkingDeal)",
+    "GAME/Base/Assets/UI/DiplomacyActionView.lua:442-448 (same item calls)",
+    "research/phase0_results/SESSION_F_REPORT.md T27 / raw/sessionF_Lua.log:1080-1082 (scripted one-way OPEN_BORDERS deal with SetDuration(30): PASS, found by EFV's deal scan in the right direction)",
+    "Session C: the same deal without SetDuration left nothing in GetPlayerDeals"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "DealItemTypes.AGREEMENTS": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A40"
+   ],
+   "source": "EFV"
+  },
+  "DealManager.ClearWorkingDeal": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Debug/Diplomacy.ltp:115-127 (GameCore_Tuner, gameplay state: ClearWorkingDeal / GetWorkingDeal / AddItemOfType(AGREEMENTS, from) / SetSubType / SetLocked / Validate / EnactWorkingDeal)",
+    "GAME/Base/Assets/UI/DiplomacyActionView.lua:442-448 (same item calls)",
+    "research/phase0_results/SESSION_F_REPORT.md T27 / raw/sessionF_Lua.log:1080-1082 (scripted one-way OPEN_BORDERS deal with SetDuration(30): PASS, found by EFV's deal scan in the right direction)",
+    "Session C: the same deal without SetDuration left nothing in GetPlayerDeals"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "DealManager.EnactWorkingDeal": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Debug/Diplomacy.ltp:115-127 (GameCore_Tuner, gameplay state: ClearWorkingDeal / GetWorkingDeal / AddItemOfType(AGREEMENTS, from) / SetSubType / SetLocked / Validate / EnactWorkingDeal)",
+    "GAME/Base/Assets/UI/DiplomacyActionView.lua:442-448 (same item calls)",
+    "research/phase0_results/SESSION_F_REPORT.md T27 / raw/sessionF_Lua.log:1080-1082 (scripted one-way OPEN_BORDERS deal with SetDuration(30): PASS, found by EFV's deal scan in the right direction)",
+    "Session C: the same deal without SetDuration left nothing in GetPlayerDeals"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "DealManager.GetPlayerDeals": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A40",
+    "Debug/Diplomacy.ltp:360",
+    "Session A T09 (research/phase0_results/T09.log): callable in G (returned nil: no deals existed)"
+   ],
+   "note": "Callable; returns nil when the pair has no active deal. Handle nil.",
+   "source": "EFV"
+  },
+  "DealManager.GetWorkingDeal": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Debug/Diplomacy.ltp:115-127 (GameCore_Tuner, gameplay state: ClearWorkingDeal / GetWorkingDeal / AddItemOfType(AGREEMENTS, from) / SetSubType / SetLocked / Validate / EnactWorkingDeal)",
+    "GAME/Base/Assets/UI/DiplomacyActionView.lua:442-448 (same item calls)",
+    "research/phase0_results/SESSION_F_REPORT.md T27 / raw/sessionF_Lua.log:1080-1082 (scripted one-way OPEN_BORDERS deal with SetDuration(30): PASS, found by EFV's deal scan in the right direction)",
+    "Session C: the same deal without SetDuration left nothing in GetPlayerDeals"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "DefenseTypes.DISTRICT_GARRISON": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/BlackDeathScenario/Scripts/BlackDeathScenario.lua:437 (CityManager.GetDistrictAt(x, y) in a gameplay script)",
+    "GAME/DLC/PiratesScenario/Scripts/PiratesScenario_StartScript.lua:1342-1343, 1368-1369 (district:GetDamage / GetMaxDamage / SetDamage(DefenseTypes.DISTRICT_OUTER / DISTRICT_GARRISON, v) in a gameplay script)",
+    "GAME/Debug/City.ltp:454-496 (tuner Outer / Garrison Damage)"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "DefenseTypes.DISTRICT_OUTER": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/BlackDeathScenario/Scripts/BlackDeathScenario.lua:437 (CityManager.GetDistrictAt(x, y) in a gameplay script)",
+    "GAME/DLC/PiratesScenario/Scripts/PiratesScenario_StartScript.lua:1342-1343, 1368-1369 (district:GetDamage / GetMaxDamage / SetDamage(DefenseTypes.DISTRICT_OUTER / DISTRICT_GARRISON, v) in a gameplay script)",
+    "GAME/Debug/City.ltp:454-496 (tuner Outer / Garrison Damage)"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "DirectionTypes.NUM_DIRECTION_TYPES": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A12"
+   ],
+   "source": "EFV"
+  },
+  "Game.GetCurrentGameTurn": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A04"
+   ],
+   "source": "EFV"
+  },
+  "Game.GetLocalPlayer": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U01",
+    "U02"
+   ],
+   "source": "EFV"
+  },
+  "Game.GetRandNum": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A07"
+   ],
+   "source": "EFV"
+  },
+  "Game:GetProperty": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [
+      "T03"
+     ]
+    },
+    "UI": {
+     "level": "C",
+     "tests": [
+      "T03"
+     ]
+    }
+   },
+   "refs": [
+    "A06"
+   ],
+   "source": "EFV"
+  },
+  "Game:SetProperty": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [
+      "T03"
+     ]
+    }
+   },
+   "refs": [
+    "A06"
+   ],
+   "source": "EFV"
+  },
+  "GameConfiguration.GetGameSpeedType": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A52",
+    "Session A T09 (research/phase0_results/T09.log): AVAILABLE in G -> 327976177; GameInfo.GameSpeeds[hash].CostMultiplier -> 100"
+   ],
+   "source": "EFV"
+  },
+  "GetUnitFlag": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U14"
+   ],
+   "source": "EFV"
+  },
+  "InstanceManager:new": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U12"
+   ],
+   "source": "EFV"
+  },
+  "InterfaceModeTypes.SELECTION": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U22"
+   ],
+   "source": "EFV"
+  },
+  "KeyEvents.KeyUp": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U11"
+   ],
+   "source": "EFV"
+  },
+  "Keys.*": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U11"
+   ],
+   "source": "EFV"
+  },
+  "Keys.VK_ESCAPE": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U11"
+   ],
+   "source": "EFV"
+  },
+  "Locale.Lookup": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A54",
+    "U17"
+   ],
+   "source": "EFV"
+  },
+  "Map.GetAdjacentPlot": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A12"
+   ],
+   "source": "EFV"
+  },
+  "Map.GetGridSize": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A09"
+   ],
+   "source": "EFV"
+  },
+  "Map.GetNeighborPlots": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A11"
+   ],
+   "source": "EFV"
+  },
+  "Map.GetPlot": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A10"
+   ],
+   "source": "EFV"
+  },
+  "Map.GetPlotDistance": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A08"
+   ],
+   "source": "EFV"
+  },
+  "MapLayers.ANY": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A16"
+   ],
+   "source": "EFV"
+  },
+  "MilitaryFormationTypes.CORPS_FORMATION": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/WarMachineScenario/Scripts/WarMachineScenario.lua:190-191 (G: CanFormMilitaryFormation / SetMilitaryFormation(CORPS_FORMATION))",
+    "GAME/Base/Assets/UI/UnitFlagManager.lua:841 (UI)",
+    "SPIKES S6"
+   ],
+   "note": "Enum value; EFV_Dev 'corps' command (D3 merge tests).",
+   "source": "EFV"
+  },
+  "MilitaryFormationTypes.STANDARD_FORMATION": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A33"
+   ],
+   "source": "EFV"
+  },
+  "Modding.IsModActive": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U14"
+   ],
+   "source": "EFV"
+  },
+  "Mouse.*": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "PLAN 6.1 (Mouse.eLClick for RegisterCallback)"
+   ],
+   "source": "EFV"
+  },
+  "NotificationManager.Dismiss": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U15",
+    "Session A T21 (research/phase0_results/T21.log): UI Dismiss works but is deferred (list unchanged immediately, gone later); G Dismiss(25) did not throw, effect not re-checked"
+   ],
+   "note": "UI Dismiss is asynchronous: never re-read the list in the same call to confirm.",
+   "source": "EFV"
+  },
+  "NotificationManager.Find": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U15",
+    "Session A T21 (research/phase0_results/T21.log)"
+   ],
+   "source": "EFV"
+  },
+  "NotificationManager.GetList": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U15",
+    "Session A T21 (research/phase0_results/T21.log): G GetList/Find found the test notification"
+   ],
+   "source": "EFV"
+  },
+  "NotificationManager.SendNotification": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A53"
+   ],
+   "source": "EFV"
+  },
+  "ParameterTypes.LOCATION": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A53"
+   ],
+   "source": "EFV"
+  },
+  "ParameterTypes.MESSAGE": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A53"
+   ],
+   "source": "EFV"
+  },
+  "ParameterTypes.SUMMARY": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A53"
+   ],
+   "source": "EFV"
+  },
+  "PlayerManager.GetAliveIDs": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A43"
+   ],
+   "source": "EFV"
+  },
+  "PlayerManager.GetFreeCitiesPlayerID": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A43"
+   ],
+   "source": "EFV"
+  },
+  "PlayerOperations.EXECUTE_SCRIPT": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U01"
+   ],
+   "source": "EFV"
+  },
+  "PopupDialogInGame:new": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U10"
+   ],
+   "source": "EFV"
+  },
+  "PopupPriority.Medium": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": [
+      "T24"
+     ]
+    }
+   },
+   "refs": [
+    "U09"
+   ],
+   "source": "EFV"
+  },
+  "UI.DeselectAllUnits": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U06"
+   ],
+   "source": "EFV"
+  },
+  "UI.GetColorValueFromHexLiteral": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Base/Assets/UI/Colors.lua:6-17 (every Lua image tint, e.g. METER_HP_GOOD = UI.GetColorValueFromHexLiteral(0xFF4BE810))"
+   ],
+   "note": "0.7.2: flag badge tints (EFV_UnitFlagManager); a raw 0xAABBGGRR literal passed to SetColor drew dark (re-test 0.7 step 3).",
+   "source": "EFV"
+  },
+  "UI.GetHeadSelectedCity": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Base/Assets/UI/ActionPanel.lua:669",
+    "GAME/Base/Assets/UI/WorldInput.lua:2224",
+    "GAME/Base/Assets/UI/WorldView/PlotInfo.lua:57"
+   ],
+   "note": "Base UI selection API; used by EFV_Dev only (EFV itself does not need it).",
+   "source": "EFV"
+  },
+  "UI.GetHeadSelectedUnit": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U06"
+   ],
+   "source": "EFV"
+  },
+  "UI.GetInterfaceMode": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U22"
+   ],
+   "source": "EFV"
+  },
+  "UI.LookAtPlot": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U06"
+   ],
+   "source": "EFV"
+  },
+  "UI.LookAtPlotScreenPosition": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U06"
+   ],
+   "source": "EFV"
+  },
+  "UI.PlaySound": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U18"
+   ],
+   "source": "EFV"
+  },
+  "UI.RequestPlayerOperation": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U01"
+   ],
+   "source": "EFV"
+  },
+  "UI.SelectUnit": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U06"
+   ],
+   "source": "EFV"
+  },
+  "UI.SetInterfaceMode": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U22"
+   ],
+   "source": "EFV"
+  },
+  "UIManager:DequeuePopup": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": [
+      "T24"
+     ]
+    }
+   },
+   "refs": [
+    "U09"
+   ],
+   "source": "EFV"
+  },
+  "UIManager:IsInPopupQueue": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": [
+      "T24"
+     ]
+    }
+   },
+   "refs": [
+    "U09"
+   ],
+   "source": "EFV"
+  },
+  "UIManager:QueuePopup": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": [
+      "T24"
+     ]
+    }
+   },
+   "refs": [
+    "U09"
+   ],
+   "source": "EFV"
+  },
+  "UnitCommandResults.PROMOTIONS": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Base/Assets/UI/Popups/UnitPromotionPopup.lua:285-290 (tResults[UnitCommandResults.PROMOTIONS] = GameInfo.UnitPromotions indexes)",
+    "GAME/Base/Assets/UI/Panels/UnitPanel.lua:437-440"
+   ],
+   "note": "0.7 veteran route B (EFV_VetRestore, INTERFACES note 33).",
+   "source": "EFV"
+  },
+  "UnitCommandTypes.PARAM_PROMOTION_TYPE": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Base/Assets/UI/Popups/UnitPromotionPopup.lua:71"
+   ],
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "UnitCommandTypes.PROMOTE": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Base/Assets/UI/Popups/UnitPromotionPopup.lua:72, :81"
+   ],
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "UnitFlag.UpdateReligion": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U14"
+   ],
+   "source": "EFV"
+  },
+  "UnitManager.CanStartCommand": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Base/Assets/UI/Popups/UnitPromotionPopup.lua:81-82, 285-290 (CanStartCommand(pUnit, UnitCommandTypes.PROMOTE, true, true) -> bCanStart, tResults)",
+    "GAME/Base/Assets/UI/Panels/UnitPanel.lua:437-440"
+   ],
+   "note": "0.7 veteran route B (EFV_VetRestore): which promotions the engine offers now (INTERFACES note 33).",
+   "source": "EFV"
+  },
+  "UnitManager.FinishMoves": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [
+      "T06"
+     ]
+    }
+   },
+   "refs": [
+    "A22"
+   ],
+   "source": "EFV"
+  },
+  "UnitManager.GetUnit": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A17"
+   ],
+   "source": "EFV"
+  },
+  "UnitManager.InitUnit": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A19"
+   ],
+   "source": "EFV"
+  },
+  "UnitManager.Kill": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [
+      "T07"
+     ]
+    }
+   },
+   "refs": [
+    "A21"
+   ],
+   "source": "EFV"
+  },
+  "UnitManager.PlaceUnit": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "DLC/AustraliaScenario/Scripts/AustraliaScenario.lua:854, :886 (UnitManager.PlaceUnit(pUnit, x, y) in a gameplay script)",
+    "research/phase0_results/SESSION_F_REPORT.md 4.3 (T29: keeps the ID, zeroes moves; refused tiles leave the unit in place)"
+   ],
+   "note": "EFV_Dev test tool only (place cmd, Phase 2 tests); EFV itself never teleports units",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "UnitManager.RequestCommand": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Base/Assets/UI/Popups/UnitPromotionPopup.lua:70-72 (the human promotion route)",
+    "spike/EFV_SpikeTest/UI/EFV_SpikeTest_Panel.lua T08G (Session G plan)",
+    "research/final_session/TESTING_FINAL_results.md step 14 (S6: route B keeps the level); EFV_Dev/UI/EFV_Dev_Panel.lua:432-434"
+   ],
+   "note": "PROMOTE only: EFV_Dev S6 and the 0.7 veteran route B (EFV_VetRestore, the owner's own unit, INTERFACES note 33; designer ruling, precedent Entrust's KEEP). EFV issues no other unit command.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "UnitOperationTypes.PARAM_FLAGS": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U03"
+   ],
+   "source": "EFV"
+  },
+  "Units.GetUnitsInPlot": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A15"
+   ],
+   "source": "EFV"
+  },
+  "Units.GetUnitsInPlotLayerID": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A16",
+    "Session A T09 (research/phase0_results/T09.log): exists in G, (plot, 1) form -> table #0"
+   ],
+   "note": "EFV calls the (x, y, MapLayers.ANY) form; that form in G is probed by the Session D T09 re-run.",
+   "source": "EFV"
+  },
+  "WarTypes.FORMAL_WAR": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "PLAN 5.0",
+    "NubiaScenario.lua:172"
+   ],
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "include": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A57",
+    "PLAN 3.1"
+   ],
+   "source": "EFV"
+  }
+ },
+ "methods": {
+  "AddCancelButton": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U10"
+   ],
+   "source": "EFV"
+  },
+  "AddChildAtIndex": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U07",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "AddConfirmButton": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U10"
+   ],
+   "source": "EFV"
+  },
+  "AddItemOfType": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Debug/Diplomacy.ltp:115-127 (GameCore_Tuner, gameplay state: ClearWorkingDeal / GetWorkingDeal / AddItemOfType(AGREEMENTS, from) / SetSubType / SetLocked / Validate / EnactWorkingDeal)",
+    "GAME/Base/Assets/UI/DiplomacyActionView.lua:442-448 (same item calls)",
+    "research/phase0_results/SESSION_F_REPORT.md T27 / raw/sessionF_Lua.log:1080-1082 (scripted one-way OPEN_BORDERS deal with SetDuration(30): PASS, found by EFV's deal scan in the right direction)",
+    "Session C: the same deal without SetDuration left nothing in GetPlayerDeals"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "AddText": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U10"
+   ],
+   "source": "EFV"
+  },
+  "AddTitle": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U10"
+   ],
+   "source": "EFV"
+  },
+  "CalculateInternalSize": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "CalculateSize": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U07",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "CanPromote": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "Session A T09 (research/phase0_results/T09.log): exp:CanPromote() AVAILABLE in G -> false"
+   ],
+   "source": "EFV"
+  },
+  "ChangeAbilityCount": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/PiratesScenario/Scripts/PiratesScenario_UnitCommands.lua:661-662 (pUnit:GetAbility(); pUnitAbility:ChangeAbilityCount(\"ABILITY_SWASHBUCKLER_UNIT_ACTIVE\", 1), gameplay: unit command script)",
+    "GAME/DLC/CivRoyaleScenario/Scripts/CivRoyaleScenario_UnitCommands.lua:53-54 (ChangeAbilityCount(\"ABILITY_MAD_SCIENTISTS_UNIT_SHIELD\", 1))",
+    "GAME/DLC/PiratesScenario/Scripts/PiratesScenario_StartScript.lua:1503, 1516-1518 (pUnit:GetAbility(); GetAbilityCount(name); ChangeAbilityCount(name, -lockCount))",
+    "research/R2_unit_map_apis.md:77 (unit:GetAbility():ChangeAbilityCount / GetAbilityCount: CONFIRMED G)"
+   ],
+   "note": "EFV_Dev 1.0.3.2 only: veteran one-turn restore spike (V button)",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "ChangeDamage": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A25"
+   ],
+   "source": "EFV"
+  },
+  "ChangeExperience": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A26"
+   ],
+   "source": "EFV"
+  },
+  "ChangeGoldBalance": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A49"
+   ],
+   "source": "EFV"
+  },
+  "ChangeMovesRemaining": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/PiratesScenario/Scripts/PiratesScenario_UnitCommands.lua:665-666 (local maxMoves = pUnit:GetMaxMoves(); pUnit:ChangeMovesRemaining(maxMoves): moves for the current turn)",
+    "GAME/DLC/PiratesScenario/Scripts/PiratesScenario_StartScript.lua:1506, 1513, 1525 (ChangeMovesRemaining(extra / -movesRemaining / maxMoves))",
+    "GAME/DLC/CivRoyaleScenario/Scripts/CivRoyaleScenario_UnitCommands.lua:175 (pUnit:ChangeMovesRemaining(-1))",
+    "research/R2_unit_map_apis.md:43 (unit:ChangeMovesRemaining(n): delta, CONFIRMED G); static form UnitManager.ChangeMovesRemaining(unit, n) at AustraliaScenario.lua:918, 1429"
+   ],
+   "note": "EFV_Dev 1.0.3.2 only: veteran one-turn restore spike (V button)",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "ChangeParent": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U07",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "ChangeResourceAmount": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A50",
+    "Session B T14 (research/phase0_results/T14.log, SESSION_B_REPORT 6): +2/-1 exact, -5 clamps at 0, top panel matches"
+   ],
+   "note": "CONFIRMED-INGAME (Session B). The engine clamps at 0; EFV's own floor keeps the [Maint] log exact.",
+   "source": "EFV"
+  },
+  "ChangeVisibilityCount": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/AlexanderScenario/Scripts/AlexanderScenario.lua:59 (PlayersVisibility[p]:ChangeVisibilityCount(plotIndex, 1), AddGameplayScripts)",
+    "GAME/DLC/AustraliaScenario/Scripts/AustraliaScenario.lua:1273, :688 (gameplay)",
+    "GAME/Debug/Map.ltp 'Reveal All' (ChangeVisibilityCount(i, 1))"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "Create": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [
+      "T05"
+     ]
+    }
+   },
+   "refs": [
+    "A18"
+   ],
+   "source": "EFV"
+  },
+  "DeclareWarOn": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "PLAN 5.0 war (NubiaScenario.lua:172)"
+   ],
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "Destroy": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [
+      "T07"
+     ]
+    }
+   },
+   "refs": [
+    "A20"
+   ],
+   "source": "EFV"
+  },
+  "DoAutoSize": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "FindID": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A17",
+    "A45"
+   ],
+   "source": "EFV"
+  },
+  "FindItemByType": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A40",
+    "DiplomacyDealView.lua:1369,1397 (UI, working deals only)",
+    "Session A T09 (research/phase0_results/T09.log): GetPlayerDeals returned nil (no deals), so FindItemByType was never reached",
+    "research/phase0_results/SESSION_D_REPORT.md 2.2: the exact EFV call read 1 while the agreement was active, 0 without (two-way swap)"
+   ],
+   "note": "Confirmed by behaviour (Session D). One-way agreement direction still open (Session F T27).",
+   "source": "EFV"
+  },
+  "GetAbility": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/PiratesScenario/Scripts/PiratesScenario_UnitCommands.lua:661-662 (pUnit:GetAbility(); pUnitAbility:ChangeAbilityCount(\"ABILITY_SWASHBUCKLER_UNIT_ACTIVE\", 1), gameplay: unit command script)",
+    "GAME/DLC/CivRoyaleScenario/Scripts/CivRoyaleScenario_UnitCommands.lua:53-54 (ChangeAbilityCount(\"ABILITY_MAD_SCIENTISTS_UNIT_SHIELD\", 1))",
+    "GAME/DLC/PiratesScenario/Scripts/PiratesScenario_StartScript.lua:1503, 1516-1518 (pUnit:GetAbility(); GetAbilityCount(name); ChangeAbilityCount(name, -lockCount))",
+    "research/R2_unit_map_apis.md:77 (unit:GetAbility():ChangeAbilityCount / GetAbilityCount: CONFIRMED G)"
+   ],
+   "note": "EFV_Dev 1.0.3.2 only: veteran one-turn restore spike (V button)",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "GetAbilityCount": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/PiratesScenario/Scripts/PiratesScenario_UnitCommands.lua:661-662 (pUnit:GetAbility(); pUnitAbility:ChangeAbilityCount(\"ABILITY_SWASHBUCKLER_UNIT_ACTIVE\", 1), gameplay: unit command script)",
+    "GAME/DLC/CivRoyaleScenario/Scripts/CivRoyaleScenario_UnitCommands.lua:53-54 (ChangeAbilityCount(\"ABILITY_MAD_SCIENTISTS_UNIT_SHIELD\", 1))",
+    "GAME/DLC/PiratesScenario/Scripts/PiratesScenario_StartScript.lua:1503, 1516-1518 (pUnit:GetAbility(); GetAbilityCount(name); ChangeAbilityCount(name, -lockCount))",
+    "research/R2_unit_map_apis.md:77 (unit:GetAbility():ChangeAbilityCount / GetAbilityCount: CONFIRMED G)"
+   ],
+   "note": "EFV_Dev 1.0.3.2 only: veteran one-turn restore spike (V button)",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "GetArea": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A14"
+   ],
+   "source": "EFV"
+  },
+  "GetCapitalCity": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A45"
+   ],
+   "source": "EFV"
+  },
+  "GetCities": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A45",
+    "U04"
+   ],
+   "source": "EFV"
+  },
+  "GetCivilizationShortDescription": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A62"
+   ],
+   "source": "EFV"
+  },
+  "GetCivilizationTypeName": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/AustraliaScenario/Scripts/AustraliaScenario.lua:1200 (pPlayerConfig:GetCivilizationTypeName() in a gameplay script), :1389 (GetLeaderTypeName)",
+    "GAME/DLC/CivRoyaleScenario/Scripts/CivRoyaleScenario_Announcer.lua:53"
+   ],
+   "note": "PlayerConfigurations[pid] (receiver cfg): the unit owner's civilization / leader for EFV_UpgradeTargets; pcall-guarded, unreadable -> any unique unit accepted",
+   "source": "EFV"
+  },
+  "GetCulture": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/Indonesia_KhmerScenario/Scripts/IndonesiaKhmerScenario.lua:19 (pPlayer:GetCulture(), AddGameplayScripts)",
+    "GAME/DLC/VikingsScenario/Scripts/VikingScenario.lua:38"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "GetDamage": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A25"
+   ],
+   "source": "EFV"
+  },
+  "GetDiplomacy": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A36"
+   ],
+   "source": "EFV"
+  },
+  "GetDiplomaticAI": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U20"
+   ],
+   "source": "EFV"
+  },
+  "GetDiplomaticStateIndex": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U20"
+   ],
+   "source": "EFV"
+  },
+  "GetDuration": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "research/phase0_results/SESSION_D_REPORT.md 2.2 (T09, sessionD_Lua.log:377: open-borders deal item duration 30)"
+   ],
+   "note": "deal item; G confirmed (Session D). Phase 3 uses it for the open-borders expiry prediction.",
+   "source": "EFV"
+  },
+  "GetEnactedTurn": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "research/phase0_results/SESSION_D_REPORT.md 2.2 (T09, sessionD_Lua.log:377)"
+   ],
+   "note": "deal item; G confirmed (Session D).",
+   "source": "EFV"
+  },
+  "GetExperience": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A26"
+   ],
+   "source": "EFV"
+  },
+  "GetExperienceForNextLevel": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A26"
+   ],
+   "source": "EFV"
+  },
+  "GetExperiencePoints": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A26"
+   ],
+   "source": "EFV"
+  },
+  "GetFromPlayerID": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A40",
+    "DiplomacyDealView.lua:2145 (UI)",
+    "Debug/Diplomacy.ltp:364 (GameCore Tuner)",
+    "research/phase0_results/SESSION_D_REPORT.md 2.2 (items carry their giver)"
+   ],
+   "note": "Confirmed by behaviour (Session D, two-way swap). One-way direction: Session F T27.",
+   "source": "EFV"
+  },
+  "GetGoldBalance": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A49"
+   ],
+   "source": "EFV"
+  },
+  "GetID": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A31",
+    "A46",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "GetIndex": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A10"
+   ],
+   "source": "EFV"
+  },
+  "GetInfluence": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "AlexanderScenario.lua:25 (G)",
+    "UnitFlagManager.lua:749 (UI)",
+    "Session A T09 (research/phase0_results/T09.log)"
+   ],
+   "source": "EFV"
+  },
+  "GetInstance": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U12",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "GetKey": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U11 input handler (harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28)"
+   ],
+   "source": "EFV"
+  },
+  "GetLeaderTypeName": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/AustraliaScenario/Scripts/AustraliaScenario.lua:1200 (pPlayerConfig:GetCivilizationTypeName() in a gameplay script), :1389 (GetLeaderTypeName)",
+    "GAME/DLC/CivRoyaleScenario/Scripts/CivRoyaleScenario_Announcer.lua:53"
+   ],
+   "note": "PlayerConfigurations[pid] (receiver cfg): the unit owner's civilization / leader for EFV_UpgradeTargets; pcall-guarded, unreadable -> any unique unit accepted",
+   "source": "EFV"
+  },
+  "GetLevel": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U19",
+    "Session A T09 (research/phase0_results/T09.log): exp:GetLevel() nil in G"
+   ],
+   "note": "UI-ONLY (confirmed in game).",
+   "source": "EFV"
+  },
+  "GetMaxDamage": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A25"
+   ],
+   "source": "EFV"
+  },
+  "GetMaxMoves": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A23"
+   ],
+   "source": "EFV"
+  },
+  "GetMessageType": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U11 input handler (harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28)"
+   ],
+   "source": "EFV"
+  },
+  "GetMilitaryFormation": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A33"
+   ],
+   "source": "EFV"
+  },
+  "GetMovesRemaining": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A23"
+   ],
+   "source": "EFV"
+  },
+  "GetName": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A46"
+   ],
+   "source": "EFV"
+  },
+  "GetNextCapturedCity": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U04"
+   ],
+   "source": "EFV"
+  },
+  "GetOriginalOwner": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A32",
+    "Session A T09 (research/phase0_results/T09.log): AVAILABLE in G -> 0"
+   ],
+   "source": "EFV"
+  },
+  "GetOwner": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A13",
+    "A31",
+    "A46"
+   ],
+   "source": "EFV"
+  },
+  "GetPlotCount": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A14"
+   ],
+   "source": "EFV"
+  },
+  "GetPromotions": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U19",
+    "Session A T09 (research/phase0_results/T09.log): exp:GetPromotions() nil in G"
+   ],
+   "note": "UI-ONLY (confirmed in game).",
+   "source": "EFV"
+  },
+  "GetReligionType": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Base/Assets/UI/UnitFlagManager.lua:799 (pUnit:GetReligionType() in UpdateReligion)"
+   ],
+   "note": "0.7.2: the flag badge audit skips a real religion tag (EFV_UnitFlagManager).",
+   "source": "EFV"
+  },
+  "GetReligiousStrength": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Base/Assets/UI/UnitFlagManager.lua:800 (pUnit:GetReligiousStrength() in UpdateReligion)"
+   ],
+   "note": "0.7.2: the flag badge audit skips a real religion tag (EFV_UnitFlagManager).",
+   "source": "EFV"
+  },
+  "GetResourceAmount": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A50",
+    "Session A T09 (research/phase0_results/T09.log): GetResourceAmount(RESOURCE_OIL) AVAILABLE in G -> 0"
+   ],
+   "source": "EFV"
+  },
+  "GetResources": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A50",
+    "Session A T09 (research/phase0_results/T09.log): pPlayer:GetResources() works in G"
+   ],
+   "note": "Availability only; ChangeResourceAmount behaviour is T14.",
+   "source": "EFV"
+  },
+  "GetSizeX": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U07",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "GetSuzerain": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "Base/Assets/UI/PartialScreens/CityStates.lua:1454",
+    "Session A T09 (research/phase0_results/T09.log): AVAILABLE in G -> -1"
+   ],
+   "source": "EFV"
+  },
+  "GetTeam": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A42"
+   ],
+   "source": "EFV"
+  },
+  "GetTechs": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/AlexanderScenario/Scripts/AlexanderScenario.lua:38 (Players[0]:GetTechs():SetTech(..., true) in a gameplay script)",
+    "GAME/DLC/AustraliaScenario/Scripts/AustraliaScenario.lua:1368"
+   ],
+   "note": "EFV_Dev S5 upgrade scenario only",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "GetText": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "GetTreasury": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A49"
+   ],
+   "source": "EFV"
+  },
+  "GetType": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A31",
+    "A40",
+    "U15"
+   ],
+   "source": "EFV"
+  },
+  "GetUnit": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U14 (UnitFlag instance: self:GetUnit(), UnitFlagManager.lua:216)"
+   ],
+   "source": "EFV"
+  },
+  "GetUnitCount": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A13"
+   ],
+   "source": "EFV"
+  },
+  "GetUnits": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [
+      "T05",
+      "T07"
+     ]
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A17",
+    "A18",
+    "A20"
+   ],
+   "source": "EFV"
+  },
+  "GetValue": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U15",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "GetVeteranName": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [
+      "T10"
+     ]
+    }
+   },
+   "refs": [
+    "A30"
+   ],
+   "source": "EFV"
+  },
+  "GetX": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A13",
+    "A31",
+    "A46"
+   ],
+   "source": "EFV"
+  },
+  "GetY": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A13",
+    "A31",
+    "A46"
+   ],
+   "source": "EFV"
+  },
+  "HasAllied": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A37",
+    "research/phase0_results/SESSION_E_REPORT.md 6 (UI: allied=err, sessionE_Lua.log:17464)"
+   ],
+   "note": "G only: nil/err in UI (Session E); UI reads GetDiplomaticAI():GetDiplomaticStateIndex. SetHasAllied does not end a war (Session E): test war first.",
+   "source": "EFV"
+  },
+  "HasDeclaredFriendship": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A38",
+    "Session A T09 (research/phase0_results/T09.log): type=function in G, call ok",
+    "research/phase0_results/SESSION_E_REPORT.md 6 (UI: friend=err)"
+   ],
+   "note": "G only: nil/err in UI (Session E, sessionE_Lua.log:17464); availability in G confirmed (Session A T09).",
+   "source": "EFV"
+  },
+  "HasMet": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A41"
+   ],
+   "source": "EFV"
+  },
+  "HasOpenBordersFrom": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A39",
+    "DiplomacyActionView.lua:1429-1433 (UI)",
+    "Session A T09 (research/phase0_results/T09.log): type(diplo.HasOpenBordersFrom)=nil in G, both directions"
+   ],
+   "note": "UI-ONLY. Gameplay must use the open-borders deal scan (A40: DealManager.GetPlayerDeals + AGREEMENTS/OPEN_BORDERS item), being verified with a real agreement in Session D T19.",
+   "source": "EFV"
+  },
+  "HasPromotion": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A27"
+   ],
+   "source": "EFV"
+  },
+  "IsAlive": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A42"
+   ],
+   "source": "EFV"
+  },
+  "IsAtWarWith": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A36"
+   ],
+   "source": "EFV"
+  },
+  "IsBarbarian": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A42"
+   ],
+   "source": "EFV"
+  },
+  "IsControlDown": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U11 input handler (harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28)"
+   ],
+   "source": "EFV"
+  },
+  "IsDisabled": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "IsEmbarked": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A32",
+    "Session A T09 (research/phase0_results/T09.log): AVAILABLE in G -> false"
+   ],
+   "source": "EFV"
+  },
+  "IsFreeCities": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "RazeCity_Expansion2.lua:67",
+    "DLC/Expansion2/UI/CityBanners/CityBannerManager.lua:1502",
+    "Session A T09 (research/phase0_results/T09.log): player:IsFreeCities() nil in G"
+   ],
+   "note": "UI-ONLY. In G compare with PlayerManager.GetFreeCitiesPlayerID() (A43; Session A returned 62).",
+   "source": "EFV"
+  },
+  "IsHidden": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "IsHuman": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A42"
+   ],
+   "source": "EFV"
+  },
+  "IsImpassable": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A13"
+   ],
+   "source": "EFV"
+  },
+  "IsLake": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A13"
+   ],
+   "source": "EFV"
+  },
+  "IsMajor": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A42"
+   ],
+   "source": "EFV"
+  },
+  "IsNaturalWonder": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A13"
+   ],
+   "source": "EFV"
+  },
+  "IsRevealed": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A59"
+   ],
+   "source": "EFV"
+  },
+  "IsShiftDown": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U11 input handler (harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28)"
+   ],
+   "source": "EFV"
+  },
+  "IsVisible": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U06",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "IsWater": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A13"
+   ],
+   "source": "EFV"
+  },
+  "LocalizeAndSetText": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U17"
+   ],
+   "source": "EFV",
+   "note": "Seeded for tools/fixtures."
+  },
+  "Members": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A17",
+    "A45"
+   ],
+   "source": "EFV"
+  },
+  "Open": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U10"
+   ],
+   "source": "EFV"
+  },
+  "RegisterCallback": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "ReprocessAnchoring": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U07",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "ResetInstances": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U12",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "SetAlpha": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "SetCivic": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/Indonesia_KhmerScenario/Scripts/IndonesiaKhmerScenario.lua:31 (pCulture:SetCivic(GameInfo.Civics[\"CIVIC_EARLY_EMPIRE\"].Index, true))",
+    "GAME/DLC/VikingsScenario/Scripts/VikingScenario.lua:38, GAME/DLC/CivRoyaleScenario/Scripts/CivRoyaleScenario_StartScript.lua:328",
+    "GAME/Debug/Player.ltp:198 'Grant All Civics' (GameCore_Tuner)"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "SetColor": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "SetDamage": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A25"
+   ],
+   "source": "EFV"
+  },
+  "SetDisabled": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "SetDuration": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Debug/Diplomacy.ltp:115-127 (GameCore_Tuner, gameplay state: ClearWorkingDeal / GetWorkingDeal / AddItemOfType(AGREEMENTS, from) / SetSubType / SetLocked / Validate / EnactWorkingDeal)",
+    "GAME/Base/Assets/UI/DiplomacyActionView.lua:442-448 (same item calls)",
+    "research/phase0_results/SESSION_F_REPORT.md T27 / raw/sessionF_Lua.log:1080-1082 (scripted one-way OPEN_BORDERS deal with SetDuration(30): PASS, found by EFV's deal scan in the right direction)",
+    "Session C: the same deal without SetDuration left nothing in GetPlayerDeals"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "SetHide": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U07",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "SetIcon": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "SetLocked": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Debug/Diplomacy.ltp:115-127 (GameCore_Tuner, gameplay state: ClearWorkingDeal / GetWorkingDeal / AddItemOfType(AGREEMENTS, from) / SetSubType / SetLocked / Validate / EnactWorkingDeal)",
+    "GAME/Base/Assets/UI/DiplomacyActionView.lua:442-448 (same item calls)",
+    "research/phase0_results/SESSION_F_REPORT.md T27 / raw/sessionF_Lua.log:1080-1082 (scripted one-way OPEN_BORDERS deal with SetDuration(30): PASS, found by EFV's deal scan in the right direction)",
+    "Session C: the same deal without SetDuration left nothing in GetPlayerDeals"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "SetMilitaryFormation": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [
+      "T11"
+     ]
+    }
+   },
+   "refs": [
+    "A34"
+   ],
+   "source": "EFV"
+  },
+  "SetSizeX": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U07",
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "SetSubType": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Debug/Diplomacy.ltp:115-127 (GameCore_Tuner, gameplay state: ClearWorkingDeal / GetWorkingDeal / AddItemOfType(AGREEMENTS, from) / SetSubType / SetLocked / Validate / EnactWorkingDeal)",
+    "GAME/Base/Assets/UI/DiplomacyActionView.lua:442-448 (same item calls)",
+    "research/phase0_results/SESSION_F_REPORT.md T27 / raw/sessionF_Lua.log:1080-1082 (scripted one-way OPEN_BORDERS deal with SetDuration(30): PASS, found by EFV's deal scan in the right direction)",
+    "Session C: the same deal without SetDuration left nothing in GetPlayerDeals"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "SetTech": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/AlexanderScenario/Scripts/AlexanderScenario.lua:38",
+    "GAME/Base/Assets/Scenarios/ColdWarScenario/ColdWarScenario_StartScript.lua:15"
+   ],
+   "note": "EFV_Dev S5 upgrade scenario only",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "SetText": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "SetToolTipString": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "harvested from base-game UI usage (GAME/Base/Assets/UI, DLC/Expansion2/UI; >=3 uses), 2026-09-28 (Controls.X:Method)"
+   ],
+   "source": "EFV"
+  },
+  "SetVeteranName": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [
+      "T10"
+     ]
+    }
+   },
+   "refs": [
+    "A30"
+   ],
+   "source": "EFV"
+  },
+  "Validate": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Debug/Diplomacy.ltp:115-127 (GameCore_Tuner, gameplay state: ClearWorkingDeal / GetWorkingDeal / AddItemOfType(AGREEMENTS, from) / SetSubType / SetLocked / Validate / EnactWorkingDeal)",
+    "GAME/Base/Assets/UI/DiplomacyActionView.lua:442-448 (same item calls)",
+    "research/phase0_results/SESSION_F_REPORT.md T27 / raw/sessionF_Lua.log:1080-1082 (scripted one-way OPEN_BORDERS deal with SetDuration(30): PASS, found by EFV's deal scan in the right direction)",
+    "Session C: the same deal without SetDuration left nothing in GetPlayerDeals"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  }
+ },
+ "events": {
+  "Events.LoadGameViewStateDone": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Events.LocalPlayerChanged": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Events.LocalPlayerTurnEnd": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Events.NotificationAdded": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Events.PlayerDefeat": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A55",
+    "research/phase0_results/SESSION_D_REPORT.md 4 (Babylon, Jerusalem)",
+    "research/phase0_results/raw/sessionE_Lua.log:13114-13117 (city-state 12)"
+   ],
+   "note": "fires in G after Events.PlayerDestroyed, AFTER the eliminated player's units are gone (IsAlive() already false); asynchronous: hint only (DV13)",
+   "source": "EFV"
+  },
+  "Events.PlayerTurnActivated": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Events.UnitAddedToMap": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Events.UnitCommandStarted": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Events.UnitDamageChanged": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Events.UnitFormArmy": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Base/Assets/UI/UnitFlagManager.lua:1825, 2054-2055 (Events.UnitFormArmy.Add, UI)",
+    "research/R2_unit_map_apis.md 119, 268 (fires on the surviving unit, (playerID, unitID))",
+    "research/phase0_results/SESSION_D_REPORT.md 8 (T11): fires for a player merge and for scripted SetMilitaryFormation"
+   ],
+   "note": "EFV_UnitActions uses it only as a UI refresh hint (Phase 5, WP5.4); gameplay detects merges at the turn boundary (MP rule)",
+   "source": "EFV"
+  },
+  "Events.UnitFormCorps": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Base/Assets/UI/UnitFlagManager.lua:1825, 2054-2055 (Events.UnitFormCorps.Add, UI)",
+    "research/R2_unit_map_apis.md 119, 268 (fires on the surviving unit, (playerID, unitID))",
+    "research/phase0_results/SESSION_D_REPORT.md 8 (T11): fires for a player merge and for scripted SetMilitaryFormation"
+   ],
+   "note": "EFV_UnitActions uses it only as a UI refresh hint (Phase 5, WP5.4); gameplay detects merges at the turn boundary (MP rule)",
+   "source": "EFV"
+  },
+  "Events.UnitKilledInCombat": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Base/Assets/UI/DiplomacyRibbon.lua:832 (Events.UnitKilledInCombat.Add)",
+    "GAME/Base/Assets/UI/Panels/NotificationPanel.lua:1777 (.Remove)",
+    "SPIKES.md T22 (fires in G too)"
+   ],
+   "note": "EFV_Dev 0.7.2-dev.1 Badge audit trigger only.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "Events.UnitMoveComplete": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Events.UnitMovementPointsChanged": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Events.UnitMovementPointsCleared": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Events.UnitMovementPointsRestored": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Events.UnitOperationsCleared": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Events.UnitPromoted": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Events.UnitRemovedFromMap": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "Events.UnitSelectionChanged": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U16"
+   ],
+   "source": "EFV"
+  },
+  "GameEvents.CityConquered": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A47"
+   ],
+   "source": "EFV"
+  },
+  "GameEvents.OnCombatOccurred": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A35"
+   ],
+   "source": "EFV"
+  },
+  "GameEvents.OnGameTurnEnded": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "research/phase0_results/SESSION_E_REPORT.md 2 (T26): exactly once in each of 186 complete rounds, after PlayerTurnStartComplete[63] and the engine heal (29/29 heals), arg = ending turn, Game.GetCurrentGameTurn() still the ending turn",
+    "research/phase0_results/raw/sessionE_Lua.log:1019-1021",
+    "INTERFACES.md note 23 (turn boundary: mutiny heal floor)"
+   ],
+   "note": "CONFIRMED-INGAME (Session E T26). Synchronous GameEvent; first gameplay hook after the once-per-round heal.",
+   "source": "EFV"
+  },
+  "GameEvents.OnGameTurnStarted": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A01"
+   ],
+   "source": "EFV"
+  },
+  "GameEvents.PlayerTurnStartComplete": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A02",
+    "research/phase0_results/SESSION_E_REPORT.md 2 (T26): fires for every living player incl. the human (17 per round)"
+   ],
+   "note": "fires for every living player incl. the human (Session E T26)",
+   "source": "EFV"
+  },
+  "GameEvents.PlayerTurnStarted": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "research/phase0_results/raw/sessionC_Lua.log:16 (subscribed), :349 ff. (PlayerTurnStarted(0) and every AI in ID order, Session C T04)",
+    "DLC/AlexanderScenario/Scripts/AlexanderScenario.lua:247 (GameEvents.PlayerTurnStarted.Add)",
+    "INTERFACES.md note 23 (turn-boundary abstraction)",
+    "research/phase0_results/SESSION_E_REPORT.md 2 (T26): fires for every living player incl. the human (17 per round), 186 rounds"
+   ],
+   "note": "fires for every living player incl. the human (Session E T26); no engine heal ever falls inside a PTS -> PTSC window",
+   "source": "EFV"
+  },
+  "GameEvents.TX_*": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [
+      "T01"
+     ]
+    }
+   },
+   "refs": [
+    "A05"
+   ],
+   "source": "EFV",
+   "note": "Renamed from GameEvents.EFV_* (EFV's own request bridge, same mechanism)."
+  },
+  "LuaEvents.DiplomacyActionView_HideIngameUI": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Base/Assets/UI/InGame.lua:371 (LuaEvents.DiplomacyActionView_HideIngameUI.Add)",
+    "GAME/Base/Assets/UI/Menus/InGameTopOptionsMenu.lua:726 (.Add)",
+    "GAME/Base/Assets/UI/DiplomacyActionView.lua:2122 (raised when the leader screen opens)",
+    "PLAN 3.3 / R4 2.2 (picker closes on it)"
+   ],
+   "source": "EFV"
+  },
+  "LuaEvents.LaunchBar_Resize": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U13"
+   ],
+   "source": "EFV"
+  },
+  "LuaEvents.NotificationPanel_OpenRazeCityChooser": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U05"
+   ],
+   "source": "EFV"
+  },
+  "LuaEvents.TX_*": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "U21"
+   ],
+   "source": "EFV",
+   "note": "Renamed from LuaEvents.EFV_* (EFV's own request bridge, same mechanism)."
+  }
+ },
+ "gameinfo": {
+  "Civics": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/Indonesia_KhmerScenario/Scripts/IndonesiaKhmerScenario.lua:31 (GameInfo.Civics[\"CIVIC_EARLY_EMPIRE\"].Index in a gameplay script)"
+   ],
+   "note": "EFV_Dev 0.6.1-dev.1 only: S0 builds the final session from a brand-new game",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "CivilizationTraits": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "DB schema (DebugGameplay.sqlite): UnitReplaces(CivUniqueUnitType, ReplacesUnitType), CivilizationTraits(CivilizationType, TraitType), LeaderTraits(LeaderType, TraitType); GameInfo tables are the same DB in both contexts",
+    "research/phase0_results/SESSION_F_REPORT.md 4.3 (T30: Warrior -> UNIT_MACEDONIAN_HYPASPIST, sessionF_Lua.log:3804)",
+    "GAME/Base/Assets/UI/Civilopedia/CivilopediaPage_Unit.lua:102 (for row in GameInfo.UnitReplaces()), GAME/Base/Assets/UI/Civ6Common.lua:355 (GameInfo.LeaderTraits()), :442 (GameInfo.CivilizationTraits())"
+   ],
+   "note": "civilization -> trait; which unique units an owner can upgrade into (EFV_UpgradeTargets)",
+   "source": "EFV"
+  },
+  "DiplomaticStates": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A51",
+    "U20"
+   ],
+   "source": "EFV"
+  },
+  "GameSpeeds": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A51"
+   ],
+   "source": "EFV"
+  },
+  "GlobalParameters": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A60"
+   ],
+   "source": "EFV"
+  },
+  "LeaderTraits": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "DB schema (DebugGameplay.sqlite): UnitReplaces(CivUniqueUnitType, ReplacesUnitType), CivilizationTraits(CivilizationType, TraitType), LeaderTraits(LeaderType, TraitType); GameInfo tables are the same DB in both contexts",
+    "research/phase0_results/SESSION_F_REPORT.md 4.3 (T30: Warrior -> UNIT_MACEDONIAN_HYPASPIST, sessionF_Lua.log:3804)",
+    "GAME/Base/Assets/UI/Civilopedia/CivilopediaPage_Unit.lua:102 (for row in GameInfo.UnitReplaces()), GAME/Base/Assets/UI/Civ6Common.lua:355 (GameInfo.LeaderTraits()), :442 (GameInfo.CivilizationTraits())"
+   ],
+   "note": "leader -> trait; which unique units an owner can upgrade into (EFV_UpgradeTargets)",
+   "source": "EFV"
+  },
+  "Resources": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A51"
+   ],
+   "source": "EFV"
+  },
+  "Technologies": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/DLC/AlexanderScenario/Scripts/AlexanderScenario.lua:38 (GameInfo.Technologies[\"TECH_SAILING\"].Index in a gameplay script)"
+   ],
+   "note": "EFV_Dev S5: the upgrade target's PrereqTech",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "EFV"
+  },
+  "Types": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A51"
+   ],
+   "source": "EFV"
+  },
+  "UnitPromotions": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A29",
+    "A51"
+   ],
+   "source": "EFV"
+  },
+  "UnitReplaces": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "DB schema (DebugGameplay.sqlite): UnitReplaces(CivUniqueUnitType, ReplacesUnitType), CivilizationTraits(CivilizationType, TraitType), LeaderTraits(LeaderType, TraitType); GameInfo tables are the same DB in both contexts",
+    "research/phase0_results/SESSION_F_REPORT.md 4.3 (T30: Warrior -> UNIT_MACEDONIAN_HYPASPIST, sessionF_Lua.log:3804)",
+    "GAME/Base/Assets/UI/Civilopedia/CivilopediaPage_Unit.lua:102 (for row in GameInfo.UnitReplaces()), GAME/Base/Assets/UI/Civ6Common.lua:355 (GameInfo.LeaderTraits()), :442 (GameInfo.CivilizationTraits())"
+   ],
+   "note": "unique unit -> the unit it replaces; EFV_BaseUnitType / EFV_IsUpgradeOf / EFV_UpgradeTargets (Session F item 3)",
+   "source": "EFV"
+  },
+  "UnitUpgrades": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "GAME/Base/Assets/UI/Civilopedia/CivilopediaPage_Unit.lua:177 (for row in GameInfo.UnitUpgrades())",
+    "DB schema UnitUpgrades(Unit, UpgradeUnit); GameInfo tables are the same DB in both contexts",
+    "INTERFACES.md note 23 (EFV_IsUpgradeOf)"
+   ],
+   "source": "EFV"
+  },
+  "Units": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A51"
+   ],
+   "source": "EFV"
+  },
+  "Units_XP2": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    },
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "A51"
+   ],
+   "source": "EFV"
+  }
+ },
+ "base_includes": {
+  "_comment": "top-level globals defined by base-game UI files (and their includes), harvested 2026-09-28",
+  "InstanceManager": [
+   "GenerationalInstanceManager",
+   "InstanceManager",
+   "PullDownInstanceManager"
+  ],
+  "PopupDialog": [
+   "GenerationalInstanceManager",
+   "InstanceManager",
+   "PopupDialog",
+   "PopupDialogInGame",
+   "PullDownInstanceManager"
+  ],
+  "SupportFunctions": [
+   "Clamp",
+   "DeepCompare",
+   "DeepCopy",
+   "FormatTableAsNewLineString",
+   "FormatTableAsString",
+   "GetIPType",
+   "PolarToCartesian",
+   "PolarToRatioCartesian",
+   "RBGtoHSV",
+   "RandRange",
+   "RandWeight",
+   "RemoveTableEntry",
+   "Round",
+   "ShuffleTable",
+   "SoftRound",
+   "Split",
+   "Triangular",
+   "TruncateSelfWithTooltip",
+   "TruncateString",
+   "TruncateStringByLength",
+   "TruncateStringWithTooltip",
+   "TruncateStringWithTooltipClean",
+   "__genOrderedIndex",
+   "bitNot",
+   "bitsTableToNumber",
+   "lshift",
+   "numberToBitsTable",
+   "orderedNext",
+   "orderedPairs",
+   "rshift"
+  ],
+  "Civ6Common": [
+   "AddBuildingEntertainmentTooltip",
+   "AddBuildingExtraCostTooltip",
+   "AddBuildingYieldTooltip",
+   "AddGovernmentExtraInfoTooltip",
+   "AddProjectStrategicResourceTooltip",
+   "AddReactorProjectData",
+   "AddUnitResourceMaintenanceTooltip",
+   "AddUnitStrategicResourceTooltip",
+   "AutoSizeGridButton",
+   "COLORS",
+   "CanEverUnlock",
+   "DarkenLightenColor",
+   "DifferentiateCiv",
+   "FormatTimeRemaining",
+   "GetCivilizationUniqueTraits",
+   "GetColorPercentString",
+   "GetFilteredUnlockableItems",
+   "GetGreatPersonGenderSuffix",
+   "GetGreatWorksForCity",
+   "GetLeaderUniqueTraits",
+   "GetTopBarHeight",
+   "GetTraitMapForPlayer",
+   "GetUnitIcon",
+   "GetUnitPortraitEraSuffix",
+   "GetUnitPortraitIconNames",
+   "GetUnitPortraitIconNamesFromDefinition",
+   "GetUnitPortraitPrefix",
+   "GetUnitStats",
+   "GetUnlockableItems",
+   "GetUnlockablesForCivic",
+   "GetUnlockablesForTech",
+   "GetYieldString",
+   "GetYieldTextColor",
+   "GetYieldTextIcon",
+   "IsDiplomacyOpen",
+   "IsDiplomacyPending",
+   "IsExpansion1Active",
+   "IsExpansion1Enabled",
+   "IsExpansion2Active",
+   "IsExpansion2Enabled",
+   "IsPlayerCityless",
+   "IsTutorialRunning",
+   "MoveUnitToPlot",
+   "ProductionType",
+   "RGBAValuesToABGRHex",
+   "ReadCustomData",
+   "RemoveReplacedUnlockables",
+   "RequestMoveOperation",
+   "ToolTipHelper",
+   "WriteCustomData",
+   "g_ToolTipGenerators",
+   "toPlusMinusNoneString",
+   "toPlusMinusString"
+  ],
+  "UnitFlagManager": [
+   "ALPHA_DIM",
+   "AddBuildingEntertainmentTooltip",
+   "AddBuildingExtraCostTooltip",
+   "AddBuildingYieldTooltip",
+   "AddGovernmentExtraInfoTooltip",
+   "AddProjectStrategicResourceTooltip",
+   "AddReactorProjectData",
+   "AddUnitResourceMaintenanceTooltip",
+   "AddUnitStrategicResourceTooltip",
+   "AutoSizeGridButton",
+   "COLORS",
+   "COLOR_GREEN",
+   "COLOR_RED",
+   "COLOR_YELLOW",
+   "CanEverUnlock",
+   "CanRangeAttack",
+   "CanSelectUnit",
+   "Clamp",
+   "CreateUnitFlag",
+   "DarkenLightenColor",
+   "DeepCompare",
+   "DeepCopy",
+   "DifferentiateCiv",
+   "FLAGSTATE_EMBARKED",
+   "FLAGSTATE_FORTIFIED",
+   "FLAGSTATE_NORMAL",
+   "FLAGSTYLE_CIVILIAN",
+   "FLAGSTYLE_MILITARY",
+   "FLAGSTYLE_NAVAL",
+   "FLAGSTYLE_RELIGION",
+   "FLAGSTYLE_SUPPORT",
+   "FLAGSTYLE_TRADE",
+   "FLAGTYPE_UNIT",
+   "FormatTableAsNewLineString",
+   "FormatTableAsString",
+   "FormatTimeRemaining",
+   "GenerationalInstanceManager",
+   "GetCityPlotLeftOf",
+   "GetCityPlotRightOf",
+   "GetCivilizationUniqueTraits",
+   "GetColorPercentString",
+   "GetFilteredUnlockableItems",
+   "GetGreatPersonGenderSuffix",
+   "GetGreatWorksForCity",
+   "GetIPType",
+   "GetLeaderUniqueTraits",
+   "GetLevyTurnsRemaining",
+   "GetTopBarHeight",
+   "GetTraitMapForPlayer",
+   "GetUnitFlag",
+   "GetUnitIcon",
+   "GetUnitPortraitEraSuffix",
+   "GetUnitPortraitIconNames",
+   "GetUnitPortraitIconNamesFromDefinition",
+   "GetUnitPortraitPrefix",
+   "GetUnitStats",
+   "GetUnlockableItems",
+   "GetUnlockablesForCivic",
+   "GetUnlockablesForTech",
+   "GetYieldString",
+   "GetYieldTextColor",
+   "GetYieldTextIcon",
+   "HEALTH_PERCENT_BAD",
+   "HEALTH_PERCENT_GOOD",
+   "Initialize",
+   "InstanceManager",
+   "IsDiplomacyOpen",
+   "IsDiplomacyPending",
+   "IsExpansion1Active",
+   "IsExpansion1Enabled",
+   "IsExpansion2Active",
+   "IsExpansion2Enabled",
+   "IsPlayerCityless",
+   "IsTutorialRunning",
+   "LateInitialize",
+   "MoveUnitToPlot",
+   "OnBarbarianSpottedCity",
+   "OnCityVisibilityChanged",
+   "OnCombatVisBegin",
+   "OnCombatVisEnd",
+   "OnEnterFormation",
+   "OnEventPlaybackComplete",
+   "OnInit",
+   "OnLensLayerOff",
+   "OnLensLayerOn",
+   "OnLevyCounterChanged",
+   "OnLocalPlayerChanged",
+   "OnMilitaryFormationChanged",
+   "OnObjectPairingChanged",
+   "OnPlayerConnectChanged",
+   "OnPlayerTurnActivated",
+   "OnShutdown",
+   "OnTutorial_DisableMapSelect",
+   "OnUnitAbilityGained",
+   "OnUnitActivityChanged",
+   "OnUnitAddedToMap",
+   "OnUnitArtifactChanged",
+   "OnUnitCommandStarted",
+   "OnUnitDamageChanged",
+   "OnUnitEmbarkedStateChanged",
+   "OnUnitFlagClick",
+   "OnUnitFortificationChanged",
+   "OnUnitMovementPointsChanged",
+   "OnUnitMovementPointsRestored",
+   "OnUnitPromotionChanged",
+   "OnUnitRemovedFromMap",
+   "OnUnitSelected",
+   "OnUnitSelectionChanged",
+   "OnUnitTeleported",
+   "OnUnitUpgraded",
+   "OnUnitVisibilityChanged",
+   "PolarToCartesian",
+   "PolarToRatioCartesian",
+   "PositionFlagForUnitToView",
+   "PositionFlagsToView",
+   "ProductionType",
+   "PullDownInstanceManager",
+   "RBGtoHSV",
+   "RGBAValuesToABGRHex",
+   "RandRange",
+   "RandWeight",
+   "ReadCustomData",
+   "Refresh",
+   "RegisterDirtyEvents",
+   "RemoveReplacedUnlockables",
+   "RemoveTableEntry",
+   "RequestMoveOperation",
+   "Round",
+   "SetForceHideForID",
+   "ShouldHideFlag",
+   "ShuffleTable",
+   "SoftRound",
+   "Split",
+   "Subscribe",
+   "TEXTURE_BASE",
+   "TEXTURE_CIVILIAN",
+   "TEXTURE_EMBARK",
+   "TEXTURE_FORTIFY",
+   "TEXTURE_NAVAL",
+   "TEXTURE_RELIGION",
+   "TEXTURE_SUPPORT",
+   "TEXTURE_TRADE",
+   "TXT_UNITFLAG_ACTIVITY_AWAKE",
+   "TXT_UNITFLAG_ACTIVITY_HEALING",
+   "TXT_UNITFLAG_ACTIVITY_HOLD",
+   "TXT_UNITFLAG_ACTIVITY_NO_ACTIVITY",
+   "TXT_UNITFLAG_ACTIVITY_ON_INTERCEPT",
+   "TXT_UNITFLAG_ACTIVITY_ON_SENTRY",
+   "TXT_UNITFLAG_ACTIVITY_SLEEP",
+   "TXT_UNITFLAG_ARMADA_SUFFIX",
+   "TXT_UNITFLAG_ARMY_SUFFIX",
+   "TXT_UNITFLAG_CORPS_SUFFIX",
+   "TXT_UNITFLAG_FLEET_SUFFIX",
+   "ToolTipHelper",
+   "Triangular",
+   "TruncateSelfWithTooltip",
+   "TruncateString",
+   "TruncateStringByLength",
+   "TruncateStringWithTooltip",
+   "TruncateStringWithTooltipClean",
+   "UnitFlag",
+   "UnitSimPositionChanged",
+   "Unsubscribe",
+   "UpdateFlagPositions",
+   "UpdateIconStack",
+   "WriteCustomData",
+   "YOFFSET_2DVIEW",
+   "ZOFFSET_3DVIEW",
+   "__genOrderedIndex",
+   "bitNot",
+   "bitsTableToNumber",
+   "g_ToolTipGenerators",
+   "g_UnitsArcheology",
+   "g_UnitsCivilian",
+   "g_UnitsMilitary",
+   "g_UnitsReligious",
+   "lshift",
+   "m_FlagOffsets",
+   "m_LinkOffsets",
+   "numberToBitsTable",
+   "orderedNext",
+   "orderedPairs",
+   "rshift",
+   "toPlusMinusNoneString",
+   "toPlusMinusString"
+  ],
+  "RazeCity": [
+   "Close",
+   "Initialize",
+   "LateInitialize",
+   "OnButton1",
+   "OnButton2",
+   "OnButton3",
+   "OnButton4",
+   "OnClose",
+   "OnInit",
+   "OnInputHandler",
+   "OnOpen",
+   "g_pSelectedCity"
+  ]
+ },
+ "forbidden": []
+}

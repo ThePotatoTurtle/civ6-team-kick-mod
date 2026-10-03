@@ -1,0 +1,3 @@
+TX_Dev_Gameplay: [TX][T1][Dev] init: TX_Dev gameplay loaded
+Runtime Error: C:\Games\Base\Assets\UI\Panels\something unrelated.lua:10: boom
+TX_Dev_Gameplay: [TX][CHECK] V1 PASS T6 P1 team 5 differs from P0 team 0

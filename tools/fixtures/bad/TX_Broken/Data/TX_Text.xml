@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GameData>
+	<LocalizedText>
+		<Row Tag="LOC_TX_MOD_TITLE" Language="en_US"><Text>Broken</Text></Row>
+		<!-- duplicate Tag -> text-duplicate -->
+		<Row Tag="LOC_TX_MOD_TITLE" Language="en_US"><Text>Broken again</Text></Row>
+		<!-- two placeholders, Lua passes one argument -> text-args -->
+		<Row Tag="LOC_TX_TWO_ARGS" Language="en_US"><Text>{1_A} and {2_B}</Text></Row>
+		<Row Tag="LOC_TX_REASON_NOT_HUMAN" Language="en_US"><Text>Not human</Text></Row>
+		<!-- base-game key inserted with Row instead of Replace -> text-collision (localization DB only) -->
+		<Row Tag="LOC_UNIT_WARRIOR_NAME" Language="en_US"><Text>Not a warrior</Text></Row>
+		<!-- malformed plural form -> text-plural (error) -->
+		<Row Tag="LOC_TX_BAD_PLURAL" Language="en_US"><Text>in {1_Num : plural one?turn; many?turns;}</Text></Row>
+		<!-- fixed noun after a number -> text-plural (warn) -->
+		<Row Tag="LOC_TX_FIXED_NOUN" Language="en_US"><Text>in {1_Num} turns</Text></Row>
+		<!-- em dash in player-visible text -> text-dash (error) -->
+		<Row Tag="LOC_TX_REASON_NOT_HUMAN" Language="de_DE"><Text>Kein Mensch — nein</Text></Row>
+		<!-- never referenced -> text-unused (warn) -->
+		<Row Tag="LOC_TX_NEVER_USED" Language="en_US"><Text>unused</Text></Row>
+	</LocalizedText>
+</GameData>
