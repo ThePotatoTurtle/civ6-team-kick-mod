@@ -118,26 +118,28 @@ Continue in the same game after step 10 (or load `TX_s3r1`). Only if V1 passed a
 11. Press V6 Other declares war on keeper. End turn. Skip V4 Boost: its control failed in step 5.
     - Why: V6, is war still shared?
     - Expect: `V6 PASS`: P2 at war with P0, P1 not at war with anyone. FAIL means war is still shared and the split is only a label.
-    - Result: WE WERE ALLIED SOMEHOW WHEN I LOADED TX_s3r1 (NOT THE SAME TEAM, BUT THE IN GAME ALLIANCE FUNCTION), but since it was an offensive war by player 0, player 1 DID NOT automatically join (in fact, he still haven't even MET P3). I reloaded TX_s3r1 to make sure--same result. Reloaded TX_s3 and we were already allied by then. Realoded TX_baseline (while we were still TEAMMATES) and we were still already allied then. This muddles the result.
+    - Result: WE WERE ALLIED SOMEHOW WHEN I LOADED TX_s3r1 (NOT THE SAME TEAM, BUT THE IN GAME ALLIANCE FUNCTION), but since it was an offensive war by player 0, player 1 DID NOT automatically join (in fact, he still haven't even MET P3). I reloaded TX_s3r1 to make sure--same result. Reloaded TX_s3 and we were already allied by then. Realoded TX_baseline (while we were still TEAMMATES) and we were still already allied then. This muddles the result. Anyways result after clicking button is: P0 at war with P2 and P3; T1 not at war, didnt even meet P3 yet. `V6-G.S3RELOAD2 PASS`: war matrix 0-2 and 0-3 yes (P3 joined its intact team, the control), 1-2 and 1-3 no.
     - Note: the alliance doesn't muddle V6. The engine already kept teammates in `DIPLO_STATE_ALLIED` at BASE (V7), and the split leaves that state in place, so it now shows as an alliance. A base-game alliance never joins wars on its own (its description: allies can't declare war on each other, get open borders, and get a casus belli if an ally loses a city; only a Defensive Pact declares war automatically). Teammates share every war, whoever declared it. So P1 staying out of the war means war is no longer shared. The log line `V6-G.*` and the `[DIPLO]` line say who declared.
 12. Press V8 War allowed?, then as P0 open diplomacy with P1.
     - Why: V8, and what the game now thinks P0 and P1 are to each other.
     - Expect: write down the relationship the screen shows (allied, friends, something else) and whether war is offered.
-    - Result:
+    - Result: I ended turn for everyone once before this step. Relationship with P1 shows allied (as we know). `V8-UI`: `CanDeclareWarOn` false both ways.
 13. Press V3 Domination: keeper. As P0, take both enemy capitals with the Tanks. End turn.
     - Why: V3, shared victory. This is the core promise.
     - Expect: no victory screen, because P1 still holds its own capital as a rival. A victory that names P1 too means the core promise fails.
-    - Result:
+    - Result: P3 got defeat screen. P0 no victory screen. Domination victory says P1 has 2 capitals captured, P2 has 0 capitals captured. (Reading: hotseat names players from 1, so "P1" here is Player 1 = slot P0 and "P2" is slot P1. Captures are not pooled and no team victory fired: PASS, pending Leon's confirmation of the names.)
 14. Load `TX_s3r1` and end turn once.
     - Why: V11, the second reload. The reload count is stored in the save, so loading `TX_s3` again would only give `S3RELOAD1` again.
     - Expect: the `S3RELOAD2` lines match `RELOAD1`.
-    - Result:
+    - Result: "S3RELOAD2" after ending turn once. Every RELOAD2 verdict matches RELOAD1 (V1, V9, V10 PASS, V5 FAIL).
 15. Skip: S2 found no setter. (Only if S2 listed a setter: load `TX_baseline`, press S1 Team map, S1 Dump (UI) and S2 Probe setters again, pick the setter, press S2 CALL selected setter (!), then Snapshot now, save `TX_s2`, reload, end turn.)
     - Why: Mode A.
     - Expect: -
     - Result: skipped, no setter.
 
 Then quit to the desktop and send Lua.log.
+
+Summary of 1b: war is no longer shared (V6 PASS, with P3 joining its own intact team as the control), no shared domination victory (V3 PASS), and everything holds after a second reload (V11 PASS). Vision is still shared and P0 and P1 stay allied with no way to declare war on each other (V5 FAIL, V7, V8). Hotseat result: Mode B works. Open: the leftover alliance, whether war and victory already split live before the reload, and network MP (Session 2).
 
 ## Session 2: network MP (about 20 min)
 
