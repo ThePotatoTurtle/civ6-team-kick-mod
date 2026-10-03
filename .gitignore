@@ -1,0 +1,28 @@
+# Internal design and research docs (not public)
+PLAN.md
+SPIKES.md
+SPIKE_RESULTS.md
+DECISIONS.md
+FUTURE.md
+INTERFACES.md
+FIXPLAN_*.md
+TESTING_*.md
+research/
+spike/
+TX/INTERFACES.md
+TX/TESTING_*.md
+
+# Local tooling state
+.claude/
+__pycache__/
+*.pyc
+*.log
+
+# Generated from the local game database (Firaxis data, not redistributed)
+tests/offline/data/gameinfo_data.lua
+
+# Steam Workshop drafts (local only)
+workshop/
+
+# Release packages (built locally, attached to GitHub releases)
+dist/
