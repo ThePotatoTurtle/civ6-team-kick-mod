@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Mod id="813c09c2-7476-4882-b8d6-7a0708b0891d" version="1">
+  <Properties>
+    <Name>Team Expulsion Dev Tools (testing only) v0.0.1.1</Name>
+    <Teaser>Spike panel for Team Expulsion. Not for normal play.</Teaser>
+    <Description>Version 0.0.1.1 (Team Expulsion 0.0.1 spike).[NEWLINE][NEWLINE]Developer panel for the Team Expulsion feasibility spike: API discovery, team setter probes, config team change and checklist snapshots. Open it with Ctrl+Shift+D or the DEV button. Writes to Lua.log. Needs no other mod. Never enable it in a real game.</Description>
+    <Authors>ThePotatoTurtle</Authors>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <CompatibleVersions>2.0</CompatibleVersions>
+  </Properties>
+  <Dependencies>
+    <Mod id="4873eb62-8ccc-4574-b784-dda455e74e68" title="Expansion: Gathering Storm"/>
+  </Dependencies>
+  <ActionCriteria>
+    <Criteria id="TX_DEV_XP2"><GameCoreInUse>Expansion2</GameCoreInUse></Criteria>
+  </ActionCriteria>
+  <InGameActions>
+    <ImportFiles id="TX_DEV_Imports" criteria="TX_DEV_XP2">
+      <File>Scripts/TX_Dev_Lib.lua</File>
+    </ImportFiles>
+    <AddGameplayScripts id="TX_DEV_Gameplay" criteria="TX_DEV_XP2">
+      <Properties><LoadOrder>14000</LoadOrder></Properties>
+      <File>Scripts/TX_Dev_Gameplay.lua</File>
+    </AddGameplayScripts>
+    <AddUserInterfaces id="TX_DEV_UI" criteria="TX_DEV_XP2">
+      <Properties><Context>InGame</Context><LoadOrder>14000</LoadOrder></Properties>
+      <File>UI/TX_Dev_Panel.xml</File>
+    </AddUserInterfaces>
+  </InGameActions>
+  <Files>
+    <File>Scripts/TX_Dev_Lib.lua</File>
+    <File>Scripts/TX_Dev_Gameplay.lua</File>
+    <File>UI/TX_Dev_Panel.xml</File>
+    <File>UI/TX_Dev_Panel.lua</File>
+  </Files>
+</Mod>

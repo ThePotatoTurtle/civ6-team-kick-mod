@@ -10,7 +10,9 @@ Allowlist:
                               Levels: C = verified in game. L (likely), NV (new, verify), PENDING and
                               VERIFY are not verified yet: every use prints a WARN and goes on the
                               checklist printed at the end. "only_paths": ["TX_Dev/"] limits a call to
-                              files whose path contains one of the strings (dev-only calls).
+                              files whose path contains one of the strings (dev-only calls). A context
+                              entry may carry its own "only_paths" (and "source", "refs"): it then
+                              limits only that context, e.g. a TX_Dev G context added to a UI entry.
 
 Per Lua file the context is G (gameplay), UI or both (shared), from the modinfo actions + include graph
 (fallback: Scripts/ = G, UI/ = UI, TX_Config/TX_Util/TX_Rules = both; a "-- TX:CONTEXT G|UI|both" comment
@@ -249,11 +251,16 @@ class Auditor:
             self.rep.error(f, line, "api-context", "%s '%s' used in %s context; allowlist permits: %s (refs %s)" % (
                 kind, key, ctx, allowed, ",".join(entry.get("refs", [])) or "-"))
             return
+        # a context added to an existing entry may carry its own only_paths (e.g. a TX_Dev-only G context)
+        if c.get("only_paths") and not any(s.lower() in f.replace("\\", "/").lower() for s in c["only_paths"]):
+            self.rep.error(f, line, "api-scope", "%s '%s' in %s is allowed only in %s" % (kind, key, ctx, ", ".join(c["only_paths"])))
+            return
         lvl, tests = c["level"], c.get("tests", [])
         if lvl != "C":
             desc = LEVEL_DESC.get(lvl, lvl)
+            refs = c.get("refs") or entry.get("refs", [])
             self.rep.warn(f, line, "api-unverified", "%s '%s' in %s is %s, not verified in game%s (refs %s)" % (
-                kind, key, ctx, desc, (" [" + ",".join(tests) + "]") if tests else "", ",".join(entry.get("refs", [])) or "-"))
+                kind, key, ctx, desc, (" [" + ",".join(tests) + "]") if tests else "", ",".join(refs) or "-"))
             self.checklist.setdefault((kind, key, ctx, desc, tuple(tests)), []).append((f, line))
 
     def audit(self):

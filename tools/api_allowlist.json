@@ -11,7 +11,8 @@
   "Seeded 2026-10-03 from the Expeditionary mod (EFV 1.0.x, source 'EFV'): only calls EFV's own code used (EFV or EFV_Dev), only the contexts where EFV had them at level C, ",
   "evidence fields kept as EFV wrote them (refs like A47 / U16 / T09 / Session C point into EFV's PLAN and test sessions). GameEvents.EFV_* / LuaEvents.EFV_* became",
   "GameEvents.TX_* / LuaEvents.TX_*. Calls EFV only allowed in EFV_Dev are limited to TX_Dev/ here. base_includes is copied unchanged (harvested from base-game UI files).",
-  "Spike probes (TX_Probe / Probe calls) are not audited and need no entry; see tools/README.md."
+  "Spike probes (TX_Probe / Probe calls) are not audited and need no entry; see tools/README.md.",
+  "A context may carry its own \"only_paths\", \"source\", \"refs\" and \"note\": then it is limited on its own. TX_Dev contexts added to EFV entries use this (e.g. PlayerConfigurations G: NV, TX_Dev/ only)."
  ],
  "globals": {
   "CityCommandTypes": {
@@ -118,6 +119,18 @@
     "G": {
      "level": "C",
      "tests": []
+    },
+    "UI": {
+     "level": "L",
+     "tests": [],
+     "only_paths": [
+      "TX_Dev/"
+     ],
+     "source": "TX",
+     "refs": [
+      "ReportScreen.lua:368 (DealItemTypes.GOLD in the UI, R D)"
+     ],
+     "note": "TX_Dev V9: GPT deal read in the UI."
     }
    },
    "refs": [
@@ -130,6 +143,18 @@
     "G": {
      "level": "C",
      "tests": []
+    },
+    "UI": {
+     "level": "L",
+     "tests": [],
+     "only_paths": [
+      "TX_Dev/"
+     ],
+     "source": "TX",
+     "refs": [
+      "ReportScreen.lua:363 (DealManager.GetPlayerDeals in the UI, R D)"
+     ],
+     "note": "TX_Dev V9: GPT deal read in the UI."
     }
    },
    "refs": [
@@ -211,6 +236,18 @@
     "UI": {
      "level": "C",
      "tests": []
+    },
+    "G": {
+     "level": "NV",
+     "tests": [],
+     "only_paths": [
+      "TX_Dev/"
+     ],
+     "source": "TX",
+     "refs": [
+      "R A2: MC2 + GED G listing (GetValue, IsAnyMultiplayer, IsNetworkMultiplayer, ...)"
+     ],
+     "note": "TX_Dev spike kit 0.0.1.1 (PLAN I.11): referenced so the probe resolver (TXD.SetRoots) can reach it; every call on it goes through TX_Probe. S1 dump and S2 manager setters."
     }
    },
    "refs": [
@@ -454,6 +491,19 @@
     "UI": {
      "level": "C",
      "tests": []
+    },
+    "G": {
+     "level": "NV",
+     "tests": [],
+     "only_paths": [
+      "TX_Dev/"
+     ],
+     "source": "TX",
+     "refs": [
+      "R A2: MC2 lists a read-only G PlayerConfiguration; GED G dump",
+      "R A1: PlayerConfigurations[i]:GetTeam is UNV in G (probe only)"
+     ],
+     "note": "TX_Dev spike kit 0.0.1.1 (PLAN I.11): referenced so the probe resolver (TXD.SetRoots) can reach it; every call on it goes through TX_Probe. S1/S4: does G read the config team?"
     }
    },
    "refs": [
@@ -522,6 +572,20 @@
     "UI": {
      "level": "C",
      "tests": []
+    },
+    "G": {
+     "level": "NV",
+     "tests": [],
+     "only_paths": [
+      "TX_Dev/"
+     ],
+     "source": "TX",
+     "refs": [
+      "EFV_Dev_Gameplay.lua:900-918 RevealCity (ChangeVisibilityCount in G)",
+      "AlexanderScenario.lua:59 (gameplay)",
+      "EFV allowlist: G NV (T09+)"
+     ],
+     "note": "TX_Dev V3 setup reveals the enemy capitals (ChangeVisibilityCount, AL G:C TX_Dev); V5 G read is a probe."
     }
    },
    "refs": [
@@ -684,6 +748,91 @@
     "PLAN 3.1 (UI include of EFV_Config/Util/Rules)"
    ],
    "source": "EFV"
+  },
+  "Teams": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    },
+    "G": {
+     "level": "NV",
+     "tests": []
+    }
+   },
+   "refs": [
+    "R A1: #Teams[t] LeaderIcon.lua:143, DiplomacyActionView.lua:1569; ipairs(Teams[t]) WorldRankings.lua:1361, EndGameMenu.lua:908-913 (BASE24, in-game UI)",
+    "G: no shipped gameplay use (R A1 UNV); S1 dump target"
+   ],
+   "note": "TX_Dev: UI team map (#Teams[t]), V1/V2 snapshot, TeamVictory members. G only through the probe resolver (S1, S2 Teams[t] setters).",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "Network": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    },
+    "G": {
+     "level": "NV",
+     "tests": []
+    }
+   },
+   "refs": [
+    "WorldInput.lua:1250-1256 (Network.BroadcastPlayerInfo in the in-game UI, R A2/E)",
+    "InGameTopOptionsMenu.lua:366, ChatPanel.lua:64 (Network.IsGameHost, BASE24 UI)",
+    "G: none (R A2: Network is UI-only); S1 dump target"
+   ],
+   "note": "TX_Dev spike kit 0.0.1.1 (PLAN I.11): referenced so the probe resolver (TXD.SetRoots) can reach it; every call on it goes through TX_Probe. S3 broadcast and the host flags of Machine().",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "DiplomacyManager": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    },
+    "G": {
+     "level": "NV",
+     "tests": []
+    }
+   },
+   "refs": [
+    "DiplomacyActionView.lua:412 (BASE24 UI)",
+    "G: S1 dump target only"
+   ],
+   "note": "TX_Dev spike kit 0.0.1.1 (PLAN I.11): referenced so the probe resolver (TXD.SetRoots) can reach it; every call on it goes through TX_Probe. S1 dump root only.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "DealItemSubTypes": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    },
+    "G": {
+     "level": "NV",
+     "tests": []
+    }
+   },
+   "refs": [
+    "ReportScreen.lua:368 (DealItemSubTypes.NONE in the UI, R D)",
+    "G: read only as '=NONE' through TX_Probe (V9 GPT deal scan)"
+   ],
+   "note": "TX_Dev V9: GPT deal read (UI direct, G probe).",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
   }
  },
  "static": {
@@ -1023,6 +1172,18 @@
     "G": {
      "level": "C",
      "tests": []
+    },
+    "UI": {
+     "level": "L",
+     "tests": [],
+     "only_paths": [
+      "TX_Dev/"
+     ],
+     "source": "TX",
+     "refs": [
+      "R D: ReportScreen.lua:363 (UI)"
+     ],
+     "note": "TX_Dev V9: GPT deal read in the UI."
     }
    },
    "refs": [
@@ -1995,6 +2156,102 @@
     "PLAN 3.1"
    ],
    "source": "EFV"
+  },
+  "GameConfiguration.GetTeamPlayerCount": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "R A1: PlayerTargetLogic.lua:61 (BASE24 in-game UI); StagingRoom.lua:452-453, 1913 (FE)"
+   ],
+   "note": "TX_Dev S1 team map and S3 re-read. The two-argument form is a probe (PLAN Appendix A).",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "GameConfiguration.GetTeamName": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "R A1: WorldRankings.lua:841, 1357 (BASE24 UI)"
+   ],
+   "note": "TX_Dev V2 hint.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "GameConfiguration.IsHotseat": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "R E: EndGameMenu.lua:257 (BASE24 UI, one of 66 shipped UI uses)"
+   ],
+   "note": "TX_Dev Machine() and the arm's hotseat flag.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "Game.GetWinningTeam": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "R A1: EndGameMenu.lua:462, 1074 (BASE24 UI; returns teamID, victoryType)"
+   ],
+   "note": "TX_Dev V3 snapshot.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "DealItemTypes.GOLD": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "R D: ReportScreen.lua:368 (UI)"
+   ],
+   "note": "TX_Dev V9 GPT read in the UI; in G it is read through TX_Probe.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "DealItemSubTypes.NONE": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "R D: ReportScreen.lua:368 (UI)"
+   ],
+   "note": "TX_Dev V9 GPT read in the UI; in G it is read through TX_Probe.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
   }
  },
  "methods": {
@@ -2980,6 +3237,19 @@
     "G": {
      "level": "C",
      "tests": []
+    },
+    "UI": {
+     "level": "L",
+     "tests": [],
+     "only_paths": [
+      "TX_Dev/"
+     ],
+     "source": "TX",
+     "refs": [
+      "WorldRankings.lua:1326, 1540 (research/basefiles/base_2024-07, UI)",
+      "R D: TechBoostsPanel.lua:91"
+     ],
+     "note": "TX_Dev V4 boost check in the UI."
     }
    },
    "refs": [
@@ -3791,6 +4061,90 @@
     "TX_Dev/"
    ],
    "source": "EFV"
+  },
+  "SetHasMet": {
+   "ctx": {
+    "G": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "PiratesScenario_StartScript.lua:382, CivRoyaleScenario_StartScript.lua:319 (gameplay)",
+    "AlexanderScenario.lua:13-15 (EFV_Dev notes :854-856)",
+    "EFV_Dev MeetPair (EFV_Dev_Gameplay.lua:643-646), called through a string there"
+   ],
+   "note": "TX_Dev MeetPair before the V6 war, V9 deals and V10 friendship.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "SetHasDeclaredFriendship": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "EFV Session F T27: works at once both ways (EFV_Dev_Gameplay.lua:874-875 notes; EFV_Dev SetDiploPair :247-252)"
+   ],
+   "note": "TX_Dev V10 setup.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "HasBoostBeenTriggered": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "R D: TechBoostsPanel.lua:91 (UI); MC2 G+UI listing",
+    "G: probe only (GED 2016 G list lacks it)"
+   ],
+   "note": "TX_Dev V4 boost check and the V4 Boost tech pick.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "HasTech": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "R D: TechBoostsPanel.lua:91 (UI)",
+    "NotificationPanel_CQUI.lua:51 (research/basefiles/mod_examples, UI)"
+   ],
+   "note": "TX_Dev V4 Boost tech pick (no tech either player already has).",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
+  },
+  "FindItemsByType": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "R D: ReportScreen.lua:368 pDeal:FindItemsByType(DealItemTypes.GOLD, DealItemSubTypes.NONE, a) (UI)"
+   ],
+   "note": "TX_Dev V9 GPT read in the UI.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
   }
  },
  "events": {
@@ -4196,6 +4550,22 @@
    ],
    "source": "EFV",
    "note": "Renamed from LuaEvents.EFV_* (EFV's own request bridge, same mechanism)."
+  },
+  "Events.TeamVictory": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "R A1: EndGameMenu.lua:1039 OnTeamVictory(team, victory, eventID), :1345 Events.TeamVictory.Add (BASE24 UI)"
+   ],
+   "note": "TX_Dev V3: which team won, and with whom.",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
   }
  },
  "gameinfo": {
@@ -4315,6 +4685,18 @@
     "G": {
      "level": "C",
      "tests": []
+    },
+    "UI": {
+     "level": "L",
+     "tests": [],
+     "only_paths": [
+      "TX_Dev/"
+     ],
+     "source": "TX",
+     "refs": [
+      "WorldRankings.lua:1331, 1545 (research/basefiles/base_2024-07, UI)"
+     ],
+     "note": "TX_Dev V4: tech index of a boost row."
     }
    },
    "refs": [
@@ -4427,6 +4809,27 @@
     "A51"
    ],
    "source": "EFV"
+  },
+  "Boosts": {
+   "ctx": {
+    "G": {
+     "level": "L",
+     "tests": []
+    },
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "Technologies.xml:469-516 Boosts rows (BOOST_TRIGGER_OWN_X_UNITS_OF_TYPE, Unit1Type, NumItems)",
+    "CivicBoostsPanel.lua:57 GameInfo.Boosts() (UI)"
+   ],
+   "note": "TX_Dev V4: the own-units boost rows (Machinery: 3 Archers, Metal Casting: 2 Crossbowmen).",
+   "only_paths": [
+    "TX_Dev/"
+   ],
+   "source": "TX"
   }
  },
  "base_includes": {

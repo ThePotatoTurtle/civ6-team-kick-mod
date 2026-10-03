@@ -328,7 +328,8 @@ function H.errorLines()
 	local out = {}
 	for i = (FAKE.bodyStart or 0) + 1, #FAKE.log do
 		local l = FAKE.log[i]
-		if string.find(l, "%]%[[^%]]+%] ERROR ") or string.find(l, "Runtime Error", 1, true) then
+		if string.find(l, "%]%[[^%]]+%] ERROR ") or string.find(l, "%]%[[^%]]+%] G ERROR ")
+				or string.find(l, "%]%[[^%]]+%] UI ERROR ") or string.find(l, "Runtime Error", 1, true) then
 			out[#out + 1] = l
 		end
 	end

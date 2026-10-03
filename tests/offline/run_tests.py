@@ -352,7 +352,8 @@ SKIP_RE = re.compile(r"^(?:[^\n]*?: )?SKIP (.*)", re.S)
 
 
 def error_lines(lines):
-    return [ln for ln in lines if re.search(r"\]\[[^\]]+\] ERROR ", ln) or "Runtime Error" in ln]
+    # "[TX][X] ERROR ..." and the TX_Dev shape "[TX][SPIKE][X] G|UI ERROR ..."
+    return [ln for ln in lines if re.search(r"\]\[[^\]]+\] (?:(?:G|UI) )?ERROR ", ln) or "Runtime Error" in ln]
 
 
 def run_one(env, rel, name):

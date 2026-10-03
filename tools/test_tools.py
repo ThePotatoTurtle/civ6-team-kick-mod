@@ -313,8 +313,12 @@ class TestApiAudit(FakeDBCase):
                 self.assertTrue(ent["refs"] or ent.get("note"), "evidence for %s" % key)
                 for ctx, v in ent["ctx"].items():
                     self.assertIn(v["level"], api_audit.LEVEL_DESC, "%s %s: unknown level" % (key, ctx))
-                    if ent.get("source") == "EFV":
+                    src = v.get("source", ent.get("source"))
+                    self.assertIn(src, ("EFV", "TX"), "%s %s needs a source" % (key, ctx))
+                    if src == "EFV":
                         self.assertEqual(v["level"], "C", "%s %s: the EFV seed is verified in game" % (key, ctx))
+                    else:
+                        self.assertTrue(v.get("refs") or ent["refs"], "evidence for %s %s" % (key, ctx))
                 if ent.get("source") == "EFV":
                     for p in ent.get("only_paths", []):
                         self.assertEqual(p, "TX_Dev/", key)
@@ -388,6 +392,30 @@ class TestApiAudit(FakeDBCase):
             self.assertEqual(rep.count("ERROR"), 0, [vars(f) for f in rep.items])
             rep, _ = api_audit.audit(os.path.join(tmp, "TX"), db=NO_DB)
             self.assertIn(("TX_Place.lua", 2, "api-scope"), found(rep, "ERROR"))
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_only_paths_per_context(self):
+        """A context added to an entry can be limited on its own (PlayerConfigurations: UI everywhere, G in TX_Dev/ only)."""
+        tmp = tempfile.mkdtemp()
+        try:
+            data = json.loads(Path(api_audit.ALLOWLIST_PATH).read_text(encoding="utf-8"))
+            data["globals"]["PlayerConfigurations"]["ctx"]["G"] = {"level": "NV", "tests": [], "only_paths": ["TX_Dev/"], "source": "TX"}
+            path = os.path.join(tmp, "allowlist.json")
+            Path(path).write_text(json.dumps(data), encoding="utf-8")
+            for folder in ("TX", "TX_Dev"):
+                d = Path(tmp) / folder / "Scripts"
+                d.mkdir(parents=True)
+                (d / "TX_Cfg.lua").write_text("local c = PlayerConfigurations[0]\n", encoding="utf-8")
+                u = Path(tmp) / folder / "UI"
+                u.mkdir(parents=True)
+                (u / "TX_CfgPanel.lua").write_text("local c = PlayerConfigurations[0]\n", encoding="utf-8")
+            rep, _ = api_audit.audit(os.path.join(tmp, "TX_Dev"), allowlist=path, db=NO_DB)
+            self.assertEqual(rep.count("ERROR"), 0, [vars(f) for f in rep.items])
+            self.assertIn(("TX_Cfg.lua", 1, "api-unverified"), found(rep, "WARN"))
+            rep, _ = api_audit.audit(os.path.join(tmp, "TX"), allowlist=path, db=NO_DB)
+            self.assertIn(("TX_Cfg.lua", 1, "api-scope"), found(rep, "ERROR"))
+            self.assertNotIn(("TX_CfgPanel.lua", 1, "api-scope"), found(rep, "ERROR"))
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
@@ -513,6 +541,28 @@ class TestSummarizeLog(unittest.TestCase):
         self.assertNotIn("key 3\n", text)
         code, text = self.run_lines(lines, "--max-lines", "5", "-v")
         self.assertIn("key 3\n", text)
+
+    def test_tx_dev_shapes(self):
+        """The TX_Dev spike kit shapes (PLAN I.2): IDs with context and phase, bracket sections incl. S3b."""
+        lines = [
+            "TX_Dev_Gameplay: [TX][CHECK] V1-G.BASE INFO T5 G target team 0, keeper team 0 (before the change)",
+            "TX_Dev_Gameplay: [TX][CHECK] V1-G.S3LIVE FAIL T5 G target team 0, keeper team 0: still the same team",
+            "TX_Dev_Gameplay: [TX][CHECK] V1-G.S3RELOAD1 PASS T6 G target team 2, keeper team 0: they differ",
+            "TX_Dev_Panel: [TX][CHECK] V5-UI.S3RELOAD1 PASS T6 UI keeper sees=yes target sees=no",
+            "TX_Dev_Panel: [TX][CHECK] V5-UI.S3RELOAD1 INFO T6 UI INCONCLUSIVE: visibility unreadable",
+            "TX_Dev_Gameplay: [TX][SPIKE][S3b] G team changed outside the panel (lobby?): P1 team 0 -> 2",
+            "TX_Dev_Panel: [TX][SPIKE][S2] UI PROBE S2 exist Players[1]?SetTeam exists=nil ok=true ret=() err=-",
+            "TX_Dev_Gameplay: [TX][SPIKE][REQ] G got arm from P0 stamp=5001",
+        ]
+        code, text = self.run_lines(lines)
+        self.assertEqual(code, 1, text)   # V1-G.S3LIVE ends in FAIL
+        self.assertRegex(text, r"V1-G\.S3LIVE +FAIL ")
+        self.assertRegex(text, r"V1-G\.S3RELOAD1 +PASS +T6 G target team 2")
+        self.assertRegex(text, r"V5-UI\.S3RELOAD1 +PASS +T6 UI keeper sees=yes target sees=no  \(\+1 earlier\)")
+        self.assertIn("[S3b] 1 line(s)", text)
+        self.assertIn("    G team changed outside the panel", text)
+        self.assertIn("[S2] 1 line(s)", text)
+        self.assertIn("[REQ] 1 line(s)", text)
 
     def test_missing_log(self):
         code, text = self.run_log(os.path.join(LOGS, "no_such_Lua.log"))
