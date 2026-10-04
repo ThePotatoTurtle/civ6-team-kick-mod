@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ======================================================================
+     TX_VotePopup (AddUserInterfaces, Context InGame; PLAN II.11b). Modal
+     popup (UIManager:QueuePopup, PopupPriority.Medium) for one team vote.
+     Shape copied from EFV/UI/EFV_DestinationPicker.xml:17-39 (works in
+     game): PopupRoot is a dim full-screen Box that consumes the mouse,
+     a DropShadow2 grid around a WindowFrameTitle grid with a WindowHeader
+     title and a CloseButtonLarge. BodyLabel = LOC_TX_POPUP_TEXT (set in Lua,
+     BodyTextDark16 as EFV_DestinationPicker.xml:23; WrapWidth as
+     TX_Dev_Panel.xml:18). YesButton / NoButton / LaterButton are GridButtons
+     with Style="MainButton" (EFV_EntrustPopup.xml:21) in a Bottom stack
+     (EFV_EntrustPopup.xml:20).
+     PopupRoot starts Hidden="1" so a Lua load failure can never leave a
+     full-screen mouse-consuming box on screen (EFV_DestinationPicker.xml:13-15).
+     ====================================================================== -->
+<Context Name="TX_VotePopup">
+	<Box ID="PopupRoot" Size="parent,parent" Color="0,0,0,150" ConsumeMouse="1" Hidden="1">
+		<Grid Anchor="C,C" Size="560,360" Style="DropShadow2" AutoSizePadding="25,25" ConsumeMouse="1">
+			<Grid ID="PopupWindow" Anchor="C,C" Size="540,340" Style="WindowFrameTitle">
+				<Label ID="PopupTitle" Style="WindowHeader" Anchor="C,T" Offset="0,12" String="{LOC_TX_POPUP_TITLE:upper}"/>
+				<Button ID="CloseButton" Anchor="R,T" Style="CloseButtonLarge" Offset="-8,-5"/>
+				<Label ID="BodyLabel" Anchor="L,T" Offset="22,56" Style="BodyTextDark16" WrapWidth="496"/>
+				<Stack ID="ButtonStack" Anchor="C,B" Offset="0,24" StackGrowth="Bottom" StackPadding="6">
+					<GridButton ID="YesButton" Size="400,41" Style="MainButton" String="LOC_TX_POPUP_YES"/>
+					<GridButton ID="NoButton" Size="400,41" Style="MainButton" String="LOC_TX_POPUP_NO"/>
+					<GridButton ID="LaterButton" Size="400,41" Style="MainButton" String="LOC_TX_POPUP_LATER"/>
+				</Stack>
+			</Grid>
+		</Grid>
+	</Box>
+</Context>

@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Team Expulsion 0.1.0 (PLAN II.1). Ids, criteria and action shapes as EFV/EFV.modinfo:1-147.
      Built in chunks (PLAN II.16): chunk A has the data and the shared modules,
-     chunk B the gameplay modules and AddGameplayScripts; chunks C and D add the
-     AddUserInterfaces contexts. -->
+     chunk B the gameplay modules and AddGameplayScripts; chunk C the UI module
+     and the TX_UI AddUserInterfaces action (Team window, vote popup); chunk D
+     adds the third context. -->
 <Mod id="9ce6ba3f-a24c-48f3-b642-516121a95502" version="1">
 	<Properties>
 		<Name>LOC_TX_MOD_TITLE</Name>
@@ -42,11 +43,21 @@
 			<File>Scripts/TX_Store.lua</File>
 			<File>Scripts/TX_Notify.lua</File>
 			<File>Scripts/TX_Apply.lua</File>
+			<File>UI/TX_UIShared.lua</File>
 		</ImportFiles>
 		<!-- Gameplay entry point: owns all TX state (PLAN II.8). -->
 		<AddGameplayScripts id="TX_Gameplay" criteria="TX_XP2">
 			<File>Scripts/TX_Gameplay.lua</File>
 		</AddGameplayScripts>
+		<!-- UI contexts (PLAN II.11): launch-bar Team button and window, vote popup.
+		     No LoadOrder; they talk through LuaEvents.TX_* after LoadGameViewStateDone. -->
+		<AddUserInterfaces id="TX_UI" criteria="TX_XP2">
+			<Properties>
+				<Context>InGame</Context>
+			</Properties>
+			<File>UI/TX_TeamWindow.xml</File>
+			<File>UI/TX_VotePopup.xml</File>
+		</AddUserInterfaces>
 	</InGameActions>
 
 	<!-- Mod browser text (front end). These keys are defined only here, not in
@@ -74,5 +85,10 @@
 		<File>Scripts/TX_Notify.lua</File>
 		<File>Scripts/TX_Apply.lua</File>
 		<File>Scripts/TX_Gameplay.lua</File>
+		<File>UI/TX_UIShared.lua</File>
+		<File>UI/TX_TeamWindow.xml</File>
+		<File>UI/TX_TeamWindow.lua</File>
+		<File>UI/TX_VotePopup.xml</File>
+		<File>UI/TX_VotePopup.lua</File>
 	</Files>
 </Mod>

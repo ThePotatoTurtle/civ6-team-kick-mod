@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ======================================================================
+     TX_TeamWindow (AddUserInterfaces, Context InGame; PLAN II.11a).
+     * TX_LaunchBarItem / TX_LaunchBarPin: the launch-bar "Team" button,
+       built into /InGame/LaunchBar/ButtonStack on LoadGameViewStateDone.
+       Copied from EFV/UI/EFV_Tracker.xml:118-127 (LaunchBarItem,
+       LaunchBarPinInstance; works in game) and TX_Dev/UI/TX_Dev_Panel.xml:56-63;
+       the label text is LOC_TX_LAUNCH_LABEL instead of "VEF" / "DEV".
+     * TeamPanel: the Team window, the EFV TrackerPanel shape
+       (EFV_Tracker.xml:50-53: Container + WindowFrameTitle Grid, WindowHeader
+       title, CloseButtonLarge), 640x560:
+         MembersStack   one TX_MemberRow per living major of the local team
+         VoteSection    VoteLabel, VoterStack (TX_VoterRow), VoteButton
+         HistoryScroll  HistoryStack (TX_HistoryRow), HistoryEmptyLabel
+       Text on the light body: BodyTextDark14 / 16 (EFV_Tracker.xml:57, 98).
+       Section stack and wrap width as TX_Dev_Panel.xml:12, 18 (StackPadding,
+       WrapWidth); scroll panel and bar as EFV_DestinationPicker.xml:25-28.
+     * TX_MemberRow: Image Portrait 45x45 Texture="Leaders45" (BASE24
+       Instances/LeaderIcon.xml:36; same shape as WorldRankings.xml:575,
+       research/basefiles), NameLabel, GridButton KickButton with
+       Style="MainButton" (EFV_EntrustPopup.xml:21, 26; disabled with a
+       reason tooltip there too).
+     * TX_HistoryRow: a GridButton Style="ButtonControl" row carrying the
+       tooltip (EFV_Tracker.xml:104-114).
+     Everything starts Hidden="1" (EFV_DestinationPicker.xml:13-15); the Lua
+     un-hides the context in Initialize and toggles TeamPanel only.
+     ====================================================================== -->
+<Context Name="TX_TeamWindow">
+	<Container ID="TeamPanel" Anchor="C,C" Size="640,560" Hidden="1" ConsumeMouse="1">
+		<Grid ID="TeamWindowFrame" Anchor="C,C" Size="640,560" Style="WindowFrameTitle">
+			<Label ID="WindowTitle" Style="WindowHeader" Anchor="C,T" Offset="0,12" String="{LOC_TX_WINDOW_TITLE:upper}"/>
+			<Button ID="CloseButton" Anchor="R,T" Style="CloseButtonLarge" Offset="-8,-5"/>
+			<Stack ID="MainStack" Anchor="L,T" Offset="22,50" StackGrowth="Bottom" StackPadding="6">
+				<Label ID="MembersHeader" Anchor="L,T" Style="BodyTextDark16" String="LOC_TX_SECTION_MEMBERS"/>
+				<Stack ID="MembersStack" Anchor="L,T" StackGrowth="Bottom" StackPadding="4"/>
+				<Label ID="VoteHeader" Anchor="L,T" Style="BodyTextDark16" String="LOC_TX_SECTION_VOTE"/>
+				<Stack ID="VoteSection" Anchor="L,T" StackGrowth="Bottom" StackPadding="4">
+					<Label ID="VoteLabel" Anchor="L,T" Style="BodyTextDark14" WrapWidth="596"/>
+					<Stack ID="VoterStack" Anchor="L,T" StackGrowth="Bottom" StackPadding="2"/>
+					<GridButton ID="VoteButton" Size="200,41" Style="MainButton" String="LOC_TX_VOTE_BUTTON" Hidden="1"/>
+				</Stack>
+				<Label ID="HistoryHeader" Anchor="L,T" Style="BodyTextDark16" String="LOC_TX_SECTION_HISTORY"/>
+				<Container ID="HistoryArea" Size="596,130">
+					<ScrollPanel ID="HistoryScroll" Anchor="L,T" Size="596,130" Vertical="1" AutoScrollBar="1">
+						<Stack ID="HistoryStack" StackGrowth="Bottom" Padding="2"/>
+						<ScrollBar Anchor="R,T" Style="Slider_Light" Size="11,parent"/>
+					</ScrollPanel>
+					<Label ID="HistoryEmptyLabel" Anchor="L,T" Offset="10,4" Style="BodyTextDark14" String="LOC_TX_HISTORY_EMPTY" Hidden="1"/>
+				</Container>
+			</Stack>
+		</Grid>
+	</Container>
+
+	<Instance Name="TX_MemberRow">
+		<Container ID="MemberRoot" Size="596,47">
+			<Image ID="Portrait" Anchor="L,C" Size="45,45" Texture="Leaders45"/>
+			<Label ID="NameLabel" Anchor="L,C" Offset="55,0" Style="BodyTextDark14" TruncateWidth="380"/>
+			<GridButton ID="KickButton" Anchor="R,C" Size="140,41" Style="MainButton" String="LOC_TX_KICK"/>
+		</Container>
+	</Instance>
+
+	<Instance Name="TX_VoterRow">
+		<Container ID="VoterRoot" Size="596,22">
+			<Label ID="VoterLabel" Anchor="L,C" Offset="12,0" Style="BodyTextDark14" TruncateWidth="570"/>
+		</Container>
+	</Instance>
+
+	<Instance Name="TX_HistoryRow">
+		<GridButton ID="HistoryButton" Size="580,28" Style="ButtonControl">
+			<Label ID="HistoryLabel" Anchor="L,C" Offset="10,0" Style="FontNormal14" TruncateWidth="560"/>
+		</GridButton>
+	</Instance>
+
+	<!-- Launch bar button (built into /InGame/LaunchBar/ButtonStack); EFV_Tracker.xml:118-127 -->
+	<Instance Name="TX_LaunchBarItem">
+		<Button ID="LaunchItemButton" Anchor="L,C" Size="49,49" Texture="LaunchBar_Hook_GreatPeopleButton" Style="ButtonNormalText" TextureOffset="0,-1" StateOffsetIncrement="0,49" ToolTip="LOC_TX_LAUNCH_TT">
+			<Label ID="LaunchItemLabel" Anchor="C,C" Offset="0,1" Style="FontNormal14" Color="255,230,160,255" String="LOC_TX_LAUNCH_LABEL"/>
+			<Label ID="AlertIndicator" String="[ICON_New]" Anchor="R,T" AnchorSide="O,O" Offset="-18,-18" Hidden="1"/>
+		</Button>
+	</Instance>
+
+	<Instance Name="TX_LaunchBarPin">
+		<Image ID="Pin" Anchor="L,C" Offset="0,-2" Size="7,7" Texture="LaunchBar_TrackPip" Color="255,255,255,200"/>
+	</Instance>
+</Context>
