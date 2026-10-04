@@ -154,75 +154,77 @@ Summary: before a reload the base UI breaks (`LeaderIcon.lua:143`, clicking P1's
 
 ## Session 3 (hotseat, new game)
 
-TX_Dev 0.0.1.3. Leon's order for ending the leftover alliance: a clean break, then a real alliance that truly ends, then war and peace as the last resort.
+Done 2026-10-04. TX_Dev 0.0.1.3. Leon's order for ending the leftover alliance: a clean break, then a real alliance that truly ends, then war and peace as the last resort.
 
 **a) Setup**
 
 1. Setup as Session 1: Hotseat, GS rules, Tiny, Quick. P0, P1, P2 human, P3 AI. Teams {P0,P1} {P2,P3}. Found capitals, end turns to turn 3.
 2. As P0: S1 Team map. Q Setup Session 2. End turn (all). Arm BASE + snapshot. Save as `TX3_base`.
    - Expect: New team filled (10), phase BASE.
-   - Result:
+   - Result: New team filled (10), phase BASE.
 3. S3 Set Target's team. Save as `TX3_split`. Load `TX3_split`.
    - Expect: phase S3RELOAD1, `V1-*.S3RELOAD1 PASS`.
-   - Result:
+   - Result: phase S3RELOAD1
 
 **b) Vision tests.** For each of VIS1, VIS2, VIS3: load `TX3_split`, V5 Marker (keeper), end turn (all), AL0, the VIS button, end turn (all), AL0. As P1, also look at P0's land.
 
 4. VIS1 Remove outgoing vis (!).
    - Expect: `VIS1-*.after` or `.turn` PASS: P1 no longer sees P0's marker and far city.
-   - Result:
+   - Result: as P1, still see P0's lands. (Log: `RemoveOutgoingVisibility` returned false both ways: nothing to remove.)
 5. VIS2 Recheck visibility (!).
    - Expect: write down what P1 sees.
-   - Result:
+   - Result: P1 still sees P0's lands and units
 6. VIS3 SetVisibilityOn 0 (!).
    - Expect: write down what P1 sees.
-   - Result:
+   - Result: P1 still sees P0's lands and units
 
 **c) Clean break probes.** Each: load `TX3_split`, AL0, the button, end turn (all), AL0. Look at the diplomacy screen and the ribbon.
 
 7. AL8 Unmeet both ways (!).
    - Expect: while P0 and P1 are unmet, `AL8-*` is INFO "INCONCLUSIVE: not met" (an unmet pair is no exit; the state is still logged). PASS only if they meet again on their own and are not ALLIED. Do P0 and P1 still know each other?
-   - Result:
+   - Result: from both P0 and P1 perspectives, still appear allied to each other on both ribbon and diplo (no expiry date). (Log: `SetHasMet(x,false)` returned false, still met both ways.)
 8. AL9 Unmeet then meet (!).
    - Expect: `AL9-*` PASS if meeting again starts them fresh (NEUTRAL). Any first-meeting popup?
-   - Result:
+   - Result: from both P0 and P1 perspectives, still appear allied to each other on both ribbon and diplo (no expiry date).
 
 **d) Alliance expiry run**
 
 9. Load `TX3_split`. AL0. AL4L Alliance, friends off (!). End turns (all) until the alliance's TurnsUntilExpiration (diplomacy screen, or the `AL4L-UI.*.turn` lines) reaches 0, then 2 more turns. AL0.
    - Expect: after the expiry the state is FRIENDLY or NEUTRAL (`AL4L-*.turn PASS`), not back to the timeless ALLIED. Note any historic moment.
-   - Result:
+   - Result: both P0 and P1 get the historic moment. after 20 turns, alliance goes to "Expires in 0 turns". After one more end turn, reverts to the timeless ALLIED. Forgot to AL0 at the end.
 10. Only if time: the same with AL4 Alliance deal 1 turn (!), for comparison.
-    - Result:
+    - Result: both P0 and P1 get the historic moment. right after AL4, turns into normal 20 turn alliance. once again, turns into "Expires in 0 turns" and upon endturn back to timeless ALLIED.
 
 **e) Full kick**
 
 11. Load `TX3_base`. K Full kick (S3+VIS1) (!). Wait for the `[K] UI done. NOW save` line (a `WARNING ... do NOT save` line means load `TX3_base` again). Save as `TX3_kick`. Load `TX3_kick`. V6 Other declares war on keeper. End turn (all). AL0.
     - Expect: separate teams, P1 not at war with P2, still ALLIED with P0 (no war step), and no shared vision if VIS1 worked (`Kvis-*.turn PASS`).
-    - Result:
+    - Result: didnt get this [K] UI line. I clicked P1's banner portrait and got the UI glitch, before I saved, closed game and reloaded. Upon reload, we were timeless allied again. Clicked V6, P0 at war with P2 and P3; P1 not at war with either. For logging: I tried 11 again, loading from TX3_base then K Full kick. Indeed, after reload the timeless alliance returns! (Log: the `[K] UI done` line is there; it only goes to Lua.log, not the screen. K works as built; it has no war step, so the alliance stays.)
 
 **f) War then peace side effects (last resort)**
 
 12. Load `TX3_split`. AL0. AL3 War then peace (!). Look at notifications, historic moments, grievances in the diplomacy screen. End turn (all). AL0.
     - Expect: `AL3-*.after PASS`. `AL3fx` lines: grievances, warmonger, war turn, peace allowed, open borders, deals, era score.
-    - Result:
+    - Result: got declaration of war and then negotiated peace notifications. I see P1 has 90 grievances towards P0. (Log `AL3fx`: grievances 100 right after, 90 next turn; warmonger level None; era score unchanged; no new war allowed for 8 turns on Quick; open borders kept.)
 13. Load `TX3_split`. AL3b War(false) then peace (!). Same as 12.
     - Expect: compare with 12.
-    - Result:
+    - Result: got peace notificaton, but P0 and P1 are still timeless allies (Log: `DeclareWarOn(...,false)` did not start a war.)
 
 **g) Team shapes (optional if time).** After each S3: save, load, end turn (all).
 
 14. Three-player team: P0, P1, P2 human on one team, P3 on the other. Target P2. Arm BASE. S3 Set Target's team. V6. Diplo matrix.
     - Expect: `V1` PASS. P0 and P1 at war with P3, P2 not.
-    - Result:
+    - Result: P3 is AI. I settled capital and skipped to Turn 3 before the Arming. Entered 10 in "new team" before S3, then V6 and diplo matrix. I only saved, reloaded, and ended turn (all) after diplo matix! After reload, P0 at war with P3 and allied with the other two. P1 also at war with P3 and allied with the other two. P2 allied with P0 and P1, haven't met P3.
 15. Second kick in that game: S1 Team map, Target P1, Arm BASE, S3 Set Target's team.
     - Expect: New team 11. Every player on its own team.
-    - Result:
+    - Result: reloaded after S3. P0 at war with P3 and P2, allied with P1. P1 at war with P3, allied with P0 and P2. P2 at war with P0, allied with P1, haven't met P3. (Log: V6 was pressed again after this kick, so P2 declared on P0. P1 kept its old war with P3 from when it was still P0's teammate.)
 16. AI teammate: P0 human, P1 AI on one team; P2 human, P3 AI. Target P1. Arm BASE. S3 Set Target's team. V6.
     - Expect: `V1` PASS, the AI keeps playing, P2 at war with P0 only.
-    - Result:
+    - Result: No human capitals settled. Entered 10 in "new team" before S3. Save and reload (in lobby P0 and P1 arent teams anymore, as was for the other cases). Again, P0 and P1 in timeless alliance. After V6, P0 at war with P2 and P3. P2 at war with P0, haven't met P1.
 
 Then quit to the desktop and send the raw Lua.log.
+
+Summary: no clean break exists with the calls we have. Vision calls, un-meeting and SetHasAllied do nothing, and a real alliance always falls back to the timeless ALLIED state when it ends. Only war then peace (AL3) ends it, at the cost of public war and peace notifications, 100 grievances (falling 10 a turn) and an 8-turn peace on Quick. Shared vision survives everything. Team shapes work: a 3-player team keeps its 2 remaining members together, a second kick works, an AI teammate can be kicked. A kicked player keeps any war it was already in.
 
 ## Session 3b (hotseat, new game)
 
