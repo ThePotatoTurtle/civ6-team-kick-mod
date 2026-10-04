@@ -1,6 +1,6 @@
 -- ===========================================================================
 -- TX_Notifications.sql  (modinfo InGameActions UpdateDatabase TX_Data)
--- Team Expulsion 0.1.0, PLAN II.7 and II.13.
+-- Team Kick 0.1.0, PLAN II.7 and II.13.
 --
 -- One Types row (Kind KIND_NOTIFICATION) and one Notifications row per type
 -- (pattern EFV/Data/EFV_Notifications.sql:74-114; columns per R C,

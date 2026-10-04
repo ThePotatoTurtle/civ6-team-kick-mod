@@ -29,7 +29,7 @@ test("config: version 0.1.0 matches the modinfo title and description", function
 	include("TX_Config")
 	H.eq(TX_Config.VERSION, "0.1.0")
 	local mi = __py_read("TX/TX.modinfo")
-	H.ok(string.find(mi, "<en_US>Team Expulsion v" .. TX_Config.VERSION .. "</en_US>", 1, true), "modinfo title")
+	H.ok(string.find(mi, "<en_US>Team Kick v" .. TX_Config.VERSION .. "</en_US>", 1, true), "modinfo title")
 	H.ok(string.find(mi, "Version " .. TX_Config.VERSION .. ".[NEWLINE]", 1, true), "modinfo description")
 	H.eq(TX_Config.VOTE_TURNS, 5)
 	H.eq(TX_Config.MAX_TEAM_ID, 63)

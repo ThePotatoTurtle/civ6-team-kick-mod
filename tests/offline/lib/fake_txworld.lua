@@ -1,6 +1,6 @@
 -- ===========================================================================
 -- fake_txworld.lua  (offline harness) - fake engine extensions for the
--- Team Expulsion 0.1.0 tests (PLAN II.14). fake_engine.lua, fake_ui.lua and
+-- Team Kick 0.1.0 tests (PLAN II.14). fake_engine.lua, fake_ui.lua and
 -- harness.lua stay unchanged; load this file with
 --   FAKE.dofile("tests/offline/lib/fake_txworld.lua"); FAKE_TX.Install(opts)
 -- after H.world{...} (the fake_devworld pattern, test_dev_gameplay.lua:8-24),

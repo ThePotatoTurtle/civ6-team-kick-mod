@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Config.lua  (Team Expulsion 0.1.0)
+-- TX_Config.lua  (Team Kick 0.1.0)
 -- TX:CONTEXT both
 --
 -- Constants and shared names (PLAN II.3). Included by gameplay and UI with

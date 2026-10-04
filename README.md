@@ -1,4 +1,4 @@
-# Team Expulsion (Civ VI mod)
+# Team Kick (Civ VI mod)
 
 A Gathering Storm mod idea: teammates can vote to kick someone off their team mid-game. The kicked player plays on alone, and nothing else changes.
 

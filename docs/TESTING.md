@@ -1,6 +1,6 @@
-# Team Expulsion: hotseat test (Session 4)
+# Team Kick: hotseat test (Session 4)
 
-Team Expulsion 0.1.0 (`TX`), first test of the real mod. Two short new games, hotseat, about 25 minutes. Only load the saves you make in this session.
+Team Kick 0.1.0 (`TX`), first test of the real mod. Two short new games, hotseat, about 25 minutes. Only load the saves you make in this session.
 
 P0, P1, P2 are the hotseat players in slot order (Player 1, Player 2, Player 3). A "turn" below means everyone ends their turn once.
 
@@ -9,7 +9,7 @@ P0, P1, P2 are the hotseat players in slot order (Player 1, Player 2, Player 3).
 - Close Civ.
 - `git pull`
 - `powershell -ExecutionPolicy Bypass -File tools\install.ps1`
-- Additional Content: enable Gathering Storm and Team Expulsion v0.1.0. Turn Team Expulsion Dev Tools (TX_Dev) OFF. Nothing else.
+- Additional Content: enable Gathering Storm and Team Kick v0.1.0. Turn Team Kick Dev Tools (TX_Dev) OFF. Nothing else.
 
 ## Part A: two-player teams
 

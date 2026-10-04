@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Dev_Gameplay.lua  (TX_Dev 0.0.1.5, spike kit for Team Expulsion 0.0.1)
+-- TX_Dev_Gameplay.lua  (TX_Dev 0.0.1.5, spike kit for Team Kick 0.0.1)
 -- Context: gameplay (AddGameplayScripts). TESTING ONLY. PLAN I.5.
 --
 -- One handler, GameEvents.TX_Dev(playerID, params), dispatching on params.cmd

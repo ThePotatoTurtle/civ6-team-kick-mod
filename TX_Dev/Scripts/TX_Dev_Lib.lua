@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Dev_Lib.lua  (TX_Dev 0.0.1.5, spike kit for Team Expulsion 0.0.1)
+-- TX_Dev_Lib.lua  (TX_Dev 0.0.1.5, spike kit for Team Kick 0.0.1)
 -- TX:CONTEXT both
 -- TX:GLOBALS TXD TX_Probe
 --

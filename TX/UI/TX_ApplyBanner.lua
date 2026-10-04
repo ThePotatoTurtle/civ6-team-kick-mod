@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_ApplyBanner.lua  (Team Expulsion 0.1.0)
+-- TX_ApplyBanner.lua  (Team Kick 0.1.0)
 -- TX:CONTEXT UI
 --
 -- Context of TX_ApplyBanner.xml (AddUserInterfaces, Context InGame; PLAN

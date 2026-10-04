@@ -1,6 +1,6 @@
 # Tools: static checks, install and logs
 
-Offline checks for Team Expulsion (internal prefix `TX_`, mod folder `TX\`, dev tools `TX_Dev\`), plus the install script and log readers. Ported from the Expeditionary mod's tools. Everything runs from the project folder with Python 3.11 or newer, on Windows and Linux. Only `check_lua.py` and the offline tests need an extra package: `pip install lupa`.
+Offline checks for Team Kick (internal prefix `TX_`, mod folder `TX\`, dev tools `TX_Dev\`), plus the install script and log readers. Ported from the Expeditionary mod's tools. Everything runs from the project folder with Python 3.11 or newer, on Windows and Linux. Only `check_lua.py` and the offline tests need an extra package: `pip install lupa`.
 
 ## Quick start
 

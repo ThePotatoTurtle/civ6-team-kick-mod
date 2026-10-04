@@ -1,6 +1,6 @@
 -- ===========================================================================
 -- TX_Icons.sql  (modinfo InGameActions UpdateIcons TX_Icons)
--- Team Expulsion 0.1.0, PLAN II.13.
+-- Team Kick 0.1.0, PLAN II.13.
 --
 -- IconDefinitions(Name, Atlas, 'Index') aliases to existing atlas cells, no
 -- new textures (pattern EFV/Data/EFV_Icons.sql:22-41). The notification

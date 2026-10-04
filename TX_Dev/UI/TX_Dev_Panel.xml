@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- TX_Dev_Panel: spike panel for Team Expulsion 0.0.1 (UI context, AddUserInterfaces InGame). TESTING ONLY.
+<!-- TX_Dev_Panel: spike panel for Team Kick 0.0.1 (UI context, AddUserInterfaces InGame). TESTING ONLY.
      Copied from EFV_Dev_Panel.xml (structure, styles, textures). Toggle: Ctrl+Shift+D or the "DEV" launch
      bar button. InGame.lua loads this context HIDDEN; the Lua un-hides ContextPtr in Initialize and
      toggles only the Main container. -->

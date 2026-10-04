@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ======================================================================
      TX_Text.xml  (modinfo InGameActions UpdateText TX_Text)
-     Team Expulsion 0.1.0, PLAN II.13. Every in-game string of the mod.
+     Team Kick 0.1.0, PLAN II.13. Every in-game string of the mod.
      Draft wording: Leon reviews it in Session 4 (PLAN II.17).
      Format as EFV/Data/EFV_Text.xml: <Row Tag="LOC_TX_..." Language="en_US">.
      Plurals: {n_Num : plural 1?1 turn; other?# turns;} (base-game syntax).
@@ -57,7 +57,7 @@
 			<Text>Team</Text>
 		</Row>
 		<Row Tag="LOC_TX_LAUNCH_TT" Language="en_US">
-			<Text>Team Expulsion: your team, votes and history</Text>
+			<Text>Team Kick: your team, votes and history</Text>
 		</Row>
 		<Row Tag="LOC_TX_LAUNCH_TT_VOTE" Language="en_US">
 			<Text>A vote is waiting for you.</Text>
@@ -65,7 +65,7 @@
 
 		<!-- Team window -->
 		<Row Tag="LOC_TX_WINDOW_TITLE" Language="en_US">
-			<Text>Team Expulsion</Text>
+			<Text>Team Kick</Text>
 		</Row>
 		<Row Tag="LOC_TX_SECTION_MEMBERS" Language="en_US">
 			<Text>Your team</Text>

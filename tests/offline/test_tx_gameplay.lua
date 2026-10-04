@@ -105,7 +105,7 @@ end
 -- ===========================================================================
 test("gameplay 1: load line with 0.1.0; the four TX handlers and OnGameTurnStarted registered; no Events handler", function()
 	Setup()
-	H.len(H.lines("[TX][T1][Init] Team Expulsion 0.1.0 loaded records=0 rev=0", true), 1, "load line")
+	H.len(H.lines("[TX][T1][Init] Team Kick 0.1.0 loaded records=0 rev=0", true), 1, "load line")
 	for _, name in ipairs({ "TX_Propose", "TX_Vote", "TX_ApplyDone", "TX_Victory", "OnGameTurnStarted" }) do
 		H.eq(GameEvents[name].Count(), 1, name)
 		H.len(H.lines("[TX][T1][Init] registered GameEvents." .. name, true), 1, "registration line " .. name)

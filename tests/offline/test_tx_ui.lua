@@ -1,4 +1,4 @@
--- Tests of the Team Expulsion UI, build chunk C of PLAN II.16 (II.14
+-- Tests of the Team Kick UI, build chunk C of PLAN II.16 (II.14
 -- "test_tx_ui.lua"; TP 2.7 phase 2): TX/UI/TX_UIShared.lua,
 -- TX/UI/TX_TeamWindow.lua (launch-bar Team button, Team window, confirm
 -- dialogs) and TX/UI/TX_VotePopup.lua, each in its own fake UI context

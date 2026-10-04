@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Votes.lua  (Team Expulsion 0.1.0)
+-- TX_Votes.lua  (Team Kick 0.1.0)
 -- TX:CONTEXT both
 --
 -- The vote state machine and its rules (PLAN II.6). Pure: no engine call,

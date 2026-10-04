@@ -1,6 +1,6 @@
-# Team Expulsion Dev Tools (TX_Dev)
+# Team Kick Dev Tools (TX_Dev)
 
-Spike panel for Team Expulsion. Version 0.0.1.5, mod id `813c09c2-7476-4882-b8d6-7a0708b0891d`. Needs Gathering Storm only. Never enable it in a real game: it changes teams, declares wars and spawns units. Results go to Lua.log as `[TX][SPIKE]` and `[TX][CHECK]` lines. Read them with `python tools\summarize_log.py`.
+Spike panel for Team Kick. Version 0.0.1.5, mod id `813c09c2-7476-4882-b8d6-7a0708b0891d`. Needs Gathering Storm only. Never enable it in a real game: it changes teams, declares wars and spawns units. Results go to Lua.log as `[TX][SPIKE]` and `[TX][CHECK]` lines. Read them with `python tools\summarize_log.py`.
 
 All sessions are hotseat (one copy of the game).
 
@@ -9,7 +9,7 @@ All sessions are hotseat (one copy of the game).
 - Close Civ.
 - `git pull`
 - `powershell -ExecutionPolicy Bypass -File tools\install.ps1 -DevOnly`
-- Additional Content: enable Team Expulsion Dev Tools (TX Dev Tools) and Gathering Storm. Nothing else.
+- Additional Content: enable Team Kick Dev Tools (TX Dev Tools) and Gathering Storm. Nothing else.
 - In game: Ctrl+Shift+D or the DEV button on the launch bar. Esc closes.
 
 Panel rows:

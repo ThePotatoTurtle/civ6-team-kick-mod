@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Gameplay.lua  (Team Expulsion 0.1.0)
+-- TX_Gameplay.lua  (Team Kick 0.1.0)
 -- TX:CONTEXT G
 --
 -- Gameplay entry point (modinfo AddGameplayScripts TX_Gameplay; PLAN II.8).
@@ -473,5 +473,5 @@ Log(2, "Init", "registered GameEvents.OnGameTurnStarted")
 -- Load line (PLAN II.8). A missing property is a fresh store: no seeding.
 SafeCall("Init", "load line", function()
 	local store = TX_Store.Load()
-	Log(2, "Init", "Team Expulsion %s loaded records=%d rev=%d", TX_Config.VERSION, #store.ids, TX_Store.Rev())
+	Log(2, "Init", "Team Kick %s loaded records=%d rev=%d", TX_Config.VERSION, #store.ids, TX_Store.Rev())
 end)

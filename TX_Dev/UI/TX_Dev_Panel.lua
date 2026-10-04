@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Dev_Panel.lua  (TX_Dev 0.0.1.5, spike kit for Team Expulsion 0.0.1)
+-- TX_Dev_Panel.lua  (TX_Dev 0.0.1.5, spike kit for Team Kick 0.0.1)
 -- Context: UI (AddUserInterfaces, Context InGame). TESTING ONLY. PLAN I.6.
 --
 -- Panel toggled by Ctrl+Shift+D or the "DEV" launch bar button (copied from

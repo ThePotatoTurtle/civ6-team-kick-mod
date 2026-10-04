@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Apply.lua  (Team Expulsion 0.1.0)
+-- TX_Apply.lua  (Team Kick 0.1.0)
 -- TX:CONTEXT G
 --
 -- Gameplay only: include("TX_Apply") from TX_Gameplay.lua. The gameplay hook
