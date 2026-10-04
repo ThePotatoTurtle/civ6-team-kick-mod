@@ -48,7 +48,7 @@ New game. Setup: Hotseat, GS rules, Tiny, Quick, fewest city-states. P0, P1, P2 
    - Expect: no TX notification. "No open vote." Kick buttons disabled with "Your team can't start a new vote right now." No history.
    - Result:
 10. End P1's turn. As P2: click the "Team vote" notification.
-    - Expect: the vote popup with the right names. If it doesn't open, write that down and use Team > Vote instead.
+    - Expect: the notification text names P0's and P1's leaders (not "a teammate"). The vote popup with the right names. If it doesn't open, write that down and use Team > Vote instead.
     - Result:
 11. As P2: "No, keep them".
     - Expect: the vote fails. Nobody gets a notification. P2's history shows the failed vote, and its tooltip shows each vote.
@@ -57,7 +57,7 @@ New game. Setup: Hotseat, GS rules, Tiny, Quick, fewest city-states. P0, P1, P2 
     - Expect: P2 gets the "Team vote" notification each turn, only one at a time, turns left counting down. After 5 turns the vote is gone, history says it ran out of time, and nobody is notified.
     - Result:
 13. As P0: Kick P1 again, Yes. End P0's and P1's turns. As P2: Team > Vote > "Yes, kick them".
-    - Expect: "Kicked off a team" for P0, P1 and P2 on their turns. The banner with Apply.
+    - Expect: a "Kicked off a team" notification and the banner with Apply.
     - Result:
 14. As P2: Apply, then Yes.
     - Expect: the "Save and reload now" popup. The banner says to save and reload.
