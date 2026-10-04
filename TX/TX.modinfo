@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Team Expulsion 0.1.0 (PLAN II.1). Ids, criteria and action shapes as EFV/EFV.modinfo:1-147.
+     Built in chunks (PLAN II.16): chunk A has the data and the shared modules only.
+     Chunk B adds AddGameplayScripts, chunks C and D the AddUserInterfaces contexts. -->
+<Mod id="9ce6ba3f-a24c-48f3-b642-516121a95502" version="1">
+	<Properties>
+		<Name>LOC_TX_MOD_TITLE</Name>
+		<Teaser>LOC_TX_MOD_TEASER</Teaser>
+		<Description>LOC_TX_MOD_DESCRIPTION</Description>
+		<Authors>ThePotatoTurtle</Authors>
+		<AffectsSavedGames>1</AffectsSavedGames>
+		<CompatibleVersions>2.0</CompatibleVersions>
+	</Properties>
+
+	<Dependencies>
+		<Mod id="4873eb62-8ccc-4574-b784-dda455e74e68" title="Expansion: Gathering Storm"/>
+	</Dependencies>
+
+	<ActionCriteria>
+		<Criteria id="TX_XP2">
+			<GameCoreInUse>Expansion2</GameCoreInUse>
+		</Criteria>
+	</ActionCriteria>
+
+	<InGameActions>
+		<!-- No LoadOrder (EFV.modinfo:22-73): UpdateDatabase then runs after the GS data. -->
+		<UpdateDatabase id="TX_Data" criteria="TX_XP2">
+			<File>Data/TX_Notifications.sql</File>
+		</UpdateDatabase>
+		<UpdateIcons id="TX_Icons" criteria="TX_XP2">
+			<File>Data/TX_Icons.sql</File>
+		</UpdateIcons>
+		<UpdateText id="TX_Text" criteria="TX_XP2">
+			<File>Data/TX_Text.xml</File>
+		</UpdateText>
+		<!-- Shared modules for include("TX_Votes") etc. from gameplay and UI (EFV.modinfo:41-55). -->
+		<ImportFiles id="TX_Imports" criteria="TX_XP2">
+			<File>Scripts/TX_Config.lua</File>
+			<File>Scripts/TX_Util.lua</File>
+			<File>Scripts/TX_Votes.lua</File>
+			<File>Scripts/TX_Store.lua</File>
+		</ImportFiles>
+	</InGameActions>
+
+	<!-- Mod browser text (front end). These keys are defined only here, not in
+	     Data/TX_Text.xml (EFV.modinfo:103-115). Public text: a draft, shown to Leon before release. -->
+	<LocalizedText>
+		<Text id="LOC_TX_MOD_TITLE">
+			<en_US>Team Expulsion v0.1.0</en_US>
+		</Text>
+		<Text id="LOC_TX_MOD_TEASER">
+			<en_US>Vote a teammate off your team in the middle of a game.</en_US>
+		</Text>
+		<Text id="LOC_TX_MOD_DESCRIPTION">
+			<en_US>Version 0.1.0.[NEWLINE][NEWLINE]Teammates can vote to kick a player off their team. The kicked player plays on alone and no longer shares victory with the team.[NEWLINE][NEWLINE]- Team button: on the launch bar. Shows your team, the open vote and past votes.[NEWLINE]- Votes: every other human teammate has to vote yes within 5 turns. AI teammates don't vote. One no ends the vote.[NEWLINE]- Two-player teams: one click dissolves the team.[NEWLINE][NEWLINE]Requires Gathering Storm. Not tested in network multiplayer yet.[NEWLINE][NEWLINE]Known limitations:[NEWLINE]- When a kick passes, the host applies it and the game has to be saved and reloaded before the new teams show.[NEWLINE]- Ex-teammates stay allied and still see each other's map.</en_US>
+		</Text>
+	</LocalizedText>
+
+	<Files>
+		<File>Data/TX_Notifications.sql</File>
+		<File>Data/TX_Icons.sql</File>
+		<File>Data/TX_Text.xml</File>
+		<File>Scripts/TX_Config.lua</File>
+		<File>Scripts/TX_Util.lua</File>
+		<File>Scripts/TX_Votes.lua</File>
+		<File>Scripts/TX_Store.lua</File>
+	</Files>
+</Mod>

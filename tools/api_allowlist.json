@@ -496,12 +496,14 @@
      "level": "NV",
      "tests": [],
      "only_paths": [
-      "TX_Dev/"
+      "TX_Dev/",
+      "TX/"
      ],
      "source": "TX",
      "refs": [
       "R A2: MC2 lists a read-only G PlayerConfiguration; GED G dump",
-      "R A1: PlayerConfigurations[i]:GetTeam is UNV in G (probe only)"
+      "R A1: PlayerConfigurations[i]:GetTeam is UNV in G (probe only)",
+      "TX 0.1.0: G player labels for notifications (TX_Notify.Label, PLAN II.7), every call in pcall; S1 G dump LOG:903-904"
      ],
      "note": "TX_Dev spike kit 0.0.1.1 (PLAN I.11): referenced so the probe resolver (TXD.SetRoots) can reach it; every call on it goes through TX_Probe. S1/S4: does G read the config team?"
     }
@@ -785,12 +787,26 @@
   "Network": {
    "ctx": {
     "UI": {
-     "level": "L",
-     "tests": []
+     "level": "C",
+     "tests": [],
+     "source": "TX",
+     "refs": [
+      "SR:133, LOG:1151 (S3: Network.BroadcastPlayerInfo after PlayerConfigurations:SetTeam, hotseat, broadcast ok)",
+      "LOG:1136 (Network.IsGameHost read in the UI snapshot, host=true)"
+     ],
+     "note": "Verified in game by TX_Dev Sessions 1 and 2 (hotseat). TX 0.1.0 apply seam (PLAN II.9, II.11c)."
     },
     "G": {
      "level": "NV",
-     "tests": []
+     "tests": [],
+     "only_paths": [
+      "TX_Dev/"
+     ],
+     "source": "TX",
+     "refs": [
+      "G: none (R A2: Network is UI-only); S1 dump target"
+     ],
+     "note": "TX_Dev probe resolver root only (PLAN I.11)."
     }
    },
    "refs": [
@@ -799,9 +815,6 @@
     "G: none (R A2: Network is UI-only); S1 dump target"
    ],
    "note": "TX_Dev spike kit 0.0.1.1 (PLAN I.11): referenced so the probe resolver (TXD.SetRoots) can reach it; every call on it goes through TX_Probe. S3 broadcast and the host flags of Machine().",
-   "only_paths": [
-    "TX_Dev/"
-   ],
    "source": "TX"
   },
   "DiplomacyManager": {
@@ -2367,6 +2380,49 @@
     "TX_Dev/"
    ],
    "source": "TX"
+  },
+  "Network.BroadcastPlayerInfo": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "SR:133; LOG:1151 (S3-UI.S3LIVE PASS, 'set ok broadcast ok', another player's slot, hotseat)",
+    "BASE24 StagingRoom.lua:927-934 (SetTeam then BroadcastPlayerInfo, front end)",
+    "R A2"
+   ],
+   "note": "Team Expulsion 0.1.0 (PLAN II.15, Appendix B). Apply seam: the host's UI after PlayerConfigurations[t]:SetTeam(n), and its undo. Network MP is seam O4.",
+   "source": "TX"
+  },
+  "Network.IsGameHost": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "LOG:1136 (host=true on the hotseat machine, PLAN II.0 F7)",
+    "BASE24 InGameTopOptionsMenu.lua:366, ChatPanel.lua:64"
+   ],
+   "note": "Team Expulsion 0.1.0 (PLAN II.15, Appendix B). TX_UI.IsHost: who may press Apply.",
+   "source": "TX"
+  },
+  "GameConfiguration.IsNetworkMultiplayer": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "LOG:1136 (netMP=false read in the UI snapshot)",
+    "LocalPlayerActionSupport.lua:28, 39 (BASE24 UI)"
+   ],
+   "note": "Team Expulsion 0.1.0 (PLAN II.15, Appendix B). TX_UI.NetMP: the untested network MP warning (seam O4).",
+   "source": "TX"
   }
  },
  "methods": {
@@ -2778,6 +2834,19 @@
     "UI": {
      "level": "C",
      "tests": []
+    },
+    "G": {
+     "level": "NV",
+     "tests": [],
+     "only_paths": [
+      "TX/"
+     ],
+     "source": "TX",
+     "refs": [
+      "S1 G dump LOG:903-904 (exists in G)",
+      "EFV_Util.lua:522-536 (EFV calls it in G under pcall)"
+     ],
+     "note": "PROBE in G (Appendix B): pcall, fallback LOC_TX_PLAYER_GENERIC; Session 4 step 4 checks the names."
     }
    },
    "refs": [
@@ -4260,6 +4329,46 @@
     "TX_Dev/"
    ],
    "source": "TX"
+  },
+  "SetTeam": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "SR:133; LOG:1151 (PlayerConfigurations[1]:SetTeam(10) in the in-game UI, config team changed at once)",
+    "BASE24 StagingRoom.lua:927-934"
+   ],
+   "note": "Team Expulsion 0.1.0 (PLAN II.15, Appendix B). PlayerConfigurations[t]:SetTeam only (methods match by name). Apply seam on the host and its undo.",
+   "source": "TX"
+  },
+  "GetLeaderName": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    },
+    "G": {
+     "level": "NV",
+     "tests": [],
+     "only_paths": [
+      "TX/"
+     ],
+     "source": "TX",
+     "refs": [
+      "S1 G dump LOG:903-904 (exists in G)",
+      "EFV_Util.lua:522-536 (G config reads under pcall)"
+     ],
+     "note": "PROBE in G (Appendix B): pcall, fallback LOC_TX_PLAYER_GENERIC; Session 4 step 4 checks the names."
+    }
+   },
+   "refs": [
+    "BASE24 DiplomacyActionView.lua:647, DiplomacyDealView.lua:231, PlayerSupport.lua:66 (PlayerConfigurations[p]:GetLeaderName(), UI)"
+   ],
+   "note": "Team Expulsion 0.1.0 (PLAN II.15, Appendix B). Player labels (LOC_TX_PLAYER_LABEL).",
+   "source": "TX"
   }
  },
  "events": {
@@ -4674,12 +4783,24 @@
     }
    },
    "refs": [
-    "R A1: EndGameMenu.lua:1039 OnTeamVictory(team, victory, eventID), :1345 Events.TeamVictory.Add (BASE24 UI)"
+    "R A1: EndGameMenu.lua:1039 OnTeamVictory(team, victory, eventID), :1345 Events.TeamVictory.Add (BASE24 UI)",
+    "XP2-20 HistoricMoments.lua:557"
    ],
-   "note": "TX_Dev V3: which team won, and with whom.",
-   "only_paths": [
-    "TX_Dev/"
+   "note": "TX_Dev V3: which team won, and with whom. TX 0.1.0: the UI reports the victory to gameplay (TX_Victory, PLAN II.8, II.11c).",
+   "source": "TX"
+  },
+  "Events.NotificationActivated": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "XP2-20 GovernorPanel.lua:414-426, 559; HistoricMoments.lua:136-150, 554",
+    "BASE24 NotificationPanel.lua:1102-1108, 1637, 1859; R C"
    ],
+   "note": "Team Expulsion 0.1.0 (PLAN II.15, Appendix B). Vote popup and Apply from a notification click. PROBE for a custom type on the default handler (fallback: Team window, Vote button); Session 4 step 4.",
    "source": "TX"
   }
  },

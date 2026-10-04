@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ======================================================================
+     TX_Text.xml  (modinfo InGameActions UpdateText TX_Text)
+     Team Expulsion 0.1.0, PLAN II.13. Every in-game string of the mod.
+     Draft wording: Leon reviews it in Session 4 (PLAN II.17).
+     Format as EFV/Data/EFV_Text.xml: <Row Tag="LOC_TX_..." Language="en_US">.
+     Plurals: {n_Num : plural 1?1 turn; other?# turns;} (base-game syntax).
+
+     NOT here: LOC_TX_MOD_TITLE / _TEASER / _DESCRIPTION live in the
+     TX.modinfo <LocalizedText> block (mod browser, PB 3 "Data").
+     The mod's name shows only in LOC_TX_MOD_TITLE, LOC_TX_MOD_DESCRIPTION,
+     LOC_TX_WINDOW_TITLE and LOC_TX_LAUNCH_TT, so a rename touches TX.modinfo
+     and this file only.
+
+     ARGUMENTS (Locale.Lookup(key, a1, a2, ...)). Player arguments are labels
+     from LOC_TX_PLAYER_LABEL (or _GENERIC / _UNMET), Num arguments numbers.
+       PLAYER_LABEL         1 leader name, 2 civ short description
+       MEMBER_YOU / _AI     1 player
+       KICK_TT              1 target
+       CONFIRM_VOTE         1 target, 2 turns to vote
+       CONFIRM_DISSOLVE     1 target
+       CONFIRM_AI_ONLY      1 target
+       VOTE_LINE            1 proposer, 2 target, 3 turns left
+       VOTER_*              1 voter
+       PASSED_LINE          1 target
+       APPLIED_LINE         1 target
+       HIST_<state>         1 turn, 2 target
+       HIST_STARTED_BY      1 proposer
+       HIST_VOTE_*          1 voter
+       POPUP_TEXT           1 proposer, 2 target, 3 turns left
+       BANNER_HOST / _WAIT  1 target
+       APPLY_CONFIRM        1 target
+       Notifications (the same arguments for _MESSAGE and _SUMMARY):
+         VOTE_REQUIRED      1 proposer, 2 target, 3 turns left
+         KICK_PASSED        1 target
+         KICK_DONE          1 target
+         REQUEST_FAILED     1 reason text (LOC_TX_REASON_<code>)
+     All other keys take no arguments.
+     ====================================================================== -->
+<GameData>
+	<LocalizedText>
+		<!-- Player labels -->
+		<Row Tag="LOC_TX_PLAYER_LABEL" Language="en_US">
+			<Text>{1_Leader} ({2_Civ})</Text>
+		</Row>
+		<Row Tag="LOC_TX_PLAYER_GENERIC" Language="en_US">
+			<Text>a teammate</Text>
+		</Row>
+		<Row Tag="LOC_TX_PLAYER_UNMET" Language="en_US">
+			<Text>an unmet player</Text>
+		</Row>
+
+		<!-- Launch bar button -->
+		<Row Tag="LOC_TX_LAUNCH_LABEL" Language="en_US">
+			<Text>Team</Text>
+		</Row>
+		<Row Tag="LOC_TX_LAUNCH_TT" Language="en_US">
+			<Text>Team Expulsion: your team, votes and history</Text>
+		</Row>
+		<Row Tag="LOC_TX_LAUNCH_TT_VOTE" Language="en_US">
+			<Text>A vote is waiting for you.</Text>
+		</Row>
+
+		<!-- Team window -->
+		<Row Tag="LOC_TX_WINDOW_TITLE" Language="en_US">
+			<Text>Team Expulsion</Text>
+		</Row>
+		<Row Tag="LOC_TX_SECTION_MEMBERS" Language="en_US">
+			<Text>Your team</Text>
+		</Row>
+		<Row Tag="LOC_TX_SECTION_VOTE" Language="en_US">
+			<Text>Open vote</Text>
+		</Row>
+		<Row Tag="LOC_TX_SECTION_HISTORY" Language="en_US">
+			<Text>History</Text>
+		</Row>
+		<Row Tag="LOC_TX_MEMBER_YOU" Language="en_US">
+			<Text>{1_Player} (you)</Text>
+		</Row>
+		<Row Tag="LOC_TX_MEMBER_AI" Language="en_US">
+			<Text>{1_Player}, AI</Text>
+		</Row>
+		<Row Tag="LOC_TX_KICK" Language="en_US">
+			<Text>Kick</Text>
+		</Row>
+		<Row Tag="LOC_TX_KICK_TT" Language="en_US">
+			<Text>Start a vote to kick {1_Player} off the team.</Text>
+		</Row>
+
+		<!-- Kick confirmation -->
+		<Row Tag="LOC_TX_CONFIRM_TITLE" Language="en_US">
+			<Text>Kick a teammate</Text>
+		</Row>
+		<Row Tag="LOC_TX_CONFIRM_VOTE" Language="en_US">
+			<Text>Start a vote to kick {1_Player} off your team? Every other human teammate has to vote yes within {2_Num : plural 1?1 turn; other?# turns;}. One no vote ends it.</Text>
+		</Row>
+		<Row Tag="LOC_TX_CONFIRM_DISSOLVE" Language="en_US">
+			<Text>This dissolves your team right away. {1_Player} will no longer share victory with you.</Text>
+		</Row>
+		<Row Tag="LOC_TX_CONFIRM_AI_ONLY" Language="en_US">
+			<Text>Your other teammates are AI and don't vote, so this passes right away. {1_Player} will no longer share victory with your team.</Text>
+		</Row>
+		<Row Tag="LOC_TX_CONFIRM_AFTER" Language="en_US">
+			<Text>Once it passes, the host applies it and the game has to be saved and reloaded.</Text>
+		</Row>
+
+		<!-- Open vote section -->
+		<Row Tag="LOC_TX_VOTE_LINE" Language="en_US">
+			<Text>{1_Player} wants to kick {2_Player}. {3_Num : plural 1?1 turn; other?# turns;} left.</Text>
+		</Row>
+		<Row Tag="LOC_TX_VOTER_PROPOSER" Language="en_US">
+			<Text>{1_Player}: started the vote</Text>
+		</Row>
+		<Row Tag="LOC_TX_VOTER_VOTED" Language="en_US">
+			<Text>{1_Player}: voted</Text>
+		</Row>
+		<Row Tag="LOC_TX_VOTER_PENDING" Language="en_US">
+			<Text>{1_Player}: not voted yet</Text>
+		</Row>
+		<Row Tag="LOC_TX_VOTER_GONE" Language="en_US">
+			<Text>{1_Player}: eliminated</Text>
+		</Row>
+		<Row Tag="LOC_TX_VOTE_BUTTON" Language="en_US">
+			<Text>Vote</Text>
+		</Row>
+		<Row Tag="LOC_TX_NO_VOTE" Language="en_US">
+			<Text>No open vote.</Text>
+		</Row>
+		<Row Tag="LOC_TX_PASSED_LINE" Language="en_US">
+			<Text>The kick of {1_Player} passed. Waiting for the host to apply it.</Text>
+		</Row>
+		<Row Tag="LOC_TX_APPLIED_LINE" Language="en_US">
+			<Text>The kick of {1_Player} is applied. Save and reload the game now.</Text>
+		</Row>
+
+		<!-- History section -->
+		<Row Tag="LOC_TX_HISTORY_EMPTY" Language="en_US">
+			<Text>No votes yet.</Text>
+		</Row>
+		<Row Tag="LOC_TX_HIST_DONE" Language="en_US">
+			<Text>Turn {1_Num}: {2_Player} was kicked.</Text>
+		</Row>
+		<Row Tag="LOC_TX_HIST_PENDING_APPLY" Language="en_US">
+			<Text>Turn {1_Num}: the kick of {2_Player} passed, not applied yet.</Text>
+		</Row>
+		<Row Tag="LOC_TX_HIST_FAILED" Language="en_US">
+			<Text>Turn {1_Num}: the vote to kick {2_Player} failed.</Text>
+		</Row>
+		<Row Tag="LOC_TX_HIST_EXPIRED" Language="en_US">
+			<Text>Turn {1_Num}: the vote to kick {2_Player} ran out of time.</Text>
+		</Row>
+		<Row Tag="LOC_TX_HIST_CANCELLED" Language="en_US">
+			<Text>Turn {1_Num}: the vote to kick {2_Player} was cancelled.</Text>
+		</Row>
+		<Row Tag="LOC_TX_HIST_STARTED_BY" Language="en_US">
+			<Text>Started by {1_Player}.</Text>
+		</Row>
+		<Row Tag="LOC_TX_HIST_VOTE_YES" Language="en_US">
+			<Text>{1_Player}: yes</Text>
+		</Row>
+		<Row Tag="LOC_TX_HIST_VOTE_NO" Language="en_US">
+			<Text>{1_Player}: no</Text>
+		</Row>
+		<Row Tag="LOC_TX_HIST_VOTE_NONE" Language="en_US">
+			<Text>{1_Player}: didn't vote</Text>
+		</Row>
+
+		<!-- Vote popup -->
+		<Row Tag="LOC_TX_POPUP_TITLE" Language="en_US">
+			<Text>Team vote</Text>
+		</Row>
+		<Row Tag="LOC_TX_POPUP_TEXT" Language="en_US">
+			<Text>{1_Player} wants to kick {2_Player} off your team.[NEWLINE][NEWLINE]Every other human teammate has to vote yes. One no vote ends it. {3_Num : plural 1?1 turn; other?# turns;} left.</Text>
+		</Row>
+		<Row Tag="LOC_TX_POPUP_YES" Language="en_US">
+			<Text>Yes, kick them</Text>
+		</Row>
+		<Row Tag="LOC_TX_POPUP_NO" Language="en_US">
+			<Text>No, keep them</Text>
+		</Row>
+		<Row Tag="LOC_TX_POPUP_LATER" Language="en_US">
+			<Text>Decide later</Text>
+		</Row>
+
+		<!-- Apply banner and dialogs (apply seam, PLAN II.11c) -->
+		<Row Tag="LOC_TX_BANNER_HOST" Language="en_US">
+			<Text>The kick of {1_Player} passed. Apply it, then save and reload.</Text>
+		</Row>
+		<Row Tag="LOC_TX_BANNER_WAIT" Language="en_US">
+			<Text>The kick of {1_Player} passed. Waiting for the host to apply it.</Text>
+		</Row>
+		<Row Tag="LOC_TX_BANNER_RELOAD" Language="en_US">
+			<Text>Kick applied. Save and reload the game now, and don't click leader portraits until then.</Text>
+		</Row>
+		<Row Tag="LOC_TX_APPLY_BUTTON" Language="en_US">
+			<Text>Apply</Text>
+		</Row>
+		<Row Tag="LOC_TX_APPLY_TITLE" Language="en_US">
+			<Text>Apply the kick</Text>
+		</Row>
+		<Row Tag="LOC_TX_APPLY_CONFIRM" Language="en_US">
+			<Text>Move {1_Player} to a team of their own now?[NEWLINE][NEWLINE]Right after this, save the game and load that save. Civ VI only shows the new teams after a reload.</Text>
+		</Row>
+		<Row Tag="LOC_TX_APPLY_CONFIRM_NETMP" Language="en_US">
+			<Text>[NEWLINE][NEWLINE][COLOR:Red]Network multiplayer isn't tested yet.[ENDCOLOR] After saving, everyone exits to the main menu, the host loads the save from Multiplayer > Host Game > Load Game, and the others rejoin.</Text>
+		</Row>
+		<Row Tag="LOC_TX_RELOAD_TITLE" Language="en_US">
+			<Text>Save and reload now</Text>
+		</Row>
+		<Row Tag="LOC_TX_RELOAD_TEXT" Language="en_US">
+			<Text>The kick is applied. Now:[NEWLINE]1. Menu > Save Game, under a new name.[NEWLINE]2. Menu > Load Game, and load that save.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
+		</Row>
+		<Row Tag="LOC_TX_APPLY_FAILED_TITLE" Language="en_US">
+			<Text>Kick not applied</Text>
+		</Row>
+		<Row Tag="LOC_TX_APPLY_FAILED_TEXT" Language="en_US">
+			<Text>The team change didn't take, so it was undone and nothing changed. Try again, and send Lua.log to the mod author if it keeps failing.</Text>
+		</Row>
+		<Row Tag="LOC_TX_APPLY_CONFLICT_TEXT" Language="en_US">
+			<Text>The new team number is already taken. End the turn and apply again.</Text>
+		</Row>
+		<Row Tag="LOC_TX_OK" Language="en_US">
+			<Text>OK</Text>
+		</Row>
+
+		<!-- Notifications (LOC_<type>_MESSAGE / _SUMMARY, PLAN II.7) -->
+		<Row Tag="LOC_NOTIFICATION_TX_VOTE_REQUIRED_MESSAGE" Language="en_US">
+			<Text>Team vote</Text>
+		</Row>
+		<Row Tag="LOC_NOTIFICATION_TX_VOTE_REQUIRED_SUMMARY" Language="en_US">
+			<Text>{1_Player} wants to kick {2_Player} off your team. Vote within {3_Num : plural 1?1 turn; other?# turns;}.</Text>
+		</Row>
+		<Row Tag="LOC_NOTIFICATION_TX_KICK_PASSED_MESSAGE" Language="en_US">
+			<Text>Kicked off a team</Text>
+		</Row>
+		<Row Tag="LOC_NOTIFICATION_TX_KICK_PASSED_SUMMARY" Language="en_US">
+			<Text>{1_Player} was voted off their team. It takes effect once the host applies it and the game is saved and reloaded.</Text>
+		</Row>
+		<Row Tag="LOC_NOTIFICATION_TX_KICK_DONE_MESSAGE" Language="en_US">
+			<Text>Team changed</Text>
+		</Row>
+		<Row Tag="LOC_NOTIFICATION_TX_KICK_DONE_SUMMARY" Language="en_US">
+			<Text>{1_Player} now plays alone.</Text>
+		</Row>
+		<Row Tag="LOC_NOTIFICATION_TX_REQUEST_FAILED_MESSAGE" Language="en_US">
+			<Text>Team request refused</Text>
+		</Row>
+		<Row Tag="LOC_NOTIFICATION_TX_REQUEST_FAILED_SUMMARY" Language="en_US">
+			<Text>{1_Reason}</Text>
+		</Row>
+
+		<!-- Reason codes (TX_Votes.ALL_REASON_CODES) -->
+		<Row Tag="LOC_TX_REASON_VICTORY" Language="en_US">
+			<Text>The game has been won, so no more team votes.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_NOT_HUMAN" Language="en_US">
+			<Text>Only human players can start a team vote.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_NOT_ALIVE" Language="en_US">
+			<Text>You're out of the game.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_TARGET_SELF" Language="en_US">
+			<Text>You can't kick yourself.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_TARGET_INVALID" Language="en_US">
+			<Text>That player can't be kicked.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_NOT_TEAMMATE" Language="en_US">
+			<Text>That player isn't on your team.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_VOTE_OPEN" Language="en_US">
+			<Text>Your team already has an open vote.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_TEAM_BUSY" Language="en_US">
+			<Text>Your team can't start a new vote right now.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_APPLY_PENDING" Language="en_US">
+			<Text>A kick on your team is still waiting to be applied.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_NO_RECORD" Language="en_US">
+			<Text>That vote doesn't exist anymore.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_VOTE_CLOSED" Language="en_US">
+			<Text>That vote is already closed.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_NOT_VOTER" Language="en_US">
+			<Text>You don't have a vote in this one.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_ALREADY_VOTED" Language="en_US">
+			<Text>You already voted.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_BAD_VOTE" Language="en_US">
+			<Text>That request wasn't understood.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_NOT_PENDING" Language="en_US">
+			<Text>There's no passed kick to apply.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_BAD_STEP" Language="en_US">
+			<Text>That request wasn't understood.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_NOT_SEEN" Language="en_US">
+			<Text>The team change didn't take effect.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_NO_VOTE" Language="en_US">
+			<Text>A teammate voted no.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_TARGET_GONE" Language="en_US">
+			<Text>The player was eliminated.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_TARGET_LEFT" Language="en_US">
+			<Text>The player isn't on the team anymore.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_NO_VOTERS" Language="en_US">
+			<Text>No human teammate is left to vote.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_NO_FREE_TEAM" Language="en_US">
+			<Text>No free team number is left.</Text>
+		</Row>
+	</LocalizedText>
+</GameData>
