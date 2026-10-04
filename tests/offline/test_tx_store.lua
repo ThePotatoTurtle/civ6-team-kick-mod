@@ -354,9 +354,15 @@ test("fake_txworld: split model: gameplay reads the config write at once, the UI
 	local inG
 	FAKE_UI.AsGameplay(function() inG = Players[1]:GetTeam() end)
 	H.eq(inG, 6, "gameplay reads the new team at once (F2)")
+	TX_Config = { stale = 1 }
 	FAKE_TX.Reload()
 	H.eq(Players[1]:GetTeam(), 6, "after a load the UI agrees (F4)")
-	H.isnil(TX_Config, "a load drops the TX globals")
+	-- The load drops the TX globals; since chunk B the gameplay script runs
+	-- again and includes fresh modules (and registers its handlers once).
+	H.ok(TX_Config == nil or TX_Config.stale == nil, "a load drops the TX globals")
+	if FAKE_TX.Exists(FAKE_TX.GAMEPLAY) then
+		H.eq(GameEvents.TX_Propose.Count(), 1, "gameplay ran again after the load")
+	end
 end)
 
 test("fake_txworld: split = false: gameplay does not see the config write either", function()
