@@ -194,10 +194,12 @@ test("apply 2: Apply, confirm: config write + broadcast, WRITTEN, applied 1, rel
 	H.eq(PlayerConfigurations[1]:GetTeam(), 6)
 	local w = Requests("TX_ApplyDone", "WRITTEN")
 	H.len(w, 1)
-	H.deq(w[1].params, { OnStart = "TX_ApplyDone", recordID = 1, step = "WRITTEN", team = 6 })
+	H.deq(w[1].params, { OnStart = "TX_ApplyDone", recordID = 1, step = "WRITTEN", team = 6, attempt = 1 })
 	H.eq(Rec(1).state, "PENDING_APPLY")
 	H.eq(Rec(1).applied, 1)
 	H.eq(Rec(1).appliedBy, 0)
+	H.eq(Rec(1).appliedAttempt, 1)
+	H.len(Requests("TX_ApplyDone", "UNDONE"), 0, "nothing undone on the normal path")
 	local r = LastDialog()
 	H.eq(r.id, "TX_ReloadNow")
 	H.eq(r.title, T("LOC_TX_RELOAD_TITLE"))
@@ -340,6 +342,10 @@ test("apply 6: gameplay does not see the write (NOT_SEEN): the UI undoes it, the
 	H.ok(H.hasLine("[UIApply] ERROR apply rec=1 not confirmed (REQUEST_FAILED): undoing the write of P1"))
 	H.ok(H.hasLine("[UIApply] undo rec=1: set ok broadcast ok; config team of P1 now 0"))
 	H.ok(H.hasLine("(NOT_SEEN)"), "gameplay's ERROR line")
+	local u = Requests("TX_ApplyDone", "UNDONE")
+	H.len(u, 1, "the undo is reported")
+	H.deq(u[1].params, { OnStart = "TX_ApplyDone", recordID = 1, step = "UNDONE", attempt = 1 })
+	H.eq(Rec(1).undoneAttempt, 1)
 	-- the banner offers Apply again
 	H.eq(BannerText(), T("LOC_TX_BANNER_HOST", Label(1)))
 	H.eq(ApplyShown(), true)
@@ -366,6 +372,87 @@ test("apply 6b: no answer within WAIT_MAX: undo and the failed dialog; the late 
 	FAKE_UI.DeliverRequests()
 	H.eq(Rec(1).applied, 0, "gameplay reads the old team again: NOT_SEEN")
 	H.eq(ApplyShown(), true)
+end, { allowErrors = true })
+
+-- Times the wait out (deferred requests): the UI undoes its write and reports
+-- UNDONE. Returns the WRITTEN and the UNDONE request, still pending.
+local function TimeOut()
+	FAKE_UI.deferRequests = true
+	ApplyNow()
+	for _ = 1, 18 do
+		FAKE_UI.Update(Ban(), 0.3)        -- 5.4 s > WAIT_MAX
+	end
+	H.eq(LastDialog().id, "TX_ApplyFailed")
+	H.eq(PlayerConfigurations[1]:GetTeam(), 0, "undone")
+	local pend = FAKE_UI.pending
+	H.len(pend, 2, "WRITTEN, then UNDONE")
+	H.eq(pend[1].params.step, "WRITTEN")
+	H.deq(pend[2].params, { OnStart = "TX_ApplyDone", recordID = 1, step = "UNDONE", attempt = pend[1].params.attempt })
+	FAKE_UI.pending = {}
+	FAKE_UI.deferRequests = false
+	return pend[1], pend[2]
+end
+
+-- Gameplay handles req while its read still shows the write (a slow answer:
+-- its view of the config lags the undo), then the config is back to the undo.
+local function DeliverSeeingWrite(req)
+	FAKE.players[1].configTeam = 6
+	FAKE_UI.pending = { req }
+	FAKE_UI.DeliverRequests()
+	FAKE.players[1].configTeam = 0
+end
+
+test("apply 6d: slow gameplay accepts WRITTEN after the UI timed out and undid it; the UNDONE after it resets applied: Apply returns", function()
+	Setup()
+	Pass()
+	Poll()
+	local written, undone = TimeOut()
+	DeliverSeeingWrite(written)
+	H.eq(Rec(1).applied, 1, "the late WRITTEN was accepted")
+	FAKE_UI.pending = { undone }
+	FAKE_UI.DeliverRequests()
+	H.eq(Rec(1).state, "PENDING_APPLY")
+	H.eq(Rec(1).applied, 0, "both sides agree: not applied")
+	Poll()
+	H.eq(BannerText(), T("LOC_TX_BANNER_HOST", Label(1)), "no endless reload banner")
+	H.eq(ApplyShown(), true)
+	-- the turn start reminds, as for any unapplied kick, and does not mark it applied
+	GTurn()
+	H.eq(Rec(1).applied, 0)
+	-- the next attempt goes through with a new token
+	Events.PlayerTurnActivated(0, true)
+	ApplyNow()
+	local w = Requests("TX_ApplyDone", "WRITTEN")
+	H.eq(w[#w].params.attempt, 2)
+	H.eq(Rec(1).applied, 1)
+	H.eq(LastDialog().id, "TX_ReloadNow")
+	ENVS = FAKE_TX.Reload()
+	H.eq(Rec(1).state, "DONE")
+end, { allowErrors = true })
+
+test("apply 6e: UNDONE handled before the late WRITTEN: the WRITTEN is refused, no REQUEST_FAILED; after a load the next attempt still gets a new token", function()
+	Setup()
+	Pass()
+	Poll()
+	local written, undone = TimeOut()
+	FAKE_UI.pending = { undone }
+	FAKE_UI.DeliverRequests()
+	H.eq(Rec(1).undoneAttempt, written.params.attempt)
+	local failed = #H.notifs(0, FAILED_N)
+	DeliverSeeingWrite(written)
+	H.eq(Rec(1).applied, 0, "the undone attempt is refused even though gameplay saw the team")
+	H.len(H.notifs(0, FAILED_N), failed, "no REQUEST_FAILED for it")
+	H.ok(H.hasLine("ATTEMPT_UNDONE"))
+	Poll()
+	H.eq(ApplyShown(), true)
+	-- a load resets the UI's own counter; the store's undoneAttempt keeps the token new
+	ENVS = FAKE_TX.Reload()
+	Poll()
+	ApplyNow()
+	local w = Requests("TX_ApplyDone", "WRITTEN")
+	H.eq(w[#w].params.attempt, written.params.attempt + 1)
+	H.eq(Rec(1).applied, 1)
+	H.eq(LastDialog().id, "TX_ReloadNow")
 end, { allowErrors = true })
 
 test("apply 6c: the record left PENDING_APPLY during the wait (victory): undo", function()

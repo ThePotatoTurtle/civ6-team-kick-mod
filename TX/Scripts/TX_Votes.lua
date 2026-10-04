@@ -19,6 +19,7 @@
 --     openedTurn, expiresTurn, state,
 --     closedTurn, reason,                          -- once it leaves OPEN
 --     newTeamID, applied, appliedTurn, appliedBy,  -- from the pass on
+--     appliedAttempt, undoneAttempt,               -- apply attempt tokens (UI)
 --     doneTurn }
 --
 -- MP: every walk is over arrays in ascending order (slots by pid, records by
@@ -55,6 +56,7 @@ TX_Votes.ALL_REASON_CODES = {
 	"NOT_PENDING",
 	"BAD_STEP",
 	"NOT_SEEN",
+	"ATTEMPT_UNDONE",
 	"NO_VOTE",
 	"TARGET_GONE",
 	"TARGET_LEFT",
@@ -454,10 +456,13 @@ end
 -- ===========================================================================
 -- Apply seam (PLAN II.9): WRITTEN and RELOADED reports from the host's UI
 -- ===========================================================================
--- TX_Votes.ApplyReasons(store, world, senderID, recID, step) -> codes
--- NOT_HUMAN, NO_RECORD, NOT_PENDING, BAD_STEP, NOT_SEEN (gameplay does not
--- read newTeamID for the target).
-function TX_Votes.ApplyReasons(store, world, senderID, recID, step)
+-- TX_Votes.ApplyReasons(store, world, senderID, recID, step, attempt) -> codes
+-- NOT_HUMAN, NO_RECORD, NOT_PENDING, BAD_STEP, ATTEMPT_UNDONE (a WRITTEN
+-- whose attempt, missing = 0, is not above the record's undoneAttempt: the
+-- UI already undid that write), NOT_SEEN (WRITTEN, RELOADED: gameplay does
+-- not read newTeamID for the target). UNDONE needs no read: the UI wrote the
+-- old team back.
+function TX_Votes.ApplyReasons(store, world, senderID, recID, step, attempt)
 	local codes = {}
 	local s = TX_Votes.Slot(world, senderID)
 	if s == nil or s.human ~= 1 then
@@ -469,26 +474,56 @@ function TX_Votes.ApplyReasons(store, world, senderID, recID, step)
 	elseif rec.state ~= TX_Config.ST.PENDING_APPLY then
 		codes[#codes + 1] = "NOT_PENDING"
 	end
-	local stepOk = (step == TX_Config.STEP_WRITTEN or step == TX_Config.STEP_RELOADED)
+	local stepOk = (step == TX_Config.STEP_WRITTEN or step == TX_Config.STEP_RELOADED or step == TX_Config.STEP_UNDONE)
 	if not stepOk then
 		codes[#codes + 1] = "BAD_STEP"
 	end
-	if rec ~= nil and rec.state == TX_Config.ST.PENDING_APPLY and stepOk
+	local pending = rec ~= nil and rec.state == TX_Config.ST.PENDING_APPLY
+	if pending and step == TX_Config.STEP_WRITTEN and type(rec.undoneAttempt) == "number"
+			and (attempt or 0) <= rec.undoneAttempt then
+		codes[#codes + 1] = "ATTEMPT_UNDONE"
+	end
+	if pending and stepOk and step ~= TX_Config.STEP_UNDONE
 			and TX_Votes.TeamOf(world, rec.targetID) ~= rec.newTeamID then
 		codes[#codes + 1] = "NOT_SEEN"
 	end
 	return codes
 end
 
--- TX_Votes.MarkWritten(rec, world, senderID): applied = 1, appliedTurn,
--- appliedBy (-1 when found at a turn start). A second call changes nothing.
-function TX_Votes.MarkWritten(rec, world, senderID)
+-- TX_Votes.MarkWritten(rec, world, senderID, attempt): applied = 1,
+-- appliedTurn, appliedBy (-1 when found at a turn start), appliedAttempt (the
+-- WRITTEN's attempt, when it has one). A second call changes nothing.
+function TX_Votes.MarkWritten(rec, world, senderID, attempt)
 	if rec.applied == 1 then
 		return
 	end
 	rec.applied = 1
 	rec.appliedTurn = world.turn
 	rec.appliedBy = senderID
+	if type(attempt) == "number" then
+		rec.appliedAttempt = attempt
+	end
+end
+
+-- TX_Votes.MarkUndone(rec, attempt) -> true when applied went back to 0
+-- The host's UI undid the write of that attempt (missing = 0): undoneAttempt
+-- = the highest one undone (a WRITTEN up to it is refused, ATTEMPT_UNDONE);
+-- applied = 1 from that attempt, an older one or a turn start goes back to 0
+-- and the applied fields are cleared, so the host may apply again. applied
+-- by a newer attempt stays.
+function TX_Votes.MarkUndone(rec, attempt)
+	local a = attempt or 0
+	if type(rec.undoneAttempt) ~= "number" or a > rec.undoneAttempt then
+		rec.undoneAttempt = a
+	end
+	if rec.applied ~= 1 or (rec.appliedAttempt or 0) > a then
+		return false
+	end
+	rec.applied = 0
+	rec.appliedTurn = nil
+	rec.appliedBy = nil
+	rec.appliedAttempt = nil
+	return true
 end
 
 -- TX_Votes.MarkDone(rec, world): DONE with doneTurn (and the applied fields

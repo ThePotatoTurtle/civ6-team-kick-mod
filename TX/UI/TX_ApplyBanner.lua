@@ -27,15 +27,21 @@
 --          Network.BroadcastPlayerInfo(t), the S3 call shapes proven in
 --          Sessions 1 and 2 (TX_Dev_Panel.lua:639-660 S3Write; SR:133,
 --          LOG:1151). The config team is read back; wrong: undo;
---       4. TX_ApplyDone { recordID, step = WRITTEN, team }, then a wait in the
---          update handler every WAIT_POLL s, up to WAIT_MAX s, for
---          applied = 1 (TX_Dev_Panel.lua:435-447, 2134-2172);
+--       4. TX_ApplyDone { recordID, step = WRITTEN, team, attempt }, then a
+--          wait in the update handler every WAIT_POLL s, up to WAIT_MAX s,
+--          for applied = 1 (TX_Dev_Panel.lua:435-447, 2134-2172). attempt:
+--          a new number per try, above this Lua state's last one and the
+--          record's undoneAttempt;
 --       5. answered: the blocking LOC_TX_RELOAD_TITLE / _TEXT dialog, banner
 --          1 from now on, then AutoReload(rec) (SEAM O3 hook, off);
 --       6. no answer, a REQUEST_FAILED for the record (NOT_SEEN), or the
 --          record left PENDING_APPLY: undo with SetTeam(old team) + broadcast
 --          (TX_Dev S3 Undo, TX_Dev_Panel.lua:684-711) and
---          LOC_TX_APPLY_FAILED_TITLE / _TEXT.
+--          LOC_TX_APPLY_FAILED_TITLE / _TEXT. When WRITTEN was sent and the
+--          record is still PENDING_APPLY, TX_ApplyDone { recordID, step =
+--          UNDONE, attempt } follows: gameplay sets applied back to 0 (a slow
+--          WRITTEN may have been accepted after the timeout) and refuses that
+--          attempt's WRITTEN if it comes later, so both sides agree.
 --   * Reload report: on LoadGameViewStateDone and the local
 --     PlayerTurnActivated, every PENDING_APPLY record whose target's UI live
 --     team is newTeamID (true only after a load, F3, F4) and not reported in
@@ -81,6 +87,7 @@ local m_ViewReady = false           -- set on LoadGameViewStateDone (EFV_Tracker
 local m_SentReloaded = {}           -- [recID] = true: RELOADED sent in this Lua state
 local m_SentVictory = false         -- TX_Victory sent in this Lua state
 local m_Wait = nil                  -- the apply in flight (at most one)
+local m_Attempts = {}               -- [recID] = last apply attempt number sent in this Lua state
 local m_BannerRecID = nil           -- record the Apply button applies
 local m_BannerKey = nil             -- "<kind>:<id>" shown now (nil: hidden)
 local m_PollElapsed = 0
@@ -309,6 +316,13 @@ local function Undo(w, why)
 	if now ~= w.undoTeam then
 		Log(1, "undo rec=%d: config team of P%d is %s, want %d", w.recID, w.target, Str(now), w.undoTeam)
 	end
+	-- Tell gameplay, so a WRITTEN it accepts late cannot leave applied = 1
+	-- with the write undone (the reload banner forever, no Apply button).
+	local rec = TX_Store.Get(TX_UI.ReadStore(), w.recID)
+	if w.sent and rec ~= nil and rec.state == ST.PENDING_APPLY then
+		Log(2, "apply rec=%d: reporting UNDONE attempt %d", w.recID, w.attempt)
+		TX_UI.Request(TX_Config.REQ_APPLY_DONE, { recordID = w.recID, step = TX_Config.STEP_UNDONE, attempt = w.attempt })
+	end
 	FailedDialog()
 	RefreshBanner()
 end
@@ -423,8 +437,10 @@ local function DoApply(recID)
 	if type(before) == "number" and before >= 0 then
 		undoTeam = before
 	end
+	local attempt = math.max(m_Attempts[recID] or 0, rec.undoneAttempt or 0, rec.appliedAttempt or 0) + 1
+	m_Attempts[recID] = attempt
 	local w = { recID = recID, target = t, newTeam = team, undoTeam = undoTeam, sender = TX_UI.Local(),
-		elapsed = 0, sincePoll = 0, failedBefore = {} }
+		attempt = attempt, sent = false, elapsed = 0, sincePoll = 0, failedBefore = {} }
 	for _, nid in ipairs(FailedNotifications(w.sender, recID)) do
 		w.failedBefore[nid] = true
 	end
@@ -434,10 +450,12 @@ local function DoApply(recID)
 		Undo(w, "config team read back " .. Str(now))
 		return
 	end
-	if not TX_UI.Request(TX_Config.REQ_APPLY_DONE, { recordID = recID, step = TX_Config.STEP_WRITTEN, team = team }) then
+	if not TX_UI.Request(TX_Config.REQ_APPLY_DONE, { recordID = recID, step = TX_Config.STEP_WRITTEN, team = team,
+			attempt = attempt }) then
 		Undo(w, "WRITTEN not sent")
 		return
 	end
+	w.sent = true
 	RefreshBanner()
 	-- A synchronous answer ends the wait at once; otherwise the update handler polls.
 	CheckWait(false)

@@ -70,7 +70,8 @@ local function IsNum(v)
 	return type(v) == "number" and v == v
 end
 
-local OPTIONAL_NUMBERS = { "closedTurn", "newTeamID", "applied", "appliedTurn", "appliedBy", "doneTurn" }
+local OPTIONAL_NUMBERS = { "closedTurn", "newTeamID", "applied", "appliedTurn", "appliedBy", "appliedAttempt",
+	"undoneAttempt", "doneTurn" }
 
 local function RecordProblem(rec)
 	if type(rec) ~= "table" then

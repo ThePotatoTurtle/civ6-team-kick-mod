@@ -28,8 +28,9 @@
 --   * Sweeps the local player's VOTE_REQUIRED copies (keep the newest per
 --     record while it is OPEN and the local player still has to vote; PLAN
 --     II.7 persistence) on LoadGameViewStateDone, the local
---     PlayerTurnActivated, NotificationAdded of that type after the view is
---     ready, and right after a vote.
+--     PlayerTurnActivated, LocalPlayerChanged (hotseat hand-off: copies pile
+--     up while another player has the seat), NotificationAdded of that type
+--     after the view is ready, and right after a vote.
 -- The UI only sends flat requests; gameplay re-validates the vote (TP 2.5).
 -- ===========================================================================
 
@@ -239,6 +240,15 @@ local function OnCloseTrigger()
 	end
 end
 
+-- Hotseat hand-off: the popup belongs to the previous player (close), and the
+-- new local player's copies sent while another player had the seat are swept.
+local function OnLocalPlayerChanged()
+	OnCloseTrigger()
+	if m_ViewReady then
+		SweepVotes(nil)
+	end
+end
+
 -- ESC closes the popup (EFV_DestinationPicker.lua:308-317).
 local function OnInput(pInput)
 	if m_Voter == nil then
@@ -269,7 +279,7 @@ local function Initialize()
 	Events.PlayerTurnActivated.Add(OnPlayerTurnActivated)
 	Events.LoadGameViewStateDone.Add(OnLoadGameViewStateDone)
 	Events.LocalPlayerTurnEnd.Add(OnCloseTrigger)
-	Events.LocalPlayerChanged.Add(OnCloseTrigger)
+	Events.LocalPlayerChanged.Add(OnLocalPlayerChanged)
 	LuaEvents.DiplomacyActionView_HideIngameUI.Add(OnCloseTrigger)
 	LuaEvents.TX_OpenVote.Add(Open)
 	Log(2, "initialized")

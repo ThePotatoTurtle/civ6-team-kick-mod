@@ -544,6 +544,26 @@ test("ui 10: sweep: two pending copies keep only the newest; after the vote ever
 	H.clean()
 end)
 
+test("ui 10c: hotseat hand-off sweeps the new local player's copies (they piled up while another player had the seat)", function()
+	Setup()
+	GPropose(0, 1)
+	GTurn()
+	local copies = H.notifs(2, VOTE_N)
+	H.len(copies, 2, "re-sent at the turn start while P0 is local")
+	H.ok(not copies[1].dismissed and not copies[2].dismissed, "P0's turn sweeps nothing of P2")
+	FAKE_TX.Hotseat(2)                       -- no PlayerTurnActivated, no new notification
+	H.eq(copies[1].dismissed, true, "older copy dismissed on the hand-off")
+	H.ok(not copies[2].dismissed, "newest copy kept while P2 still has to vote")
+	-- the popup for the old player still closes on a hand-off
+	FAKE_TX.Activate(2, VOTE_N)
+	H.eq(PopupOpen(), true)
+	FAKE_TX.Hotseat(0)
+	H.eq(PopupOpen(), false)
+	H.ok(not copies[2].dismissed, "P2's copy is not touched by P0's sweep")
+	H.len(Requests("TX_Vote"), 0)
+	H.clean()
+end)
+
 test("ui 10b: right after a vote from the popup the voter's copies go, before gameplay answers", function()
 	Setup()
 	GPropose(0, 1)

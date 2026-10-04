@@ -11,7 +11,7 @@
 -- log line each (EFV_Gameplay.lua:346-387).
 --   GameEvents.TX_Propose(playerID, { targetID })
 --   GameEvents.TX_Vote(playerID, { recordID, vote = "YES" | "NO" })
---   GameEvents.TX_ApplyDone(playerID, { recordID, step = "WRITTEN" | "RELOADED", team })
+--   GameEvents.TX_ApplyDone(playerID, { recordID, step = "WRITTEN" | "RELOADED" | "UNDONE", team, attempt })
 --   GameEvents.TX_Victory(playerID, { team })
 --   GameEvents.OnGameTurnStarted(turn): the turn pipeline
 -- Requests come from the UI as UI.RequestPlayerOperation(local,
@@ -232,18 +232,24 @@ local function Vote(playerID, params)
 end
 
 -- ===========================================================================
--- GameEvents.TX_ApplyDone(playerID, { recordID, step, team })
+-- GameEvents.TX_ApplyDone(playerID, { recordID, step, team, attempt })
 -- The apply seam, gameplay side (PLAN II.8, II.9). WRITTEN: the host's UI
 -- wrote the config team; gameplay must read it at once (F2). RELOADED: a UI
 -- saw the target's live team equal newTeamID, which it never does before a
--- load (F3); gameplay checks its own read again. Only synced state decides.
+-- load (F3); gameplay checks its own read again. UNDONE: the host's UI gave
+-- up waiting and wrote the old team back; applied goes back to 0 so the
+-- Apply button returns, and a WRITTEN of that attempt (or an older one)
+-- that arrives later is refused (ATTEMPT_UNDONE, no REQUEST_FAILED: its
+-- sender already knows). Only synced state decides.
 -- ===========================================================================
 local function ApplyDone(playerID, params)
 	local p = Params(params)
 	local recordID = Num(p.recordID)
 	local step = Text(p.step)
 	local team = Num(p.team)
-	Log(2, "Apply", "%s from P%s rec=%s team=%s", Str(p.step), Str(playerID), Str(p.recordID), Str(p.team))
+	local attempt = Num(p.attempt)
+	Log(2, "Apply", "%s from P%s rec=%s team=%s attempt=%s", Str(p.step), Str(playerID), Str(p.recordID), Str(p.team),
+		Str(p.attempt))
 	local store = LoadStore("Apply", "apply")
 	if store == nil then
 		return
@@ -258,7 +264,12 @@ local function ApplyDone(playerID, params)
 	if rec ~= nil and team ~= nil and rec.newTeamID ~= nil and team ~= rec.newTeamID then
 		Log(2, "Apply", "rec=%d: the UI reports team=%d, the record holds newTeam=%d", rec.id, team, rec.newTeamID)
 	end
-	local codes = TX_Votes.ApplyReasons(store, world, playerID, recordID, step)
+	local codes = TX_Votes.ApplyReasons(store, world, playerID, recordID, step, attempt)
+	if codes[1] == "ATTEMPT_UNDONE" then
+		Log(2, "Apply", "refused WRITTEN from P%s rec=%d attempt %s: ATTEMPT_UNDONE (undone up to attempt %d)",
+			Str(playerID), rec.id, Str(attempt), rec.undoneAttempt)
+		return
+	end
 	if #codes > 0 then
 		-- The host's write did not take (the only reason left): an ERROR, the
 		-- UI then undoes its write (PLAN II.11c step 6).
@@ -269,12 +280,24 @@ local function ApplyDone(playerID, params)
 		Refuse("Apply", Str(step), playerID, codes, recordID)
 		return
 	end
+	if step == TX_Config.STEP_UNDONE then
+		local was = rec.applied
+		if TX_Votes.MarkUndone(rec, attempt) then
+			Log(2, "Apply", "rec=%d UNDONE attempt %s by P%d: applied %s -> 0, the host may apply again",
+				rec.id, Str(attempt), playerID, Str(was))
+		else
+			Log(2, "Apply", "rec=%d UNDONE attempt %s by P%d: applied=%s (attempt %s) kept",
+				rec.id, Str(attempt), playerID, Str(rec.applied), Str(rec.appliedAttempt))
+		end
+		CommitAndFlush("Apply", store)
+		return
+	end
 	if step == TX_Config.STEP_WRITTEN then
 		if rec.applied == 1 then
 			Log(3, "Apply", "WRITTEN rec=%d from P%s: already applied", rec.id, Str(playerID))
 			return
 		end
-		TX_Votes.MarkWritten(rec, world, playerID)
+		TX_Votes.MarkWritten(rec, world, playerID, attempt)
 		Log(2, "Apply", "rec=%d WRITTEN by P%d: gameplay reads newTeam=%d for P%d; waiting for the reload",
 			rec.id, playerID, rec.newTeamID, rec.targetID)
 		CommitAndFlush("Apply", store)

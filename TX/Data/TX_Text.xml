@@ -301,6 +301,9 @@
 		<Row Tag="LOC_TX_REASON_NOT_SEEN" Language="en_US">
 			<Text>The team change didn't take effect.</Text>
 		</Row>
+		<Row Tag="LOC_TX_REASON_ATTEMPT_UNDONE" Language="en_US">
+			<Text>That apply attempt was already undone.</Text>
+		</Row>
 		<Row Tag="LOC_TX_REASON_NO_VOTE" Language="en_US">
 			<Text>A teammate voted no.</Text>
 		</Row>

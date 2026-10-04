@@ -57,6 +57,9 @@ TX_Config.V = { PENDING = "PENDING", YES = "YES", NO = "NO", GONE = "GONE" }
 -- Steps of the TX_ApplyDone request (apply seam, PLAN II.9).
 TX_Config.STEP_WRITTEN = "WRITTEN"
 TX_Config.STEP_RELOADED = "RELOADED"
+-- The host's UI undid its write after the wait (timeout or refusal); carries
+-- the same attempt number as its WRITTEN (review fix, PLAN Part II notes).
+TX_Config.STEP_UNDONE = "UNDONE"
 
 -- Notification types. Must match Data/TX_Notifications.sql. Text keys are
 -- "LOC_" .. type .. "_MESSAGE" / "_SUMMARY".
