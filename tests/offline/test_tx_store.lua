@@ -10,7 +10,7 @@ local function Rec(fields)
 	local r = {
 		teamID = 0, proposerID = 0, targetID = 1,
 		voters = { { pid = 0, v = "YES" }, { pid = 2, v = "PENDING" } },
-		openedTurn = 3, expiresTurn = 8, state = "OPEN",
+		openedTurn = 3, expiresTurn = 8, state = "OPEN", mode = "SOFT",
 	}
 	for _, k in ipairs(FAKE.SortedKeys(fields or {})) do
 		r[k] = fields[k]
@@ -399,3 +399,49 @@ test("fake_txworld: Hotseat, Activate, LoadUI with the contexts of later chunks 
 		H.eq(envs[c.name] ~= nil, FAKE_TX.Exists(c.rel), c.rel)
 	end
 end)
+
+-- ---------------------------------------------------------------------------
+-- Kick modes (DEC 2026-10-04): the record's mode and hardDone
+-- ---------------------------------------------------------------------------
+test("store modes: a record saved without a mode loads as SOFT (no repair, no ERROR); HARD and hardDone round trip", function()
+	Load()
+	local old = Rec({ id = 1, state = "DONE", newTeamID = 6, applied = 1, doneTurn = 5 })
+	old.mode = nil
+	FAKE.props.TX_Store = {
+		schema = 1, nextID = 3, lastTurn = 4, ids = { 1, 2 },
+		recs = { r1 = old, r2 = Rec({ id = 2, mode = "HARD", state = "DONE", newTeamID = 7, applied = 1, doneTurn = 6, hardDone = 1 }) },
+	}
+	local store, repaired = TX_Store.Load()
+	H.eq(repaired, false, "an old record is not a repair")
+	H.eq(TX_Store.Get(store, 1).mode, "SOFT")
+	include("TX_Votes")
+	H.eq(TX_Votes.RecMode(old), "SOFT", "RecMode of a raw old record")
+	H.eq(TX_Store.Get(store, 2).mode, "HARD")
+	H.eq(TX_Store.Get(store, 2).hardDone, 1)
+	H.eq(TX_Store.Commit(store), true)
+	local back = TX_Store.Load()
+	H.deq(back, store)
+	H.eq(H.prop("TX_Store").recs.r1.mode, "SOFT", "written with the mode from then on")
+	H.deq(FAKE.propViolations, {})
+	H.clean()
+end)
+
+test("store modes: an unknown mode string is repaired to SOFT with an ERROR; a non-string mode or hardDone drops the record", function()
+	Load()
+	FAKE.props.TX_Store = {
+		schema = 1, nextID = 4, lastTurn = 4, ids = { 1, 2, 3 },
+		recs = {
+			r1 = Rec({ id = 1, mode = "MEDIUM" }),
+			r2 = Rec({ id = 2, mode = 1 }),
+			r3 = Rec({ id = 3, state = "DONE", newTeamID = 6, applied = 1, mode = "HARD", hardDone = "yes" }),
+		},
+	}
+	local store, repaired = TX_Store.Load()
+	H.eq(repaired, true)
+	H.eq(TX_Store.Get(store, 1).mode, "SOFT")
+	H.isnil(TX_Store.Get(store, 2))
+	H.isnil(TX_Store.Get(store, 3))
+	H.ok(H.hasLine("[Store] ERROR normalize: record 1 had mode=MEDIUM; set to SOFT"))
+	H.ok(H.hasLine("ERROR normalize: dropped malformed record key=r2 (mode is not a string)"))
+	H.ok(H.hasLine("ERROR normalize: dropped malformed record key=r3 (hardDone is not a number)"))
+end, { allowErrors = true })

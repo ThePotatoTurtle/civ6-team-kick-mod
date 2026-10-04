@@ -14,13 +14,14 @@
 -- what gameplay reads (PLAN II.0 F1, F2; II.10).
 --
 -- Record (PLAN II.6):
---   { id, teamID, proposerID, targetID,
+--   { id, teamID, proposerID, targetID, mode = "SOFT" | "HARD",
 --     voters = { { pid = 0, v = "YES" }, { pid = 2, v = "PENDING" } },
 --     openedTurn, expiresTurn, state,
 --     closedTurn, reason,                          -- once it leaves OPEN
 --     newTeamID, applied, appliedTurn, appliedBy,  -- from the pass on
 --     appliedAttempt, undoneAttempt,               -- apply attempt tokens (UI)
---     doneTurn }
+--     doneTurn,
+--     hardDone }                                   -- HARD only: 1 alliance ended, 0 a step failed
 --
 -- MP: every walk is over arrays in ascending order (slots by pid, records by
 -- id, voters by pid). No pairs(), no RNG.
@@ -62,6 +63,7 @@ TX_Votes.ALL_REASON_CODES = {
 	"TARGET_LEFT",
 	"NO_VOTERS",
 	"NO_FREE_TEAM",
+	"BAD_MODE",
 }
 
 -- Confirm dialog kinds (TP 2.3 wording, PLAN II.11a).
@@ -225,6 +227,38 @@ function TX_Votes.ConfirmKind(world, proposerID, targetID)
 	return TX_Votes.KIND_VOTE
 end
 
+-- ===========================================================================
+-- Kick modes (TX_Config.MODE; DEC 2026-10-04)
+-- ===========================================================================
+-- TX_Votes.ModeOK(mode) -> true for SOFT, and for HARD while
+-- TX_Config.HARD_KICK_ENABLED. Anything else (nil included) is BAD_MODE.
+function TX_Votes.ModeOK(mode)
+	local M = TX_Config.MODE
+	if mode == M.SOFT then
+		return true
+	end
+	return mode == M.HARD and TX_Config.HARD_KICK_ENABLED == true
+end
+
+-- TX_Votes.RecMode(rec) -> the record's mode; MODE_DEFAULT (SOFT) for a
+-- record without a valid one (saved before kick modes).
+function TX_Votes.RecMode(rec)
+	local m = rec and rec.mode
+	if m == TX_Config.MODE.SOFT or m == TX_Config.MODE.HARD then
+		return m
+	end
+	return TX_Config.MODE_DEFAULT
+end
+
+-- TX_Votes.Modes() -> the modes the dialog offers, default first.
+function TX_Votes.Modes()
+	local M = TX_Config.MODE
+	if TX_Config.HARD_KICK_ENABLED == true then
+		return { M.SOFT, M.HARD }
+	end
+	return { M.SOFT }
+end
+
 local function Cancel(rec, reason, turn)
 	rec.state = TX_Config.ST.CANCELLED
 	rec.reason = reason
@@ -309,12 +343,16 @@ function TX_Votes.Evaluate(rec, turn)
 	return nil
 end
 
--- TX_Votes.Propose(store, world, senderID, targetID) -> rec, codes
--- Refused: nil and the reason codes. Else an OPEN record is added
--- (TX_Store.Add) and evaluated at once (a proposer with no other human voter
--- passes it right away).
-function TX_Votes.Propose(store, world, senderID, targetID)
+-- TX_Votes.Propose(store, world, senderID, targetID, mode) -> rec, codes
+-- Refused: nil and the reason codes (ProposeReasons, then BAD_MODE when mode
+-- is not TX_Votes.ModeOK; a missing mode is refused too). Else an OPEN record
+-- with that mode is added (TX_Store.Add) and evaluated at once (a proposer
+-- with no other human voter passes it right away).
+function TX_Votes.Propose(store, world, senderID, targetID, mode)
 	local codes = TX_Votes.ProposeReasons(store, world, senderID, targetID)
+	if not TX_Votes.ModeOK(mode) then
+		codes[#codes + 1] = "BAD_MODE"
+	end
 	if #codes > 0 then
 		return nil, codes
 	end
@@ -323,6 +361,7 @@ function TX_Votes.Propose(store, world, senderID, targetID)
 		teamID = TX_Votes.TeamOf(world, senderID),
 		proposerID = senderID,
 		targetID = targetID,
+		mode = mode,
 		voters = TX_Votes.Voters(world, senderID, targetID),
 		openedTurn = turn,
 		expiresTurn = turn + TX_Config.VOTE_TURNS,

@@ -726,7 +726,17 @@
    "ctx": {
     "G": {
      "level": "C",
-     "tests": []
+     "tests": [],
+     "only_paths": [
+      "TX_Dev/",
+      "TX/"
+     ],
+     "source": "TX",
+     "refs": [
+      "V6 and AL3 (TX_Dev Sessions 1 to 3): DeclareWarOn(b, WarTypes.FORMAL_WAR, true) in G starts the war, also on an ally (SR Session 2 and 3 AL3; upload 549af22d-Lua.log:2746, af865aec-Lua.log:6351)",
+      "AL3b (SR Session 3): with false as the third argument no war starts on an ally"
+     ],
+     "note": "Seeded from EFV for TX_Dev only. Team Expulsion kick modes (DEC 2026-10-04; PLAN Part II notes 'Kick modes', Appendix B): HARD kick in TX_Apply.HardKick (G, synced RELOADED handler)."
     },
     "UI": {
      "level": "L",
@@ -744,9 +754,6 @@
    "refs": [
     "PLAN 5.0 EFV_Dev war cmd",
     "NubiaScenario.lua:172"
-   ],
-   "only_paths": [
-    "TX_Dev/"
    ],
    "source": "EFV"
   },
@@ -2256,15 +2263,22 @@
    "ctx": {
     "G": {
      "level": "C",
-     "tests": []
+     "tests": [],
+     "only_paths": [
+      "TX_Dev/",
+      "TX/"
+     ],
+     "source": "TX",
+     "refs": [
+      "V6 and AL3 (TX_Dev Sessions 1 to 3): DeclareWarOn(b, WarTypes.FORMAL_WAR, true) in G starts the war, also on an ally (SR Session 2 and 3 AL3; upload 549af22d-Lua.log:2746, af865aec-Lua.log:6351)",
+      "AL3b (SR Session 3): with false as the third argument no war starts on an ally"
+     ],
+     "note": "Seeded from EFV for TX_Dev only. Team Expulsion kick modes (DEC 2026-10-04; PLAN Part II notes 'Kick modes', Appendix B): HARD kick in TX_Apply.HardKick (G, synced RELOADED handler)."
     }
    },
    "refs": [
     "PLAN 5.0",
     "NubiaScenario.lua:172"
-   ],
-   "only_paths": [
-    "TX_Dev/"
    ],
    "source": "EFV"
   },
@@ -2680,14 +2694,21 @@
    "ctx": {
     "G": {
      "level": "C",
-     "tests": []
+     "tests": [],
+     "only_paths": [
+      "TX_Dev/",
+      "TX/"
+     ],
+     "source": "TX",
+     "refs": [
+      "V6 and AL3 (TX_Dev Sessions 1 to 3): DeclareWarOn(b, WarTypes.FORMAL_WAR, true) in G starts the war, also on an ally (SR Session 2 and 3 AL3; upload 549af22d-Lua.log:2746, af865aec-Lua.log:6351)",
+      "AL3b (SR Session 3): with false as the third argument no war starts on an ally"
+     ],
+     "note": "Seeded from EFV (PLAN 5.0, NubiaScenario.lua:172) for TX_Dev only. Team Expulsion kick modes (DEC 2026-10-04; PLAN Part II notes 'Kick modes', Appendix B): HARD kick in TX_Apply.HardKick (G, synced RELOADED handler). The kicked player declares on each keeper: that direction is PROVISIONAL (TX_Dev Session 3c)."
     }
    },
    "refs": [
     "PLAN 5.0 war (NubiaScenario.lua:172)"
-   ],
-   "only_paths": [
-    "TX_Dev/"
    ],
    "source": "EFV"
   },
@@ -4368,6 +4389,37 @@
     "BASE24 DiplomacyActionView.lua:647, DiplomacyDealView.lua:231, PlayerSupport.lua:66 (PlayerConfigurations[p]:GetLeaderName(), UI)"
    ],
    "note": "Team Expulsion 0.1.0 (PLAN II.15, Appendix B). Player labels (LOC_TX_PLAYER_LABEL).",
+   "source": "TX"
+  },
+  "MakePeaceWith": {
+   "ctx": {
+    "G": {
+     "level": "C",
+     "tests": [],
+     "only_paths": [
+      "TX/"
+     ]
+    }
+   },
+   "refs": [
+    "AL3 (TX_Dev Sessions 2 and 3): the declarer's MakePeaceWith(other, true) in G ends the war at once, ALLIED -> WAR -> UNFRIENDLY (upload 549af22d-Lua.log:2748-2750, 5247-5249; af865aec-Lua.log:6353-6355)",
+    "PiratesScenario_StartScript.lua:767; GCO GCO_DiplomacyScript.lua:163 (shape)"
+   ],
+   "note": "Team Expulsion kick modes (DEC 2026-10-04; PLAN Part II notes 'Kick modes', Appendix B): HARD kick in TX_Apply.HardKick (G, synced RELOADED handler). TX_Dev calls it only through TX_Probe (not audited). Verified with the keeper as the declarer; the kicked player as the declarer is PROVISIONAL (TX_Dev Session 3c).",
+   "source": "TX"
+  },
+  "AddButton": {
+   "ctx": {
+    "UI": {
+     "level": "L",
+     "tests": []
+    }
+   },
+   "refs": [
+    "BASE24 EndGameMenu.lua:1236-1237 (g_kPopupDialog:AddButton(label, callback, nil, nil, style) on a PopupDialog in game)",
+    "BASE24 StagingRoom.lua:3263-3264, 1027-1028 (same shape)"
+   ],
+   "note": "Team Expulsion kick modes: the Hard kick button of the kick confirm dialog (PopupDialogInGame, which builds on PopupDialog). Session 4 checks it.",
    "source": "TX"
   }
  },

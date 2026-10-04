@@ -68,10 +68,26 @@ TX_Config.NOTIF = {
 	KICK_PASSED = "NOTIFICATION_TX_KICK_PASSED",
 	KICK_DONE = "NOTIFICATION_TX_KICK_DONE",
 	REQUEST_FAILED = "NOTIFICATION_TX_REQUEST_FAILED",
+	HARD_KICK_DONE = "NOTIFICATION_TX_HARD_KICK_DONE",
 }
 -- Custom notification data keys (EFV_Notify.lua:170-180).
 TX_Config.NKEY_RECORD = "TX_RecordID"
 TX_Config.NKEY_TURN = "TX_Turn"
+
+-- Kick modes (DEC 2026-10-04 "two kick modes"). The proposer picks one; it is
+-- the flat param mode of TX_Propose and the record's mode field.
+--   SOFT: team split only; the ex-teammates stay in the timeless alliance.
+--   HARD: team split, then after the reload the KICKED player declares war on
+--         each remaining member of its old team and makes peace at once
+--         (TX_Apply.AfterReload), so the grievances fall on the kicked player.
+-- A record without a mode (saved before kick modes) loads as MODE_DEFAULT.
+TX_Config.MODE = { SOFT = "SOFT", HARD = "HARD" }
+TX_Config.MODE_DEFAULT = "SOFT"         -- the dialog's default and the mode of old records
+-- PROVISIONAL: the kicked-player-declares direction and the multi-keeper
+-- order are tested by the TX_Dev Session 3c spike (Session 3 AL3 had the
+-- keeper declare). false: the dialog offers Soft only, gameplay refuses HARD
+-- (BAD_MODE) and a stored HARD record gets no war step (it ends as a soft kick).
+TX_Config.HARD_KICK_ENABLED = true
 
 -- UI wait for gameplay after a request, in seconds (TX_Dev_Panel.lua:55-56).
 TX_Config.WAIT_POLL = 0.3

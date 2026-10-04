@@ -26,8 +26,8 @@ local function Setup(opts)
 end
 
 -- Requests (flat params, PLAN II.8).
-local function Propose(pid, target)
-	H.request(pid, { OnStart = "TX_Propose", targetID = target })
+local function Propose(pid, target, mode)
+	H.request(pid, { OnStart = "TX_Propose", targetID = target, mode = mode or "SOFT" })
 end
 local function Vote(pid, id, v)
 	H.request(pid, { OnStart = "TX_Vote", recordID = id, vote = v })
@@ -141,8 +141,8 @@ test("gameplay 2: P0 proposes P1: VOTE_REQUIRED only to P2 with the record id; t
 	H.eq(n.data.AlwaysUnique, true)
 	H.eq(Message(n), "Team vote")
 	-- the fake Locale leaves "#" of a plural form as is (test_harness_selftest.lua:159-161)
-	H.eq(Summary(n), Label(0) .. " wants to kick " .. Label(1) .. " off your team. Vote within # turns.")
-	H.ok(H.hasLine("[TX][T1][Votes] rec=1 opened team=0 proposer=P0 target=P1 voters=[P0=YES P2=PENDING] expires=T6"))
+	H.eq(Summary(n), Label(0) .. " wants to kick " .. Label(1) .. " off your team (soft kick). Vote within # turns.")
+	H.ok(H.hasLine("[TX][T1][Votes] rec=1 opened team=0 proposer=P0 target=P1 mode=SOFT voters=[P0=YES P2=PENDING] expires=T6"))
 	H.ok(H.hasLine("[TX][T1][Notify] sent pid=2 type=NOTIFICATION_TX_VOTE_REQUIRED rec=1"))
 	H.clean()
 end)
@@ -188,7 +188,7 @@ test("gameplay 4: re-proposal after a NO; P2 YES: PENDING_APPLY with newTeamID 6
 	local n = Last(1, PASSED)
 	H.eq(n.data.TX_RecordID, 2)
 	H.eq(Message(n), "Kicked off a team")
-	H.eq(Summary(n), Label(1) .. " was voted off their team. It takes effect once the host applies it and the game is saved and reloaded.")
+	H.eq(Summary(n), Label(1) .. " was voted off their team (soft kick). It takes effect once the host applies it and the game is saved and reloaded.")
 	H.ok(H.hasLine("rec=2 PASSED: target=P1 newTeam=6, waiting for the host to apply"))
 	H.clean()
 end)
@@ -495,9 +495,9 @@ test("gameplay 10: WRITTEN after the config write: applied; RELOADED after the l
 	H.deq(Pids(nil, before), HUMANS, "KICK_DONE to every living human")
 	H.deq(Pids(DONE, before), HUMANS)
 	H.eq(Message(Last(0, DONE)), "Team changed")
-	H.eq(Summary(Last(0, DONE)), Label(1) .. " now plays alone.")
+	H.eq(Summary(Last(0, DONE)), Label(1) .. " now plays alone and stays allied with their old team.")
 	H.eq(Last(0, DONE).data.TX_RecordID, 1)
-	H.len(H.lines("[TX][T2][Apply] AfterReload rec=1 target=P1: no cleanup in 0.1.0 (O1 alliance, O2 vision)"), 1)
+	H.len(H.lines("[TX][T2][Apply] AfterReload rec=1 target=P1 mode=SOFT: no war step, the ex-teammates stay allied (O2 vision: known limitation)"), 1)
 	-- every other UI reports too: nothing new
 	rev, before = Rev(), Count()
 	ApplyDone(0, 1, "RELOADED", 6)
@@ -687,9 +687,9 @@ test("notify: a recipient who has not met the target gets the unmet label", func
 	FAKE.PairSet(FAKE.diplo.met, 5, 1, false)
 	FAKE.PairSet(FAKE.diplo.met, 1, 5, false)
 	Pass()
-	H.eq(Summary(Last(5, PASSED)), "an unmet player was voted off their team. It takes effect once the host applies it and the game is saved and reloaded.")
-	H.eq(Summary(Last(3, PASSED)), Label(1) .. " was voted off their team. It takes effect once the host applies it and the game is saved and reloaded.")
-	H.eq(Summary(Last(1, PASSED)), Label(1) .. " was voted off their team. It takes effect once the host applies it and the game is saved and reloaded.", "own label, no HasMet check")
+	H.eq(Summary(Last(5, PASSED)), "an unmet player was voted off their team (soft kick). It takes effect once the host applies it and the game is saved and reloaded.")
+	H.eq(Summary(Last(3, PASSED)), Label(1) .. " was voted off their team (soft kick). It takes effect once the host applies it and the game is saved and reloaded.")
+	H.eq(Summary(Last(1, PASSED)), Label(1) .. " was voted off their team (soft kick). It takes effect once the host applies it and the game is saved and reloaded.", "own label, no HasMet check")
 	H.clean()
 end)
 
@@ -697,24 +697,24 @@ test("notify: PROBE config reads in gameplay are logged; a failing read falls ba
 	Setup()
 	PlayerConfigurations[1].GetLeaderName = function() error("attempt to call method 'GetLeaderName' (a nil value)") end
 	Propose(0, 1)
-	H.eq(Summary(Last(2, VOTE)), Label(0) .. " wants to kick a teammate off your team. Vote within # turns.")
+	H.eq(Summary(Last(2, VOTE)), Label(0) .. " wants to kick a teammate off your team (soft kick). Vote within # turns.")
 	H.len(H.lines("[TX][T1][Notify] PROBE G PlayerConfigurations:GetLeaderName ok -> string LOC_LEADER_FAKE_0_NAME"), 1)
 	H.len(H.lines("[TX][T1][Notify] PROBE G PlayerConfigurations:GetLeaderName FAILED: "), 1)
 	H.len(H.lines("PROBE G PlayerConfigurations:GetCivilizationShortDescription ok -> string"), 1, "logged once per outcome")
 	-- the next turn's reminder logs at level 3 only (not shown at LOG_LEVEL 2)
 	H.endTurn()
 	H.len(H.lines("PROBE G PlayerConfigurations:GetLeaderName FAILED"), 1)
-	H.eq(Summary(Last(2, VOTE)), Label(0) .. " wants to kick a teammate off your team. Vote within # turns.")
+	H.eq(Summary(Last(2, VOTE)), Label(0) .. " wants to kick a teammate off your team (soft kick). Vote within # turns.")
 	H.clean()
 end)
 
 test("notify: queue skips non-humans, replaces a same-batch duplicate, and Flush sends in order", function()
 	Setup()
 	H.markBody()
-	TX_Notify.Queue(2, VOTE, { "a", "b", 3 }, 7)
-	TX_Notify.Queue(4, VOTE, { "a", "b", 3 }, 7)       -- AI: skipped
-	TX_Notify.Queue(0, PASSED, { "x" }, 7)
-	TX_Notify.Queue(2, VOTE, { "c", "d", 1 }, 7)       -- replaces the first, keeps its place
+	TX_Notify.Queue(2, VOTE, { "a", "b", 3, "m" }, 7)
+	TX_Notify.Queue(4, VOTE, { "a", "b", 3, "m" }, 7)       -- AI: skipped
+	TX_Notify.Queue(0, PASSED, { "x", "m" }, 7)
+	TX_Notify.Queue(2, VOTE, { "c", "d", 1, "m" }, 7)       -- replaces the first, keeps its place
 	TX_Notify.Queue(2, FAILED, { "r" })                 -- no record: never coalesced
 	TX_Notify.Queue(2, FAILED, { "r" })
 	H.eq(TX_Notify.Count(), 4)
@@ -725,8 +725,8 @@ test("notify: queue skips non-humans, replaces a same-batch duplicate, and Flush
 		got[#got + 1] = n.pid .. ":" .. n.typeName .. ":" .. tostring(n.data.TX_RecordID)
 	end
 	H.deq(got, { "2:" .. VOTE .. ":7", "0:" .. PASSED .. ":7", "2:" .. FAILED .. ":nil", "2:" .. FAILED .. ":nil" })
-	H.eq(Summary(FAKE.notifications[1]), "c wants to kick d off your team. Vote within 1 turn.")
-	TX_Notify.Queue(2, VOTE, { "a", "b", 3 }, 7)
+	H.eq(Summary(FAKE.notifications[1]), "c wants to kick d off your team (m). Vote within 1 turn.")
+	TX_Notify.Queue(2, VOTE, { "a", "b", 3, "m" }, 7)
 	TX_Notify.Discard()
 	TX_Notify.Flush()
 	H.eq(#FAKE.notifications, 4, "discarded entries are never sent")
@@ -863,4 +863,275 @@ test("gameplay 12: HISTORY_MAX trim at the turn start keeps the newest closed re
 	Propose(0, 1)
 	H.eq(Rec(6).state, "OPEN")
 	H.clean()
+end)
+
+-- ===========================================================================
+-- Kick modes (DEC 2026-10-04; PLAN Part II notes "Kick modes"). The fake
+-- diplomacy of lib/fake_txworld.lua models AL3 / AL3b (test assumptions; the
+-- kicked-player-declares direction is PROVISIONAL, TX_Dev Session 3c).
+-- ===========================================================================
+local HARD_N = "NOTIFICATION_TX_HARD_KICK_DONE"
+
+-- Kick P1 off team 0 in the given mode up to DONE: the ex-teammates keep the
+-- timeless alliance (FAKE_TX.AllyTeam before the split); voters say YES; the
+-- host's UI writes the config team; save and load; P3's UI reports RELOADED.
+-- opts.voters (default { 2 }), opts.beforeReloaded (called after the load).
+-- Returns the notification count before RELOADED.
+local function KickToDone(mode, opts)
+	opts = opts or {}
+	FAKE_TX.AllyTeam(0)
+	Propose(0, 1, mode)
+	for _, v in ipairs(opts.voters or { 2 }) do
+		Vote(v, 1, "YES")
+	end
+	local rec = Rec(1)
+	H.eq(rec.state, "PENDING_APPLY", "the kick passed")
+	PlayerConfigurations[1]:SetTeam(rec.newTeamID)
+	ApplyDone(2, 1, "WRITTEN", rec.newTeamID)
+	H.eq(Rec(1).applied, 1)
+	FAKE_TX.Reload()
+	H.markBody()
+	if opts.beforeReloaded ~= nil then
+		opts.beforeReloaded()
+	end
+	local before = Count()
+	ApplyDone(3, 1, "RELOADED", rec.newTeamID)
+	H.eq(Rec(1).state, "DONE")
+	return before
+end
+
+local function Outcome(key)
+	return FAKE_TEXT["LOC_TX_HARD_OUTCOME_" .. key]
+end
+
+test("modes 1: TX_Propose mode is validated in gameplay: missing, unknown, lower case, a number: BAD_MODE, nothing stored; SOFT and HARD stored", function()
+	Setup()
+	local function Refused(params, label)
+		local rev, before = Rev(), Count()
+		params.OnStart = "TX_Propose"
+		H.request(0, params)
+		H.eq(Rev(), rev, label .. ": nothing stored")
+		H.deq(Pids(nil, before), { 0 }, label .. ": REQUEST_FAILED to the sender only")
+		H.eq(Summary(Last(0, FAILED)), Reason("BAD_MODE"), label)
+	end
+	Refused({ targetID = 1 }, "missing mode")
+	Refused({ targetID = 1, mode = "MEDIUM" }, "unknown mode")
+	Refused({ targetID = 1, mode = "hard" }, "lower case")
+	Refused({ targetID = 1, mode = 1 }, "number mode")
+	H.ok(H.hasLine("[TX][T1][Votes] refused propose from P0: BAD_MODE"))
+	H.isnil(Store(), "no record was ever stored")
+	-- another reason comes first: the mode is checked last
+	Propose(0, 0, "MEDIUM")
+	H.eq(Summary(Last(0, FAILED)), Reason("TARGET_SELF"))
+	Propose(0, 1, "HARD")
+	H.eq(Rec(1).mode, "HARD")
+	H.ok(H.hasLine("[TX][T1][Votes] propose from P0 target=1 mode=HARD"))
+	H.ok(H.hasLine("rec=1 opened team=0 proposer=P0 target=P1 mode=HARD voters=[P0=YES P2=PENDING]"))
+	H.ok(string.find(Summary(Last(2, VOTE)), "(hard kick)", 1, true) ~= nil, "the voter's notification names the mode")
+	Vote(2, 1, "NO")
+	Propose(3, 4, "SOFT")
+	H.eq(Rec(2).mode, "SOFT")
+	H.eq(Summary(Last(3, PASSED)), Label(4) .. " was voted off their team (soft kick). It takes effect once the host applies it and the game is saved and reloaded.")
+	Propose(0, 1, "HARD")
+	Vote(2, 3, "YES")
+	H.eq(Summary(Last(0, PASSED)), Label(1) .. " was voted off their team (hard kick). It takes effect once the host applies it and the game is saved and reloaded.")
+	H.clean()
+end)
+
+test("modes 2: HARD after the reload: P1 declares war on P0 (the team war covers P2), makes peace; grievances on P1; HARD_KICK_DONE to all; hardDone 1", function()
+	Setup()
+	local before = KickToDone("HARD")
+	local rec = Rec(1)
+	H.eq(rec.mode, "HARD")
+	H.eq(rec.hardDone, 1)
+	local wars = FAKE_TX.Calls("DeclareWarOn")
+	H.len(wars, 1, "one declaration: the war is team wide (fake model)")
+	H.eq(wars[1].a, 1, "the KICKED player declares")
+	H.eq(wars[1].b, 0, "on the lowest keeper first")
+	H.eq(wars[1].warType, WarTypes.FORMAL_WAR)
+	H.eq(wars[1].third, true, "AL3b: the third argument must be true on an ally")
+	H.eq(wars[1].context, "G", "in gameplay (synced handler)")
+	local peace = FAKE_TX.Calls("MakePeaceWith")
+	H.len(peace, 1)
+	H.eq(peace[1].a, 1)
+	H.eq(peace[1].b, 0)
+	H.eq(peace[1].v, true)
+	for _, k in ipairs({ 0, 2 }) do
+		H.eq(FAKE.IsAtWar(1, k), false, "peace with P" .. k)
+		H.eq(FAKE_TX.DiploState(1, k), "UNFRIENDLY", "no longer allied with P" .. k)
+		H.eq(FAKE_TX.Grievance(k, 1), 100, "P" .. k .. " holds the grievances against the kicked player")
+		H.eq(FAKE_TX.Grievance(1, k), 0, "the kicked player holds none")
+	end
+	for _, l in ipairs({
+		"[Apply] AfterReload rec=1 target=P1 mode=HARD: war then peace (PROVISIONAL, Session 3c)",
+		"[Apply] HARD rec=1: P1 ends the alliance with its old team 0: keepers [P0,P2]",
+		"[Apply] HARD rec=1 war P1->P0: declared, at war=yes",
+		"[Apply] HARD rec=1 war P1->P2: already at war, no declaration",
+		"[Apply] HARD rec=1 peace P1->P0: made, at war=no",
+		"[Apply] HARD rec=1 peace P1->P2: not at war, no call",
+		"[Apply] HARD rec=1 final P1 vs P0: war step=yes at war=no",
+		"[Apply] HARD rec=1 final P1 vs P2: war step=yes at war=no",
+		"[Apply] HARD rec=1 done: the alliance of P1 with team 0 is ended (war then peace)",
+		"[Apply] rec=1 hardDone=1",
+	}) do
+		H.len(H.lines(l), 1, l)
+	end
+	-- the news: HARD_KICK_DONE instead of KICK_DONE
+	H.deq(Pids(nil, before), HUMANS, "one notification per living human")
+	H.deq(Pids(HARD_N, before), HUMANS)
+	H.eq(Message(Last(0, HARD_N)), "Hard kick")
+	H.eq(Summary(Last(0, HARD_N)), Label(1) .. " was hard kicked from their team. " .. Outcome("OK"))
+	H.eq(Summary(Last(0, HARD_N)), Label(1) .. " was hard kicked from their team. The alliance with their old team has been ended. They declared war and made peace at once, so the grievances fall on them.")
+	H.eq(Last(1, HARD_N).data.TX_RecordID, 1)
+	H.eq(H.prop("TX_Store").recs.r1.hardDone, 1, "stored")
+	H.clean()
+end)
+
+test("modes 3: HARD runs once: two more RELOADED reports, another load and its report, later turns: no new war, peace or notification", function()
+	Setup()
+	KickToDone("HARD")
+	local calls, count, rev = #FAKE_TX.diploCalls, Count(), Rev()
+	ApplyDone(0, 1, "RELOADED", 6)
+	ApplyDone(2, 1, "RELOADED", 6)
+	FAKE_TX.Reload()
+	ApplyDone(0, 1, "RELOADED", 6)
+	ApplyDone(3, 1, "RELOADED", 6)
+	H.endTurn()
+	H.endTurn()
+	H.eq(#FAKE_TX.diploCalls, calls, "no diplomacy call after the first run")
+	H.eq(Count(), count, "no notification")
+	H.eq(Rev(), rev + 2, "only the two turn starts wrote")
+	H.eq(Rec(1).hardDone, 1)
+	H.len(H.lines("AfterReload rec=1"), 1, "the hook ran once")
+	H.len(H.lines("HARD rec=1 done"), 1)
+	H.clean()
+end)
+
+test("modes 4: multi-keeper (P5 joins team 0, per-pair wars): war on P0, P2, P5 in pid order, then peace in pid order", function()
+	Setup()
+	FAKE.teamWars = false
+	H.team(5, 0)
+	KickToDone("HARD", { voters = { 2, 5 } })
+	local order = {}
+	for _, c in ipairs(FAKE_TX.diploCalls) do
+		order[#order + 1] = c.fn .. " " .. c.a .. ">" .. c.b
+	end
+	H.deq(order, { "DeclareWarOn 1>0", "DeclareWarOn 1>2", "DeclareWarOn 1>5",
+		"MakePeaceWith 1>0", "MakePeaceWith 1>2", "MakePeaceWith 1>5" })
+	H.ok(H.hasLine("HARD rec=1: P1 ends the alliance with its old team 0: keepers [P0,P2,P5]"))
+	for _, k in ipairs({ 0, 2, 5 }) do
+		H.eq(FAKE.IsAtWar(1, k), false)
+		H.eq(FAKE_TX.DiploState(1, k), "UNFRIENDLY")
+		H.eq(FAKE_TX.Grievance(k, 1), 100)
+	end
+	H.eq(Rec(1).hardDone, 1)
+	H.clean()
+end)
+
+test("modes 5: a failed step is an ERROR and is left as it is: one call per keeper and step, no retry; hardDone 0; the failed outcome is announced", function()
+	Setup()
+	FAKE.teamWars = false
+	local before = KickToDone("HARD", { beforeReloaded = function()
+		FAKE_TX.diploFail["declare:1>0"] = "error"
+		FAKE_TX.diploFail["peace:1>2"] = "noop"
+	end })
+	H.len(FAKE_TX.Calls("DeclareWarOn"), 2, "one declaration per keeper")
+	H.len(FAKE_TX.Calls("MakePeaceWith"), 1, "peace only with the keeper at war, once")
+	H.eq(FAKE.IsAtWar(1, 0), false)
+	H.eq(FAKE_TX.DiploState(1, 0), "ALLIED", "the war on P0 never started")
+	H.eq(FAKE.IsAtWar(1, 2), true, "the failed peace is left as it is")
+	H.len(H.lines("[Apply] ERROR HARD rec=1 war P1->P0: DeclareWarOn failed: "), 1)
+	H.len(H.lines("[Apply] ERROR HARD rec=1 peace P1->P2: MakePeaceWith ran but at war=yes"), 1)
+	H.len(H.lines("[Apply] HARD rec=1 peace P1->P0: not at war, no call"), 1)
+	H.len(H.lines("[Apply] HARD rec=1 final P1 vs P0: war step=no at war=no"), 1)
+	H.len(H.lines("[Apply] HARD rec=1 final P1 vs P2: war step=yes at war=yes"), 1)
+	H.len(H.lines("[Apply] ERROR HARD rec=1 FAILED: P1 may still be allied with or at war with team 0; left as it is (no retry)"), 1)
+	H.eq(Rec(1).state, "DONE")
+	H.eq(Rec(1).hardDone, 0)
+	H.deq(Pids(HARD_N, before), HUMANS)
+	H.eq(Summary(Last(0, HARD_N)), Label(1) .. " was hard kicked from their team. " .. Outcome("FAILED"))
+	H.len(H.notifs(nil, DONE), 0, "no soft KICK_DONE")
+	-- nothing tries again
+	local calls = #FAKE_TX.diploCalls
+	ApplyDone(0, 1, "RELOADED", 6)
+	H.endTurn()
+	FAKE_TX.Reload()
+	ApplyDone(0, 1, "RELOADED", 6)
+	H.eq(#FAKE_TX.diploCalls, calls)
+	H.eq(Rec(1).hardDone, 0)
+end, { allowErrors = true })
+
+test("modes 5b: the hook itself throws: ERROR line, hardDone 0, the failed outcome; DONE stays", function()
+	Setup()
+	KickToDone("HARD", { beforeReloaded = function()
+		TX_Apply.HardKick = function() error("boom") end
+	end })
+	H.ok(H.hasLine("[Apply] ERROR TX_Apply.AfterReload failed: "))
+	H.eq(Rec(1).state, "DONE")
+	H.eq(Rec(1).hardDone, 0)
+	H.eq(Summary(Last(0, HARD_N)), Label(1) .. " was hard kicked from their team. " .. Outcome("FAILED"))
+	H.len(FAKE_TX.diploCalls, 0)
+end, { allowErrors = true })
+
+test("modes 6: SOFT does nothing extra: no diplomacy call, KICK_DONE says they stay allied, no hardDone", function()
+	Setup()
+	local before = KickToDone("SOFT")
+	H.len(FAKE_TX.diploCalls, 0)
+	H.eq(FAKE_TX.DiploState(1, 0), "ALLIED", "still allied")
+	H.eq(FAKE_TX.DiploState(1, 2), "ALLIED")
+	H.isnil(Rec(1).hardDone)
+	H.deq(Pids(nil, before), HUMANS)
+	H.deq(Pids(DONE, before), HUMANS)
+	H.eq(Summary(Last(0, DONE)), Label(1) .. " now plays alone and stays allied with their old team.")
+	H.ok(H.hasLine("[Apply] AfterReload rec=1 target=P1 mode=SOFT: no war step, the ex-teammates stay allied (O2 vision: known limitation)"))
+	H.clean()
+end)
+
+test("modes 7: HARD_KICK_ENABLED = false at the reload: a stored HARD record ends as a soft kick (no call, KICK_DONE, no hardDone)", function()
+	Setup()
+	local before = KickToDone("HARD", { beforeReloaded = function() TX_Config.HARD_KICK_ENABLED = false end })
+	H.len(FAKE_TX.diploCalls, 0)
+	H.eq(FAKE_TX.DiploState(1, 0), "ALLIED")
+	H.isnil(Rec(1).hardDone)
+	H.eq(Rec(1).mode, "HARD", "the record keeps its mode")
+	H.deq(Pids(DONE, before), HUMANS)
+	H.len(H.notifs(nil, HARD_N), 0)
+	H.ok(H.hasLine("[Apply] AfterReload rec=1 target=P1 mode=HARD: HARD_KICK_ENABLED is false; nothing done, they stay allied"))
+	-- and new HARD proposals are refused
+	Propose(0, 2, "HARD")
+	H.eq(Summary(Last(0, FAILED)), Reason("BAD_MODE"))
+	H.clean()
+end)
+
+test("modes 8: MP hygiene: two identical HARD runs give the same store, calls and notifications", function()
+	FAKE.dofile("tests/offline/lib/fake_txworld.lua")
+	local function Run()
+		for _, k in ipairs(FAKE.SortedKeys(FAKE.props)) do
+			FAKE.props[k] = nil
+		end
+		FAKE.notifications = {}
+		FAKE.nextNotifID = 1
+		FAKE.teamSets = {}
+		H.reload({}, FAKE_TX.GLOBALS)
+		FAKE_TX.World()
+		FAKE.dofile(GAMEPLAY)
+		KickToDone("HARD")
+		local calls = {}
+		for _, c in ipairs(FAKE_TX.diploCalls) do
+			calls[#calls + 1] = c.fn .. " " .. c.a .. ">" .. c.b
+		end
+		local sent = {}
+		for _, n in ipairs(FAKE.notifications) do
+			sent[#sent + 1] = n.pid .. ":" .. n.typeName .. ":" .. tostring(Summary(n))
+		end
+		return FAKE.DeepCopy(Store()), calls, sent
+	end
+	local s1, c1, n1 = Run()
+	local s2, c2, n2 = Run()
+	H.deq(s2, s1)
+	H.deq(c2, c1)
+	H.deq(n2, n1)
+	H.len(FAKE.rngCalls, 0)
+	H.len(FAKE.forbidden, 0)
+	H.len(FAKE.propViolations, 0)
 end)

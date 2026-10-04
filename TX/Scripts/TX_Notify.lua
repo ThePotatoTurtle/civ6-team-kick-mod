@@ -3,8 +3,8 @@
 -- TX:CONTEXT G
 --
 -- Gameplay only: include("TX_Notify") from TX_Gameplay.lua. The notification
--- queue, its flush, the player labels and the four TX notifications
--- (PLAN II.7, II.13).
+-- queue, its flush, the player labels and the five TX notifications
+-- (PLAN II.7, II.13; HARD_KICK_DONE: PLAN Part II notes "Kick modes").
 --
 -- Queue and flush exactly as EFV_Notify (EFV/Scripts/EFV_Notify.lua):
 --   * human recipients only (:85-97; IsHuman is synchronised, so the skip is
@@ -29,7 +29,10 @@
 -- Who gets what (PLAN II.7 table):
 --   VOTE_REQUIRED   each PENDING human voter, never the proposer or the target
 --   KICK_PASSED     every living human major, all teams (TP 2.1)
---   KICK_DONE       every living human major
+--   KICK_DONE       every living human major (a soft kick, or a hard kick
+--                   while HARD_KICK_ENABLED is false: they stay allied)
+--   HARD_KICK_DONE  every living human major, after the war then peace of a
+--                   hard kick (with the outcome: ended, or a step failed)
 --   REQUEST_FAILED  the sender of a refused request
 -- FAILED, EXPIRED and CANCELLED send nothing (DEC 2, TP 2.1).
 --
@@ -246,9 +249,15 @@ function TX_Notify.Queue(pid, typeName, args, recordID)
 end
 
 -- ---------------------------------------------------------------------------
--- The four notifications (PLAN II.7)
+-- The notifications (PLAN II.7)
 -- ---------------------------------------------------------------------------
--- VOTE_REQUIRED to one voter: { proposer, target, turns left }. Refuses the
+-- TX_Notify.ModeText(rec) -> the record's mode in short words
+-- (LOC_TX_MODE_SOFT_SHORT / _HARD_SHORT; old records are SOFT).
+function TX_Notify.ModeText(rec)
+	return Text("LOC_TX_MODE_" .. TX_Votes.RecMode(rec) .. "_SHORT")
+end
+
+-- VOTE_REQUIRED to one voter: { proposer, target, turns left, mode }. Refuses the
 -- proposer, the target and anybody who is not a PENDING voter of the record.
 function TX_Notify.VoteRequired(rec, pid, turn)
 	if pid == rec.targetID or pid == rec.proposerID then
@@ -263,6 +272,7 @@ function TX_Notify.VoteRequired(rec, pid, turn)
 		TX_Notify.Label(rec.proposerID, pid),
 		TX_Notify.Label(rec.targetID, pid),
 		TX_Votes.TurnsLeft(rec, turn),
+		TX_Notify.ModeText(rec),
 	}, rec.id)
 end
 
@@ -275,20 +285,37 @@ function TX_Notify.VoteRequiredAll(rec, turn)
 	end
 end
 
-local function ToLivingHumans(rec, world, typeName)
+-- typeName to every living human major: { target label, extra args }.
+local function ToLivingHumans(rec, world, typeName, extra)
 	for _, pid in ipairs(TX_Notify.LivingHumans(world)) do
-		TX_Notify.Queue(pid, typeName, { TX_Notify.Label(rec.targetID, pid) }, rec.id)
+		local args = { TX_Notify.Label(rec.targetID, pid) }
+		for _, a in ipairs(extra or {}) do
+			args[#args + 1] = a
+		end
+		TX_Notify.Queue(pid, typeName, args, rec.id)
 	end
 end
 
--- KICK_PASSED to every living human major: { target }.
+-- KICK_PASSED to every living human major: { target, mode }.
 function TX_Notify.KickPassed(rec, world)
-	ToLivingHumans(rec, world, TX_Config.NOTIF.KICK_PASSED)
+	ToLivingHumans(rec, world, TX_Config.NOTIF.KICK_PASSED, { TX_Notify.ModeText(rec) })
 end
 
--- KICK_DONE to every living human major: { target }.
+-- KICK_DONE to every living human major: { target }. The soft kick text
+-- (they stay allied).
 function TX_Notify.KickDone(rec, world)
 	ToLivingHumans(rec, world, TX_Config.NOTIF.KICK_DONE)
+end
+
+-- HARD_KICK_DONE to every living human major: { target, outcome }. ok: the
+-- war then peace ended the alliance (LOC_TX_HARD_OUTCOME_OK), else a step
+-- failed (LOC_TX_HARD_OUTCOME_FAILED).
+function TX_Notify.HardKickDone(rec, world, ok)
+	local key = "LOC_TX_HARD_OUTCOME_FAILED"
+	if ok then
+		key = "LOC_TX_HARD_OUTCOME_OK"
+	end
+	ToLivingHumans(rec, world, TX_Config.NOTIF.HARD_KICK_DONE, { Text(key) })
 end
 
 -- REQUEST_FAILED to the sender: { LOC_TX_REASON_<code> }. recordID optional.

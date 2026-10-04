@@ -9,7 +9,7 @@
 -- Owns all TX state: every change happens inside a GameEvents handler
 -- registered here, at file load, with literal GameEvents.X.Add calls and one
 -- log line each (EFV_Gameplay.lua:346-387).
---   GameEvents.TX_Propose(playerID, { targetID })
+--   GameEvents.TX_Propose(playerID, { targetID, mode = "SOFT" | "HARD" })
 --   GameEvents.TX_Vote(playerID, { recordID, vote = "YES" | "NO" })
 --   GameEvents.TX_ApplyDone(playerID, { recordID, step = "WRITTEN" | "RELOADED" | "UNDONE", team, attempt })
 --   GameEvents.TX_Victory(playerID, { team })
@@ -176,24 +176,27 @@ local function AfterPass(tag, store, world, rec)
 end
 
 -- ===========================================================================
--- GameEvents.TX_Propose(playerID, { targetID })
+-- GameEvents.TX_Propose(playerID, { targetID, mode })
+-- mode: the kick mode the proposer picked (TX_Config.MODE); missing or
+-- unknown (or HARD while HARD_KICK_ENABLED is false) is refused, BAD_MODE.
 -- ===========================================================================
 local function Propose(playerID, params)
 	local p = Params(params)
 	local targetID = Num(p.targetID)
-	Log(2, "Votes", "propose from P%s target=%s", Str(playerID), Str(p.targetID))
+	local mode = Text(p.mode)
+	Log(2, "Votes", "propose from P%s target=%s mode=%s", Str(playerID), Str(p.targetID), Str(p.mode))
 	local store = LoadStore("Votes", "propose")
 	if store == nil then
 		return
 	end
 	local world = World()
-	local rec, codes = TX_Votes.Propose(store, world, playerID, targetID)
+	local rec, codes = TX_Votes.Propose(store, world, playerID, targetID, mode)
 	if rec == nil then
 		Refuse("Votes", "propose", playerID, codes, nil)
 		return
 	end
-	Log(2, "Votes", "rec=%d opened team=%d proposer=P%d target=P%d voters=[%s] expires=T%d",
-		rec.id, rec.teamID, rec.proposerID, rec.targetID, VotersText(rec), rec.expiresTurn)
+	Log(2, "Votes", "rec=%d opened team=%d proposer=P%d target=P%d mode=%s voters=[%s] expires=T%d",
+		rec.id, rec.teamID, rec.proposerID, rec.targetID, rec.mode, VotersText(rec), rec.expiresTurn)
 	if rec.state == ST.PASSED then
 		AfterPass("Votes", store, world, rec)
 	else
@@ -305,17 +308,40 @@ local function ApplyDone(playerID, params)
 	end
 	-- RELOADED
 	TX_Votes.MarkDone(rec, world)
-	Log(2, "Apply", "rec=%d DONE: P%d plays on team %d (reported by P%d)", rec.id, rec.targetID, rec.newTeamID, playerID)
-	TX_Notify.KickDone(rec, world)
-	-- Commit first, so the hook runs once per record (DONE is saved), then the
-	-- hook, then the flush.
-	if TX_Store.Commit(store) then
-		SafeCall("Apply", "TX_Apply.AfterReload", TX_Apply.AfterReload, rec, world)
-		TX_Notify.Flush()
-	else
+	Log(2, "Apply", "rec=%d DONE: P%d plays on team %d mode=%s (reported by P%d)", rec.id, rec.targetID, rec.newTeamID,
+		TX_Votes.RecMode(rec), playerID)
+	-- Commit DONE first, so the hook runs once per record: a second RELOADED
+	-- (another UI, another load) finds DONE above and stops. Then the hook,
+	-- then the outcome of a hard kick (hardDone) and the notification.
+	if not TX_Store.Commit(store) then
 		Log(1, "Apply", "commit failed; AfterReload not run, notifications dropped")
 		TX_Notify.Discard()
+		return
 	end
+	local result = nil
+	SafeCall("Apply", "TX_Apply.AfterReload", function()
+		result = TX_Apply.AfterReload(rec, world)
+	end)
+	-- The hook threw (an ERROR line already) on a hard kick: a failed one.
+	if result == nil and TX_Votes.RecMode(rec) == TX_Config.MODE.HARD then
+		result = TX_Apply.FAILED
+	end
+	if result == TX_Apply.OK or result == TX_Apply.FAILED then
+		-- A hard kick ran: record the outcome once.
+		if result == TX_Apply.OK then
+			rec.hardDone = 1
+		else
+			rec.hardDone = 0
+		end
+		Log(2, "Apply", "rec=%d hardDone=%d", rec.id, rec.hardDone)
+		TX_Notify.HardKickDone(rec, world, rec.hardDone == 1)
+		if not TX_Store.Commit(store) then
+			Log(1, "Apply", "rec=%d: commit of hardDone failed; the record stays DONE, the hard kick is not run again", rec.id)
+		end
+	else
+		TX_Notify.KickDone(rec, world)
+	end
+	TX_Notify.Flush()
 end
 
 -- ===========================================================================

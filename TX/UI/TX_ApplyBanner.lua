@@ -22,7 +22,7 @@
 --       1. re-check (ApplyCodes); a taken newTeamID gives
 --          LOC_TX_APPLY_CONFLICT_TEXT (gameplay picks a new ID at the next
 --          turn start);
---       2. confirm LOC_TX_APPLY_CONFIRM (+ _NETMP in network MP);
+--       2. confirm LOC_TX_APPLY_CONFIRM (+ _HARD for a hard kick, + _NETMP in network MP);
 --       3. yes: re-check, then PlayerConfigurations[t]:SetTeam(newTeamID) and
 --          Network.BroadcastPlayerInfo(t), the S3 call shapes proven in
 --          Sessions 1 and 2 (TX_Dev_Panel.lua:639-660 S3Write; SR:133,
@@ -468,6 +468,9 @@ local function OnApply(recID)
 		return
 	end
 	local text = L("LOC_TX_APPLY_CONFIRM", TX_UI.Label(rec.targetID))
+	if TX_Votes.RecMode(rec) == TX_Config.MODE.HARD and TX_Config.HARD_KICK_ENABLED == true then
+		text = text .. L("LOC_TX_APPLY_CONFIRM_HARD")   -- the war then peace runs after the reload
+	end
 	if TX_UI.NetMP() then
 		text = text .. L("LOC_TX_APPLY_CONFIRM_NETMP")   -- SEAM O4: untested warning
 	end

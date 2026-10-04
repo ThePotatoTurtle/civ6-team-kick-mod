@@ -71,7 +71,7 @@ local function IsNum(v)
 end
 
 local OPTIONAL_NUMBERS = { "closedTurn", "newTeamID", "applied", "appliedTurn", "appliedBy", "appliedAttempt",
-	"undoneAttempt", "doneTurn" }
+	"undoneAttempt", "doneTurn", "hardDone" }
 
 local function RecordProblem(rec)
 	if type(rec) ~= "table" then
@@ -92,6 +92,9 @@ local function RecordProblem(rec)
 	end
 	if rec.reason ~= nil and type(rec.reason) ~= "string" then
 		return "reason is not a string"
+	end
+	if rec.mode ~= nil and type(rec.mode) ~= "string" then
+		return "mode is not a string"
 	end
 	if type(rec.voters) ~= "table" or #rec.voters == 0 then
 		return "no voters"
@@ -178,6 +181,15 @@ function TX_Store.Normalize(raw, turn)
 				if rec.id ~= id then
 					Log(1, "normalize: record key=%s had id=%s; fixed", k, TX_Util.Str(rec.id))
 					rec.id = id
+					repaired = true
+				end
+				-- Kick modes: a record saved before them has no mode and is a
+				-- soft kick (silently); an unknown mode string is repaired.
+				if rec.mode == nil then
+					rec.mode = TX_Config.MODE_DEFAULT
+				elseif TX_Config.MODE[rec.mode] ~= rec.mode then
+					Log(1, "normalize: record %d had mode=%s; set to %s", id, rec.mode, TX_Config.MODE_DEFAULT)
+					rec.mode = TX_Config.MODE_DEFAULT
 					repaired = true
 				end
 				if rec.state == TX_Config.ST.PENDING_APPLY and not IsNum(rec.applied) then

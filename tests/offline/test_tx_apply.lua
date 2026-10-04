@@ -39,9 +39,12 @@ local function T(key, ...) return Locale.Lookup(key, ...) end
 local function Label(pid)
 	return "LOC_LEADER_FAKE_" .. pid .. "_NAME (LOC_CIVILIZATION_FAKE_" .. pid .. "_NAME)"
 end
+-- Kick mode words (kick modes): "soft kick" / "hard kick".
+local function SoftS() return T("LOC_TX_MODE_SOFT_SHORT") end
+local function HardS() return T("LOC_TX_MODE_HARD_SHORT") end
 
 -- Gameplay side (as the engine delivers EXECUTE_SCRIPT).
-local function GPropose(pid, target) H.request(pid, { OnStart = "TX_Propose", targetID = target }) end
+local function GPropose(pid, target, mode) H.request(pid, { OnStart = "TX_Propose", targetID = target, mode = mode or "SOFT" }) end
 local function GVote(pid, id, v) H.request(pid, { OnStart = "TX_Vote", recordID = id, vote = v }) end
 local function GTurn() FAKE_UI.AsGameplay(H.endTurn) end
 local function Rec(id)
@@ -279,8 +282,8 @@ test("apply 4: after the load: RELOADED once, DONE, KICK_DONE to every living hu
 	H.eq(Rec(1).state, "DONE")
 	H.eq(Rec(1).doneTurn, 2)
 	H.deq(Pids(H.notifs(nil, DONE_N)), HUMANS, "KICK_DONE to every living human")
-	H.eq(H.notifs(0, DONE_N)[1].data[ParameterTypes.SUMMARY], Label(1) .. " now plays alone.")
-	H.len(H.lines("[Apply] AfterReload rec=1 target=P1: no cleanup in 0.1.0 (O1 alliance, O2 vision)"), 1)
+	H.eq(H.notifs(0, DONE_N)[1].data[ParameterTypes.SUMMARY], Label(1) .. " now plays alone and stays allied with their old team.")
+	H.len(H.lines("[Apply] AfterReload rec=1 target=P1 mode=SOFT: no war step, the ex-teammates stay allied (O2 vision: known limitation)"), 1)
 	H.eq(BannerShown(), false)
 	H.len(OpenNotifs(0, PASSED_N), 0, "P0's KICK_PASSED copies swept")
 	H.eq(Launch().LaunchItemButton:IsHidden(), false, "P0 keeps the Team button")
@@ -670,7 +673,7 @@ test("apply e2e: kick from the window, vote from the notification, the target ap
 	for _, im in ipairs(FAKE_UI.ims) do
 		if im.instName == "TX_HistoryRow" and #im.list > 0 then hist = im.list[1].HistoryLabel.text end
 	end
-	H.eq(hist, T("LOC_TX_HIST_DONE", 1, Label(1)))
+	H.eq(hist, T("LOC_TX_HIST_DONE", 1, Label(1), SoftS()))
 	H.clean()
 end)
 
@@ -699,6 +702,69 @@ test("apply e2e 2: team of two: P3 kicks P4 (AI): dissolve wording, passes at on
 	ENVS = FAKE_TX.Reload()
 	H.eq(Rec(1).state, "DONE")
 	H.eq(Launch().LaunchItemButton:IsHidden(), true, "P3 is alone now")
+	H.clean()
+end)
+
+test("apply e2e hard: Hard kick from the window, the apply confirm names it, reload: P1 declares war on its old team and makes peace, HARD_KICK_DONE, once", function()
+	Setup()
+	FAKE_TX.AllyTeam(0)
+	Launch().LaunchItemButton:Click()
+	local row = nil
+	for _, im in ipairs(FAKE_UI.ims) do
+		if im.instName == "TX_MemberRow" then
+			for _, inst in ipairs(im.list) do
+				if string.find(inst.NameLabel.text, Label(1), 1, true) then row = inst end
+			end
+		end
+	end
+	row.KickButton:Click()
+	local d = LastDialog()
+	H.eq(d.buttons[1].label, T("LOC_TX_MODE_HARD"))
+	d.buttons[1].fn()
+	H.eq(Rec(1).mode, "HARD")
+	GVote(2, 1, "YES")
+	H.eq(Rec(1).state, "PENDING_APPLY")
+	H.ok(string.find(H.notifs(0, PASSED_N)[1].data[ParameterTypes.SUMMARY], "(hard kick)", 1, true) ~= nil)
+	Poll()
+	local c = ClickApply()
+	H.eq(DialogText(c), T("LOC_TX_APPLY_CONFIRM", Label(1)) .. T("LOC_TX_APPLY_CONFIRM_HARD"), "the host is told what happens after the reload")
+	c.confirm()
+	H.eq(Rec(1).applied, 1)
+	H.len(FAKE_TX.diploCalls, 0, "nothing before the reload")
+	local before = #FAKE.notifications
+	ENVS = FAKE_TX.Reload()
+	H.eq(Rec(1).state, "DONE")
+	H.eq(Rec(1).hardDone, 1)
+	local order = {}
+	for _, call in ipairs(FAKE_TX.diploCalls) do
+		order[#order + 1] = call.fn .. " " .. call.a .. ">" .. call.b .. " " .. call.context
+	end
+	H.deq(order, { "DeclareWarOn 1>0 G", "MakePeaceWith 1>0 G" })
+	H.eq(FAKE_TX.DiploState(1, 0), "UNFRIENDLY")
+	H.eq(FAKE_TX.DiploState(1, 2), "UNFRIENDLY")
+	H.eq(FAKE_TX.Grievance(0, 1), 100)
+	local news = {}
+	for i = before + 1, #FAKE.notifications do news[#news + 1] = FAKE.notifications[i] end
+	H.deq(Pids(news), HUMANS, "one notification per living human")
+	H.deq(Pids(H.notifs(nil, "NOTIFICATION_TX_HARD_KICK_DONE")), HUMANS)
+	H.len(H.notifs(nil, DONE_N), 0, "no soft KICK_DONE")
+	H.eq(BannerShown(), false)
+	-- every other UI reports, another load: nothing new
+	local calls, count = #FAKE_TX.diploCalls, #FAKE.notifications
+	FAKE_TX.Hotseat(2)
+	Events.PlayerTurnActivated(2, true)
+	ENVS = FAKE_TX.Reload()
+	GTurn()
+	H.eq(#FAKE_TX.diploCalls, calls)
+	H.eq(#FAKE.notifications, count)
+	-- history names the mode
+	FAKE_TX.Hotseat(0)
+	Launch().LaunchItemButton:Click()
+	local hist = nil
+	for _, im in ipairs(FAKE_UI.ims) do
+		if im.instName == "TX_HistoryRow" and #im.list > 0 then hist = im.list[1].HistoryLabel.text end
+	end
+	H.eq(hist, T("LOC_TX_HIST_DONE", 1, Label(1), HardS()))
 	H.clean()
 end)
 

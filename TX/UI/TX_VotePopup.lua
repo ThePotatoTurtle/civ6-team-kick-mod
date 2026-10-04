@@ -12,7 +12,7 @@
 --   * Open(recID): only when the local player has a vote to cast in that
 --     OPEN record (TX_Votes.VoteReasons empty). Remembers the voter
 --     (m_Voter) and the record (m_RecID); LOC_TX_POPUP_TEXT {proposer,
---     target, turns left}. Otherwise LuaEvents.TX_OpenTeamWindow() instead.
+--     target, turns left, kick mode line (TX_UI.ModeLine)}. Otherwise LuaEvents.TX_OpenTeamWindow() instead.
 --   * Yes / No: if TX_UI.Local() is no longer m_Voter (hotseat hand-off),
 --     close and send nothing; else TX_Vote { recordID, vote = YES | NO }
 --     and close. Later: close.
@@ -148,7 +148,7 @@ local function Open(recID)
 	m_RecID = recID
 	m_LastRev = TX_UI.Rev()
 	Controls.BodyLabel:SetText(L("LOC_TX_POPUP_TEXT", TX_UI.Label(rec.proposerID), TX_UI.Label(rec.targetID),
-		TX_Votes.TurnsLeft(rec, TX_UI.Turn())))
+		TX_Votes.TurnsLeft(rec, TX_UI.Turn()), TX_UI.ModeLine(TX_Votes.RecMode(rec))))
 	ContextPtr:SetHide(false)
 	Controls.PopupRoot:SetHide(false)
 	if not UIManager:IsInPopupQueue(ContextPtr) then

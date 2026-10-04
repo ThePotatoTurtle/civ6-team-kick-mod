@@ -41,10 +41,21 @@ local function T(key, ...) return Locale.Lookup(key, ...) end
 local function Label(pid)
 	return "LOC_LEADER_FAKE_" .. pid .. "_NAME (LOC_CIVILIZATION_FAKE_" .. pid .. "_NAME)"
 end
+-- Kick mode words (kick modes): "soft kick" / "hard kick".
+local function SoftS() return T("LOC_TX_MODE_SOFT_SHORT") end
+local function HardS() return T("LOC_TX_MODE_HARD_SHORT") end
+-- The kick confirm's mode lines between the kind text and the after text.
+local function ModeLines(hard)
+	local lines = { T("LOC_TX_MODE_LINE", T("LOC_TX_MODE_SOFT"), T("LOC_TX_MODE_SOFT_INFO")) }
+	if hard ~= false then
+		lines[2] = T("LOC_TX_MODE_LINE", T("LOC_TX_MODE_HARD"), T("LOC_TX_MODE_HARD_INFO"))
+	end
+	return "[NEWLINE][NEWLINE]" .. table.concat(lines, "[NEWLINE]") .. "[NEWLINE][NEWLINE]"
+end
 local function Has(s, sub) return type(s) == "string" and string.find(s, sub, 1, true) ~= nil end
 
 -- Gameplay side (as the engine delivers EXECUTE_SCRIPT).
-local function GPropose(pid, target) H.request(pid, { OnStart = "TX_Propose", targetID = target }) end
+local function GPropose(pid, target, mode) H.request(pid, { OnStart = "TX_Propose", targetID = target, mode = mode or "SOFT" }) end
 local function GVote(pid, id, v) H.request(pid, { OnStart = "TX_Vote", recordID = id, vote = v }) end
 local function GTurn() FAKE_UI.AsGameplay(H.endTurn) end
 local function Rec(id)
@@ -232,23 +243,91 @@ end)
 -- ===========================================================================
 -- 4. Kick and the confirm dialogs
 -- ===========================================================================
-test("ui 4: Kick confirm VOTE (team of 3): title, text with the label and 5 turns, the after text; Yes sends TX_Propose", function()
+test("ui 4: Kick confirm VOTE (team of 3): title, text with the label and 5 turns, the mode lines, the after text; Soft kick sends TX_Propose SOFT", function()
 	Setup()
 	FAKE.SetText("LOC_TX_CONFIRM_VOTE", "VOTE {1_Player}|{2_Num}")
 	OpenWindow()
 	local d = Kick(1)
 	H.eq(d.title, T("LOC_TX_CONFIRM_TITLE"))
-	H.eq(DialogText(d), "VOTE " .. Label(1) .. "|5[NEWLINE][NEWLINE]" .. T("LOC_TX_CONFIRM_AFTER"))
-	H.notnil(d.confirm, "Yes button")
-	H.len(Requests(), 0, "nothing sent before Yes")
+	H.eq(DialogText(d), "VOTE " .. Label(1) .. "|5" .. ModeLines() .. T("LOC_TX_CONFIRM_AFTER"))
+	H.notnil(d.confirm, "Soft kick button")
+	H.eq(d.confirmLabel, "Soft kick", "the default (confirm) button is Soft")
+	H.len(d.buttons, 1, "one more choice")
+	H.eq(d.buttons[1].label, "Hard kick")
+	H.eq(d.cancelLabel, "Cancel")
+	H.len(Requests(), 0, "nothing sent before a choice")
 	d.confirm()
 	local reqs = Requests("TX_Propose")
 	H.len(reqs, 1)
 	H.eq(reqs[1].pid, 0, "sent as the local player")
-	H.deq(reqs[1].params, { OnStart = "TX_Propose", targetID = 1 }, "flat params")
+	H.deq(reqs[1].params, { OnStart = "TX_Propose", targetID = 1, mode = "SOFT" }, "flat params")
 	H.ok(reqs[1].delivered, "delivered to gameplay")
 	H.eq(Rec(1).state, "OPEN")
-	H.ok(H.hasLine("[UIRequest] TX_Propose from P0 targetID=1"), "request logged")
+	H.eq(Rec(1).mode, "SOFT")
+	H.ok(H.hasLine("[UIRequest] TX_Propose from P0 mode=SOFT targetID=1"), "request logged")
+	H.clean()
+end)
+
+test("ui 4d: Hard kick button sends TX_Propose HARD; the mode shows in the vote line, the popup, the notification and the history", function()
+	Setup()
+	OpenWindow()
+	local d = Kick(1)
+	d.buttons[1].fn()
+	local reqs = Requests("TX_Propose")
+	H.len(reqs, 1)
+	H.deq(reqs[1].params, { OnStart = "TX_Propose", targetID = 1, mode = "HARD" })
+	H.eq(Rec(1).mode, "HARD")
+	H.eq(Win().Controls.VoteLabel.text, T("LOC_TX_VOTE_LINE", Label(0), Label(1), 5, HardS()))
+	H.ok(Has(Win().Controls.VoteLabel.text, "(hard kick)"), "the proposer's window names the mode")
+	-- the voter: notification text and popup
+	local n = H.notifs(2, VOTE_N)
+	H.ok(Has(n[#n].data[ParameterTypes.SUMMARY], "(hard kick)"), "VOTE_REQUIRED names the mode")
+	FAKE_TX.Hotseat(2)
+	FAKE_TX.Activate(2, VOTE_N)
+	H.ok(PopupOpen(), "popup open")
+	local body = Pop().Controls.BodyLabel.text
+	H.ok(Has(body, T("LOC_TX_MODE_LINE", T("LOC_TX_MODE_HARD"), T("LOC_TX_MODE_HARD_INFO"))), "popup names the mode with its explanation")
+	OpenWindow()
+	H.eq(Win().Controls.VoteLabel.text, T("LOC_TX_VOTE_LINE", Label(0), Label(1), 5, HardS()), "the voter's window too")
+	-- a NO: the history row names the mode
+	GVote(2, 1, "NO")
+	FAKE_TX.Hotseat(0)
+	OpenWindow()
+	H.eq(History()[1].text, T("LOC_TX_HIST_FAILED", 1, Label(1), HardS()))
+	-- a hard kick that passes: passed line with the mode
+	GPropose(0, 1, "HARD")
+	GVote(2, 2, "YES")
+	H.eq(Rec(2).state, "PENDING_APPLY")
+	FAKE_UI.Update(Win(), 1)
+	H.eq(Win().Controls.VoteLabel.text, T("LOC_TX_PASSED_LINE", Label(1), HardS()))
+	H.clean()
+end)
+
+test("ui 4e: HARD_KICK_ENABLED = false: the dialog offers Soft only; gameplay refuses HARD with BAD_MODE", function()
+	Setup()
+	TX_Config.HARD_KICK_ENABLED = false
+	OpenWindow()
+	local d = Kick(1)
+	H.eq(DialogText(d), T("LOC_TX_CONFIRM_VOTE", Label(1), 5) .. ModeLines(false) .. T("LOC_TX_CONFIRM_AFTER"))
+	H.len(d.buttons, 0, "no Hard kick button")
+	H.eq(d.confirmLabel, "Soft kick")
+	GPropose(0, 1, "HARD")
+	H.isnil(Rec(1), "HARD refused")
+	H.eq(H.notifs(0, FAILED_N)[1].data[ParameterTypes.SUMMARY], T("LOC_TX_REASON_BAD_MODE"))
+	d.confirm()
+	H.eq(Rec(1).mode, "SOFT")
+	H.clean()
+end)
+
+test("ui 4f: without PopupDialog AddButton the dialog still opens with Soft kick and Cancel; the probe logs the failure", function()
+	Setup()
+	PopupDialogInGame.AddButton = nil
+	OpenWindow()
+	local d = Kick(1)
+	H.len(d.buttons, 0, "no Hard kick button")
+	H.ok(H.hasLine("[UIShared] PROBE UI PopupDialogInGame:AddButton FAILED: "))
+	d.confirm()
+	H.eq(Rec(1).mode, "SOFT")
 	H.clean()
 end)
 
@@ -256,15 +335,15 @@ test("ui 4b: No sends nothing; DISSOLVE wording for a team of 2 (P3 kicks AI P4)
 	Setup({ localPlayer = 3 })
 	OpenWindow()
 	local d = Kick(4)
-	H.eq(DialogText(d), T("LOC_TX_CONFIRM_DISSOLVE", Label(4)) .. "[NEWLINE][NEWLINE]" .. T("LOC_TX_CONFIRM_AFTER"),
+	H.eq(DialogText(d), T("LOC_TX_CONFIRM_DISSOLVE", Label(4)) .. ModeLines() .. T("LOC_TX_CONFIRM_AFTER"),
 		"2-person wording")
-	H.ok(d.cancel == nil, "the No button just closes the dialog")
-	H.len(Requests(), 0, "No: nothing sent")
+	H.ok(d.cancel == nil, "the Cancel button just closes the dialog")
+	H.len(Requests(), 0, "Cancel: nothing sent")
 	d = Kick(4)
 	d.confirm()
 	H.len(Requests("TX_Propose"), 1)
 	H.eq(Rec(1).state, "PENDING_APPLY", "dissolved at once")
-	H.eq(Win().Controls.VoteLabel.text, T("LOC_TX_PASSED_LINE", Label(4)), "window shows the passed kick")
+	H.eq(Win().Controls.VoteLabel.text, T("LOC_TX_PASSED_LINE", Label(4), SoftS()), "window shows the passed kick")
 	H.clean()
 end)
 
@@ -273,7 +352,7 @@ test("ui 4c: AI_ONLY wording ({P0 human, P1 AI, P2 target}) passes at once; a ha
 	OpenWindow()
 	H.eq(MemberRow(1).NameLabel.text, T("LOC_TX_MEMBER_AI", Label(1)))
 	local d = Kick(2)
-	H.eq(DialogText(d), T("LOC_TX_CONFIRM_AI_ONLY", Label(2)) .. "[NEWLINE][NEWLINE]" .. T("LOC_TX_CONFIRM_AFTER"))
+	H.eq(DialogText(d), T("LOC_TX_CONFIRM_AI_ONLY", Label(2)) .. ModeLines() .. T("LOC_TX_CONFIRM_AFTER"))
 	-- hot seat: the machine changes hands while the dialog is open
 	FAKE.localPlayer = 2
 	d.confirm()
@@ -293,7 +372,7 @@ test("ui 5: open vote as P0 (proposer): who voted, never yes or no; Kick disable
 	Setup()
 	OpenWindow()
 	Kick(1).confirm()
-	H.eq(Win().Controls.VoteLabel.text, T("LOC_TX_VOTE_LINE", Label(0), Label(1), 5))
+	H.eq(Win().Controls.VoteLabel.text, T("LOC_TX_VOTE_LINE", Label(0), Label(1), 5, SoftS()))
 	H.deq(VoterTexts(), { T("LOC_TX_VOTER_PROPOSER", Label(0)), T("LOC_TX_VOTER_PENDING", Label(2)) })
 	H.eq(Win().Controls.VoteButton:IsHidden(), true, "the proposer has voted")
 	for _, pid in ipairs({ 1, 2 }) do
@@ -369,10 +448,10 @@ test("ui 5d: Kick reasons: APPLY_PENDING after a pass, VICTORY after a victory r
 	GPropose(0, 1)
 	GVote(2, 1, "YES")
 	OpenWindow()
-	H.eq(Win().Controls.VoteLabel.text, T("LOC_TX_PASSED_LINE", Label(1)))
+	H.eq(Win().Controls.VoteLabel.text, T("LOC_TX_PASSED_LINE", Label(1), SoftS()))
 	H.eq(MemberRow(2).KickButton.tooltip, T("LOC_TX_REASON_APPLY_PENDING"))
 	H.eq(Launch().AlertIndicator:IsHidden(), false, "alert while a kick waits")
-	H.eq(Launch().LaunchItemButton.tooltip, T("LOC_TX_LAUNCH_TT") .. "[NEWLINE]" .. T("LOC_TX_PASSED_LINE", Label(1)))
+	H.eq(Launch().LaunchItemButton.tooltip, T("LOC_TX_LAUNCH_TT") .. "[NEWLINE]" .. T("LOC_TX_PASSED_LINE", Label(1), SoftS()))
 	H.request(0, { OnStart = "TX_Victory", team = 1 })
 	FAKE_UI.Update(Win(), 0.6)
 	H.eq(MemberRow(2).KickButton:IsDisabled(), true)
@@ -590,7 +669,7 @@ test("ui 11: history: FAILED shown to P0 and P2 with the votes, hidden from P1; 
 	OpenWindow()
 	local h = History()
 	H.len(h, 1)
-	H.eq(h[1].text, T("LOC_TX_HIST_FAILED", 1, Label(1)))
+	H.eq(h[1].text, T("LOC_TX_HIST_FAILED", 1, Label(1), SoftS()))
 	H.eq(h[1].tip, table.concat({ T("LOC_TX_HIST_STARTED_BY", Label(0)), T("LOC_TX_REASON_NO_VOTE"),
 		T("LOC_TX_HIST_VOTE_YES", Label(0)), T("LOC_TX_HIST_VOTE_NO", Label(2)) }, "[NEWLINE]"), "votes shown once closed")
 	H.eq(Win().Controls.HistoryEmptyLabel:IsHidden(), true)
@@ -608,7 +687,7 @@ test("ui 11: history: FAILED shown to P0 and P2 with the votes, hidden from P1; 
 	OpenWindow()
 	h = History()
 	H.len(h, 2)
-	H.eq(h[1].text, T("LOC_TX_HIST_PENDING_APPLY", 1, Label(1)), "newest first")
+	H.eq(h[1].text, T("LOC_TX_HIST_PENDING_APPLY", 1, Label(1), SoftS()), "newest first")
 	PlayerConfigurations[1]:SetTeam(Rec(2).newTeamID)
 	H.request(0, { OnStart = "TX_ApplyDone", recordID = 2, step = "WRITTEN", team = Rec(2).newTeamID })
 	ENVS = FAKE_TX.Reload()
@@ -616,8 +695,8 @@ test("ui 11: history: FAILED shown to P0 and P2 with the votes, hidden from P1; 
 	H.eq(Rec(2).state, "DONE")
 	OpenWindow()
 	h = History()
-	H.eq(h[1].text, T("LOC_TX_HIST_DONE", 1, Label(1)))
-	H.eq(h[2].text, T("LOC_TX_HIST_FAILED", 1, Label(1)))
+	H.eq(h[1].text, T("LOC_TX_HIST_DONE", 1, Label(1), SoftS()))
+	H.eq(h[2].text, T("LOC_TX_HIST_FAILED", 1, Label(1), SoftS()))
 	H.len(Rows("TX_MemberRow"), 2, "P0 and P2 left")
 	-- the target: alone, no Team button; once on a team of two it sees only the passed kick
 	FAKE_TX.Hotseat(1)
@@ -628,7 +707,7 @@ test("ui 11: history: FAILED shown to P0 and P2 with the votes, hidden from P1; 
 	OpenWindow()
 	h = History()
 	H.len(h, 1, "the target sees the DONE record, not the failed one")
-	H.eq(h[1].text, T("LOC_TX_HIST_DONE", 1, Label(1)))
+	H.eq(h[1].text, T("LOC_TX_HIST_DONE", 1, Label(1), SoftS()))
 	H.clean()
 end)
 
@@ -640,7 +719,7 @@ test("ui 11b: at most HISTORY_SHOWN rows", function()
 	end
 	OpenWindow()
 	H.len(History(), TX_Config.HISTORY_SHOWN)
-	H.eq(History()[1].text, T("LOC_TX_HIST_FAILED", 1, Label(1)))
+	H.eq(History()[1].text, T("LOC_TX_HIST_FAILED", 1, Label(1), SoftS()))
 	H.clean()
 end)
 
@@ -681,7 +760,7 @@ test("ui 12b: the open window follows gameplay through the rev poll and shows th
 	FAKE_UI.Update(Win(), 0.2)
 	H.eq(Win().Controls.VoteLabel.text, T("LOC_TX_NO_VOTE"), "poll interval not reached")
 	FAKE_UI.Update(Win(), 0.4)
-	H.eq(Win().Controls.VoteLabel.text, T("LOC_TX_VOTE_LINE", Label(0), Label(1), 5), "rebuilt on the TX_Rev change")
+	H.eq(Win().Controls.VoteLabel.text, T("LOC_TX_VOTE_LINE", Label(0), Label(1), 5, SoftS()), "rebuilt on the TX_Rev change")
 	H.clean()
 end)
 
@@ -747,8 +826,8 @@ end)
 
 test("ui shared: Request flattens booleans, refuses without a local player; ReadStore caches on (TX_Rev, turn)", function()
 	Setup()
-	H.eq(TX_UI.Request("TX_Propose", { targetID = 1, extra = true }), true)
-	H.deq(Requests("TX_Propose")[1].params, { OnStart = "TX_Propose", targetID = 1, extra = 1 })
+	H.eq(TX_UI.Request("TX_Propose", { targetID = 1, mode = "SOFT", extra = true }), true)
+	H.deq(Requests("TX_Propose")[1].params, { OnStart = "TX_Propose", targetID = 1, mode = "SOFT", extra = 1 })
 	FAKE.localPlayer = -1
 	H.eq(TX_UI.Request("TX_Propose", { targetID = 2 }), false)
 	H.len(Requests("TX_Propose"), 1, "not sent without a local player")

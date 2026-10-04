@@ -28,14 +28,19 @@
 --          target, DEC 2): who started it, who voted, who has not (never yes
 --          or no while open, TP 2.3); a Vote button for a pending local voter
 --          (LuaEvents.TX_OpenVote -> TX_VotePopup). A passed kick: passed /
---          applied line;
+--          applied line; every line names the kick mode;
 --       3. history: VisibleTo records of the team, newest first, at most
 --          TX_Config.HISTORY_SHOWN; tooltip: who started it, the reason, each
 --          vote (the records are closed by then).
 --   * Kick -> PopupDialogInGame confirm (EFV_UnitActions.lua:260-268) with the
---     TX_Votes.ConfirmKind text (VOTE / DISSOLVE for a team of 2 / AI_ONLY)
---     plus LOC_TX_CONFIRM_AFTER; yes sends TX_Propose { targetID } only if
---     the local player is still the one who clicked (hotseat hand-off).
+--     TX_Votes.ConfirmKind text (VOTE / DISSOLVE for a team of 2 / AI_ONLY),
+--     one line per kick mode (LOC_TX_MODE_LINE) and LOC_TX_CONFIRM_AFTER.
+--     Buttons (DEC 2026-10-04 kick modes): Soft kick (the confirm button, the
+--     default), Hard kick (PopupDialog:AddButton, only while
+--     TX_Config.HARD_KICK_ENABLED), Cancel. A mode button sends TX_Propose
+--     { targetID, mode } only if the local player is still the one who
+--     clicked (hotseat hand-off). The open vote, the passed / applied line
+--     and the history rows name the record's mode.
 -- Refresh: LoadGameViewStateDone, the local PlayerTurnActivated,
 -- LocalPlayerChanged, NotificationAdded for the local player, and a
 -- (TX_Rev, turn, local) poll while the window is open (EFV_Tracker.lua:444-455).
@@ -285,9 +290,9 @@ local function RefreshButton()
 			elseif rec ~= nil and rec.state == ST.PENDING_APPLY then
 				alert = true
 				if rec.applied == 1 then
-					lines[#lines + 1] = L("LOC_TX_APPLIED_LINE", TX_UI.Label(rec.targetID))
+					lines[#lines + 1] = L("LOC_TX_APPLIED_LINE", TX_UI.Label(rec.targetID), TX_UI.ModeShort(rec))
 				else
-					lines[#lines + 1] = L("LOC_TX_PASSED_LINE", TX_UI.Label(rec.targetID))
+					lines[#lines + 1] = L("LOC_TX_PASSED_LINE", TX_UI.Label(rec.targetID), TX_UI.ModeShort(rec))
 				end
 			end
 		end
@@ -311,7 +316,8 @@ end
 local RefreshWindow -- forward
 
 -- ConfirmText(world, me, targetID) -> confirm text for TX_Votes.ConfirmKind
--- (TP 2.3 wording) plus LOC_TX_CONFIRM_AFTER.
+-- (TP 2.3 wording), one LOC_TX_MODE_LINE per offered mode (TX_Votes.Modes),
+-- then LOC_TX_CONFIRM_AFTER.
 local function ConfirmText(world, me, targetID)
 	local kind = TX_Votes.ConfirmKind(world, me, targetID)
 	local label = TX_UI.Label(targetID)
@@ -323,13 +329,19 @@ local function ConfirmText(world, me, targetID)
 	else
 		text = L("LOC_TX_CONFIRM_VOTE", label, TX_Config.VOTE_TURNS)
 	end
-	return text .. "[NEWLINE][NEWLINE]" .. L("LOC_TX_CONFIRM_AFTER"), kind
+	local modes = {}
+	for _, mode in ipairs(TX_Votes.Modes()) do
+		modes[#modes + 1] = TX_UI.ModeLine(mode)
+	end
+	return text .. "[NEWLINE][NEWLINE]" .. table.concat(modes, "[NEWLINE]") .. "[NEWLINE][NEWLINE]" .. L("LOC_TX_CONFIRM_AFTER"), kind
 end
 
 -- OnKickClicked(targetID): re-check for the display, then PopupDialogInGame
--- (EFV_UnitActions.lua:260-268). Yes: TX_Propose { targetID }, only while the
--- local player is still the one who clicked (hotseat hand-off between the
--- click and the answer sends nothing).
+-- (EFV_UnitActions.lua:260-268). Soft kick (confirm button, the default) or
+-- Hard kick (AddButton, BASE24 EndGameMenu.lua:1236-1237): TX_Propose
+-- { targetID, mode }, only while the local player is still the one who
+-- clicked (hotseat hand-off between the click and the answer sends nothing).
+-- Cancel sends nothing.
 local function OnKickClicked(targetID)
 	local clicker = TX_UI.Local()
 	local world = TX_UI.World()
@@ -345,17 +357,25 @@ local function OnKickClicked(targetID)
 	local popup = PopupDialogInGame:new("TX_ConfirmKick")
 	popup:AddTitle(L("LOC_TX_CONFIRM_TITLE"))
 	popup:AddText(text)
-	popup:AddConfirmButton(L("LOC_YES"), function()
+	local function Send(mode)
 		local now = TX_UI.Local()
 		if now ~= clicker then
 			Log(2, "kick P%s not sent: the local player changed from P%d to P%d", Str(targetID), clicker, now)
 			return
 		end
-		TX_UI.Request(TX_Config.REQ_PROPOSE, { targetID = targetID })
+		TX_UI.Request(TX_Config.REQ_PROPOSE, { targetID = targetID, mode = mode })
 		RefreshWindow(true)
 		RefreshButton()
-	end)
-	popup:AddCancelButton(L("LOC_NO"), nil)
+	end
+	popup:AddConfirmButton(L("LOC_TX_MODE_SOFT"), function() Send(TX_Config.MODE.SOFT) end)
+	if TX_Config.HARD_KICK_ENABLED == true then
+		-- AddButton is VERIFIED-BY-SOURCE on PopupDialog (Appendix B): a probe,
+		-- so a missing method costs only the Hard kick button (Session 4 step 3).
+		TX_UI.TryProbe("UI PopupDialogInGame:AddButton", function()
+			popup:AddButton(L("LOC_TX_MODE_HARD"), function() Send(TX_Config.MODE.HARD) end)
+		end)
+	end
+	popup:AddCancelButton(L("LOC_TX_CANCEL"), nil)
 	popup:Open()
 end
 
@@ -408,7 +428,7 @@ local function FillVote(store, world, me, team)
 		Controls.VoteLabel:SetText(L("LOC_TX_NO_VOTE"))
 	elseif rec.state == ST.OPEN then
 		Controls.VoteLabel:SetText(L("LOC_TX_VOTE_LINE", TX_UI.Label(rec.proposerID), TX_UI.Label(rec.targetID),
-			TX_Votes.TurnsLeft(rec, TX_UI.Turn())))
+			TX_Votes.TurnsLeft(rec, TX_UI.Turn()), TX_UI.ModeShort(rec)))
 		for _, e in ipairs(rec.voters or {}) do
 			local inst = m_VoterIM:GetInstance()
 			inst.VoterLabel:SetText(VoterText(rec, e))
@@ -418,9 +438,9 @@ local function FillVote(store, world, me, team)
 			m_VoteRecID = rec.id
 		end
 	elseif rec.applied == 1 then
-		Controls.VoteLabel:SetText(L("LOC_TX_APPLIED_LINE", TX_UI.Label(rec.targetID)))
+		Controls.VoteLabel:SetText(L("LOC_TX_APPLIED_LINE", TX_UI.Label(rec.targetID), TX_UI.ModeShort(rec)))
 	else
-		Controls.VoteLabel:SetText(L("LOC_TX_PASSED_LINE", TX_UI.Label(rec.targetID)))
+		Controls.VoteLabel:SetText(L("LOC_TX_PASSED_LINE", TX_UI.Label(rec.targetID), TX_UI.ModeShort(rec)))
 	end
 	Controls.VoteButton:SetHide(not showButton)
 	Controls.VoterStack:CalculateSize()
@@ -432,7 +452,7 @@ local function FillHistory(store, me, team)
 	local recs = HistoryRecords(store, me, team)
 	for _, rec in ipairs(recs) do
 		local inst = m_HistoryIM:GetInstance()
-		inst.HistoryLabel:SetText(L(HIST_KEY[rec.state], HistoryTurn(rec), TX_UI.Label(rec.targetID)))
+		inst.HistoryLabel:SetText(L(HIST_KEY[rec.state], HistoryTurn(rec), TX_UI.Label(rec.targetID), TX_UI.ModeShort(rec)))
 		inst.HistoryButton:SetToolTipString(HistoryTooltip(rec))
 	end
 	Controls.HistoryEmptyLabel:SetHide(#recs > 0)

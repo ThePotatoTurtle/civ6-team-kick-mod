@@ -20,20 +20,22 @@
        CONFIRM_VOTE         1 target, 2 turns to vote
        CONFIRM_DISSOLVE     1 target
        CONFIRM_AI_ONLY      1 target
-       VOTE_LINE            1 proposer, 2 target, 3 turns left
+       MODE_LINE            1 mode name (MODE_SOFT / _HARD), 2 its info (MODE_*_INFO)
+       VOTE_LINE            1 proposer, 2 target, 3 turns left, 4 mode (MODE_*_SHORT)
        VOTER_*              1 voter
-       PASSED_LINE          1 target
-       APPLIED_LINE         1 target
-       HIST_<state>         1 turn, 2 target
+       PASSED_LINE          1 target, 2 mode (MODE_*_SHORT)
+       APPLIED_LINE         1 target, 2 mode (MODE_*_SHORT)
+       HIST_<state>         1 turn, 2 target, 3 mode (MODE_*_SHORT)
        HIST_STARTED_BY      1 proposer
        HIST_VOTE_*          1 voter
-       POPUP_TEXT           1 proposer, 2 target, 3 turns left
+       POPUP_TEXT           1 proposer, 2 target, 3 turns left, 4 MODE_LINE
        BANNER_HOST / _WAIT  1 target
        APPLY_CONFIRM        1 target
        Notifications (the same arguments for _MESSAGE and _SUMMARY):
-         VOTE_REQUIRED      1 proposer, 2 target, 3 turns left
-         KICK_PASSED        1 target
-         KICK_DONE          1 target
+         VOTE_REQUIRED      1 proposer, 2 target, 3 turns left, 4 mode (MODE_*_SHORT)
+         KICK_PASSED        1 target, 2 mode (MODE_*_SHORT)
+         KICK_DONE          1 target (soft kick)
+         HARD_KICK_DONE     1 target, 2 outcome (HARD_OUTCOME_OK / _FAILED)
          REQUEST_FAILED     1 reason text (LOC_TX_REASON_<code>)
      All other keys take no arguments.
      ====================================================================== -->
@@ -103,10 +105,35 @@
 		<Row Tag="LOC_TX_CONFIRM_AFTER" Language="en_US">
 			<Text>Once it passes, the host applies it and the game has to be saved and reloaded.</Text>
 		</Row>
+		<!-- Kick modes (DEC 2026-10-04): the proposer picks one in the confirm dialog -->
+		<Row Tag="LOC_TX_MODE_SOFT" Language="en_US">
+			<Text>Soft kick</Text>
+		</Row>
+		<Row Tag="LOC_TX_MODE_HARD" Language="en_US">
+			<Text>Hard kick</Text>
+		</Row>
+		<Row Tag="LOC_TX_MODE_SOFT_INFO" Language="en_US">
+			<Text>Leaves the team but stays allied with you. Good for kicking an AI that took over a player who left.</Text>
+		</Row>
+		<Row Tag="LOC_TX_MODE_HARD_INFO" Language="en_US">
+			<Text>Leaves the team and the alliance is ended. They declare war and make peace at once; the grievances fall on them.</Text>
+		</Row>
+		<Row Tag="LOC_TX_MODE_SOFT_SHORT" Language="en_US">
+			<Text>soft kick</Text>
+		</Row>
+		<Row Tag="LOC_TX_MODE_HARD_SHORT" Language="en_US">
+			<Text>hard kick</Text>
+		</Row>
+		<Row Tag="LOC_TX_MODE_LINE" Language="en_US">
+			<Text>{1_Mode}: {2_Info}</Text>
+		</Row>
+		<Row Tag="LOC_TX_CANCEL" Language="en_US">
+			<Text>Cancel</Text>
+		</Row>
 
 		<!-- Open vote section -->
 		<Row Tag="LOC_TX_VOTE_LINE" Language="en_US">
-			<Text>{1_Player} wants to kick {2_Player}. {3_Num : plural 1?1 turn; other?# turns;} left.</Text>
+			<Text>{1_Player} wants to kick {2_Player} ({4_Mode}). {3_Num : plural 1?1 turn; other?# turns;} left.</Text>
 		</Row>
 		<Row Tag="LOC_TX_VOTER_PROPOSER" Language="en_US">
 			<Text>{1_Player}: started the vote</Text>
@@ -127,10 +154,10 @@
 			<Text>No open vote.</Text>
 		</Row>
 		<Row Tag="LOC_TX_PASSED_LINE" Language="en_US">
-			<Text>The kick of {1_Player} passed. Waiting for the host to apply it.</Text>
+			<Text>The {2_Mode} of {1_Player} passed. Waiting for the host to apply it.</Text>
 		</Row>
 		<Row Tag="LOC_TX_APPLIED_LINE" Language="en_US">
-			<Text>The kick of {1_Player} is applied. Save and reload the game now.</Text>
+			<Text>The {2_Mode} of {1_Player} is applied. Save and reload the game now.</Text>
 		</Row>
 
 		<!-- History section -->
@@ -138,19 +165,19 @@
 			<Text>No votes yet.</Text>
 		</Row>
 		<Row Tag="LOC_TX_HIST_DONE" Language="en_US">
-			<Text>Turn {1_Num}: {2_Player} was kicked.</Text>
+			<Text>Turn {1_Num}: {2_Player} was kicked ({3_Mode}).</Text>
 		</Row>
 		<Row Tag="LOC_TX_HIST_PENDING_APPLY" Language="en_US">
-			<Text>Turn {1_Num}: the kick of {2_Player} passed, not applied yet.</Text>
+			<Text>Turn {1_Num}: the {3_Mode} of {2_Player} passed, not applied yet.</Text>
 		</Row>
 		<Row Tag="LOC_TX_HIST_FAILED" Language="en_US">
-			<Text>Turn {1_Num}: the vote to kick {2_Player} failed.</Text>
+			<Text>Turn {1_Num}: the vote to kick {2_Player} ({3_Mode}) failed.</Text>
 		</Row>
 		<Row Tag="LOC_TX_HIST_EXPIRED" Language="en_US">
-			<Text>Turn {1_Num}: the vote to kick {2_Player} ran out of time.</Text>
+			<Text>Turn {1_Num}: the vote to kick {2_Player} ({3_Mode}) ran out of time.</Text>
 		</Row>
 		<Row Tag="LOC_TX_HIST_CANCELLED" Language="en_US">
-			<Text>Turn {1_Num}: the vote to kick {2_Player} was cancelled.</Text>
+			<Text>Turn {1_Num}: the vote to kick {2_Player} ({3_Mode}) was cancelled.</Text>
 		</Row>
 		<Row Tag="LOC_TX_HIST_STARTED_BY" Language="en_US">
 			<Text>Started by {1_Player}.</Text>
@@ -170,7 +197,7 @@
 			<Text>Team vote</Text>
 		</Row>
 		<Row Tag="LOC_TX_POPUP_TEXT" Language="en_US">
-			<Text>{1_Player} wants to kick {2_Player} off your team.[NEWLINE][NEWLINE]Every other human teammate has to vote yes. One no vote ends it. {3_Num : plural 1?1 turn; other?# turns;} left.</Text>
+			<Text>{1_Player} wants to kick {2_Player} off your team.[NEWLINE][NEWLINE]{4_Mode}[NEWLINE][NEWLINE]Every other human teammate has to vote yes. One no vote ends it. {3_Num : plural 1?1 turn; other?# turns;} left.</Text>
 		</Row>
 		<Row Tag="LOC_TX_POPUP_YES" Language="en_US">
 			<Text>Yes, kick them</Text>
@@ -204,6 +231,9 @@
 		<Row Tag="LOC_TX_APPLY_CONFIRM_NETMP" Language="en_US">
 			<Text>[NEWLINE][NEWLINE][COLOR:Red]Network multiplayer isn't tested yet.[ENDCOLOR] After saving, everyone exits to the main menu, the host loads the save from Multiplayer > Host Game > Load Game, and the others rejoin.</Text>
 		</Row>
+		<Row Tag="LOC_TX_APPLY_CONFIRM_HARD" Language="en_US">
+			<Text>[NEWLINE][NEWLINE]This is a hard kick. Right after the reload they declare war on their old team and make peace at once, which ends the alliance.</Text>
+		</Row>
 		<Row Tag="LOC_TX_RELOAD_TITLE" Language="en_US">
 			<Text>Save and reload now</Text>
 		</Row>
@@ -228,19 +258,31 @@
 			<Text>Team vote</Text>
 		</Row>
 		<Row Tag="LOC_NOTIFICATION_TX_VOTE_REQUIRED_SUMMARY" Language="en_US">
-			<Text>{1_Player} wants to kick {2_Player} off your team. Vote within {3_Num : plural 1?1 turn; other?# turns;}.</Text>
+			<Text>{1_Player} wants to kick {2_Player} off your team ({4_Mode}). Vote within {3_Num : plural 1?1 turn; other?# turns;}.</Text>
 		</Row>
 		<Row Tag="LOC_NOTIFICATION_TX_KICK_PASSED_MESSAGE" Language="en_US">
 			<Text>Kicked off a team</Text>
 		</Row>
 		<Row Tag="LOC_NOTIFICATION_TX_KICK_PASSED_SUMMARY" Language="en_US">
-			<Text>{1_Player} was voted off their team. It takes effect once the host applies it and the game is saved and reloaded.</Text>
+			<Text>{1_Player} was voted off their team ({2_Mode}). It takes effect once the host applies it and the game is saved and reloaded.</Text>
 		</Row>
 		<Row Tag="LOC_NOTIFICATION_TX_KICK_DONE_MESSAGE" Language="en_US">
 			<Text>Team changed</Text>
 		</Row>
 		<Row Tag="LOC_NOTIFICATION_TX_KICK_DONE_SUMMARY" Language="en_US">
-			<Text>{1_Player} now plays alone.</Text>
+			<Text>{1_Player} now plays alone and stays allied with their old team.</Text>
+		</Row>
+		<Row Tag="LOC_NOTIFICATION_TX_HARD_KICK_DONE_MESSAGE" Language="en_US">
+			<Text>Hard kick</Text>
+		</Row>
+		<Row Tag="LOC_NOTIFICATION_TX_HARD_KICK_DONE_SUMMARY" Language="en_US">
+			<Text>{1_Player} was hard kicked from their team. {2_Outcome}</Text>
+		</Row>
+		<Row Tag="LOC_TX_HARD_OUTCOME_OK" Language="en_US">
+			<Text>The alliance with their old team has been ended. They declared war and made peace at once, so the grievances fall on them.</Text>
+		</Row>
+		<Row Tag="LOC_TX_HARD_OUTCOME_FAILED" Language="en_US">
+			<Text>Ending the alliance with their old team didn't fully work, so check the diplomacy screen. Please send Lua.log to the mod author.</Text>
 		</Row>
 		<Row Tag="LOC_NOTIFICATION_TX_REQUEST_FAILED_MESSAGE" Language="en_US">
 			<Text>Team request refused</Text>
@@ -318,6 +360,9 @@
 		</Row>
 		<Row Tag="LOC_TX_REASON_NO_FREE_TEAM" Language="en_US">
 			<Text>No free team number is left.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_BAD_MODE" Language="en_US">
+			<Text>That kick type isn't available.</Text>
 		</Row>
 	</LocalizedText>
 </GameData>

@@ -21,6 +21,9 @@
 --   TX_UI.LiveTeam(pid)       UI Players[pid]:GetTeam(): stale until a load
 --                             (F3); only for reload detection (chunk D).
 --   TX_UI.Label(pid)          LOC_TX_PLAYER_LABEL {leader, civ}.
+--   TX_UI.ModeShort(rec)      the record's kick mode in short words
+--                             (LOC_TX_MODE_<mode>_SHORT; old records SOFT).
+--   TX_UI.ModeLine(mode)      LOC_TX_MODE_LINE {LOC_TX_MODE_<mode>, _INFO}.
 --   TX_UI.PortraitIcon(pid)   "ICON_" .. GetLeaderTypeName() (DiplomacyRibbon.lua:219).
 --   TX_UI.Request(onStart, params)  EFV_UIShared.lua:576-610.
 --   TX_UI.ReasonText(codes)   LOC_TX_REASON_<code> lines.
@@ -226,6 +229,16 @@ function TX_UI.Label(pid)
 		return TX_UI.L("LOC_TX_PLAYER_LABEL", TX_UI.L(leader), TX_UI.L(civ))
 	end
 	return TX_UI.L("LOC_TX_PLAYER_GENERIC")
+end
+
+-- TX_UI.ModeShort(rec) -> "soft kick" / "hard kick" (LOC_TX_MODE_<mode>_SHORT)
+function TX_UI.ModeShort(rec)
+	return TX_UI.L("LOC_TX_MODE_" .. TX_Votes.RecMode(rec) .. "_SHORT")
+end
+
+-- TX_UI.ModeLine(mode) -> "<mode name>: <one-line explanation>" (LOC_TX_MODE_LINE)
+function TX_UI.ModeLine(mode)
+	return TX_UI.L("LOC_TX_MODE_LINE", TX_UI.L("LOC_TX_MODE_" .. mode), TX_UI.L("LOC_TX_MODE_" .. mode .. "_INFO"))
 end
 
 -- TX_UI.PortraitIcon(pid) -> "ICON_<LEADER_TYPE>" or nil
