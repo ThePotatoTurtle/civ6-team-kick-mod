@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Dev_Gameplay.lua  (TX_Dev 0.0.1.4, spike kit for Team Expulsion 0.0.1)
+-- TX_Dev_Gameplay.lua  (TX_Dev 0.0.1.5, spike kit for Team Expulsion 0.0.1)
 -- Context: gameplay (AddGameplayScripts). TESTING ONLY. PLAN I.5.
 --
 -- One handler, GameEvents.TX_Dev(playerID, params), dispatching on params.cmd
@@ -59,6 +59,7 @@ local m_WroteArm = false      -- this state wrote TX_DEV_ARM
 local m_LastCounted = false   -- the current request counted the load
 
 local SnapshotG               -- forward
+local AL3TReadG              -- forward
 
 -- ---------------------------------------------------------------------------
 -- Properties
@@ -893,7 +894,12 @@ SnapshotG = function(reason)
 
 	Safe("AL", function()
 		if reason == "turn" and type(arm.al) == "table" and Turn() > (tonumber(arm.al.turn) or 0) then
-			ALReadG(arm, "AL" .. Str(arm.al.n), "turn", "turn " .. Turn() .. ", AL" .. Str(arm.al.n) .. " pressed on turn " .. Str(arm.al.turn))
+			local note = "turn " .. Turn() .. ", AL" .. Str(arm.al.n) .. " pressed on turn " .. Str(arm.al.turn)
+			if arm.al.n == "3T" then
+				AL3TReadG(arm, "turn", note)
+			else
+				ALReadG(arm, "AL" .. Str(arm.al.n), "turn", note)
+			end
 		end
 	end)
 
@@ -1461,6 +1467,129 @@ CMD.al3b_war_peace = function(playerID, p)
 	WarThenPeace(arm, "AL3b", false, "TX3_split")
 	ALReadG(arm, "AL3b", "after")
 	ALDone("3b")
+end
+
+-- ---------------------------------------------------------------------------
+-- AL3T (0.0.1.5): the HARD kick's war step. The KICKED player (target) declares
+-- war on each remaining living teammate of its ORIGINAL team (arm teamsBase,
+-- ascending), then makes peace, so the grievances fall on the target
+-- (DECISIONS 2026-10-04). AL3 proved keeper->target DeclareWarOn(t, FORMAL_WAR,
+-- true) then MakePeaceWith(t, true) ends the ALLIED state. Open: the reverse
+-- direction, and 2+ keepers (still one team: a war on one may be a war on all,
+-- peace with one may or may not be peace with all). Hence: no declaration on a
+-- keeper the target is already at war with, peace only with keepers still at war.
+-- ---------------------------------------------------------------------------
+local function AL3TKeepers(arm)
+	return TXD.BaseKeepers(arm, Alive)
+end
+
+-- "P0-P1=no P0-P2=yes P1-P2=yes": war among the target and all keepers.
+local function AL3TWarMatrix(arm, keepers)
+	local ids = { arm.target }
+	for _, k in ipairs(keepers) do
+		ids[#ids + 1] = k
+	end
+	table.sort(ids)
+	local parts = {}
+	for i = 1, #ids do
+		for j = i + 1, #ids do
+			parts[#parts + 1] = "P" .. ids[i] .. "-P" .. ids[j] .. "=" .. TXD.YN(AtWar(ids[i], ids[j]))
+		end
+	end
+	return table.concat(parts, " ")
+end
+
+-- The G read-out over every pair target<->keeper (G state both ways, as AL0).
+AL3TReadG = function(arm, stage, note)
+	local t = arm.target
+	local keepers = AL3TKeepers(arm)
+	local list, facts = {}, {}
+	for _, k in ipairs(keepers) do
+		local sTK, tokTK = StateG(t, k)
+		local sKT, tokKT = StateG(k, t)
+		local war = AtWar(t, k)
+		if war ~= true and AtWar(k, t) == true then
+			war = true
+		end
+		local metKT, metTK = Met(k, t), Met(t, k)
+		list[#list + 1] = { k = k, sTK = sTK, sKT = sKT, metKT = metKT, metTK = metTK, war = war }
+		facts[#facts + 1] = "P" .. t .. "<->P" .. k .. " G state(target view)=" .. tokTK .. " (keeper view)=" .. tokKT ..
+			" war=" .. TXD.YN(war) .. " HasAllied k->t=" .. TXD.YN(Allied(k, t)) .. " t->k=" .. TXD.YN(Allied(t, k)) ..
+			" friends k->t=" .. TXD.YN(Friends(k, t)) .. " t->k=" .. TXD.YN(Friends(t, k)) ..
+			" met k->t=" .. TXD.YN(metKT) .. " t->k=" .. TXD.YN(metTK)
+	end
+	local v, txt = TXD.Verdict.AL3T(TXD.PhaseLabel(arm), list)
+	local head = ""
+	if stage ~= nil then
+		head = stage .. ": "
+	end
+	local ks = {}
+	for _, k in ipairs(keepers) do
+		ks[#ks + 1] = "P" .. k
+	end
+	Check(TXD.StepId("AL3T", arm, stage), v, head .. txt .. "; target P" .. Str(t) .. " keepers " ..
+		(#ks > 0 and table.concat(ks, ",") or "none") .. "; " .. (#facts > 0 and table.concat(facts, "; ") or "no pair") ..
+		"; war matrix " .. AL3TWarMatrix(arm, keepers) .. (note and ("; " .. note) or ""))
+end
+
+-- AL3T: target declares war on each keeper (third arg true), then peace with
+-- each keeper still at war (target MakePeaceWith(k, true), the AL3 fallbacks
+-- after it). Refused unarmed, at BASE, or with no keeper.
+CMD.al3t_war_peace = function(playerID, p)
+	local arm = StepArm("AL3T")
+	if arm == nil then
+		return
+	end
+	local t = arm.target
+	local keepers = AL3TKeepers(arm)
+	if #keepers == 0 then
+		Spike("AL3T", "refused: the target P" .. Str(t) .. " has no living teammate left from its original team (arm record)")
+		return
+	end
+	local ks = {}
+	for _, k in ipairs(keepers) do
+		ks[#ks + 1] = "P" .. k
+	end
+	Spike("AL3T", "target P" .. t .. " declares war on " .. table.concat(ks, ",") .. ", then makes peace")
+	AL3TReadG(arm, "before")
+	for _, k in ipairs(keepers) do
+		if AtWar(t, k) then
+			Spike("AL3T", "P" .. t .. " already at war with P" .. k .. " (a war on a teammate?): no declaration")
+		else
+			local ok, err = pcall(function() Players[t]:GetDiplomacy():DeclareWarOn(k, WarTypes.FORMAL_WAR, true) end)
+			Spike("AL3T", "P" .. t .. " declares war on P" .. k .. " (DeclareWarOn(" .. k .. ",FORMAL_WAR,true)) ok=" .. tostring(ok) ..
+				(ok and "" or (" err=" .. Str(err))) .. " at war=" .. TXD.YN(AtWar(t, k)))
+		end
+		Spike("AL3T", "war matrix after P" .. k .. ": " .. AL3TWarMatrix(arm, keepers))
+	end
+	AL3TReadG(arm, "war")
+	for _, k in ipairs(keepers) do
+		if AtWar(t, k) then
+			TX_Probe("AL3T peace", DiploG(t), nil, ":MakePeaceWith", k, true)
+			if AtWar(t, k) then
+				TX_Probe("AL3T peace", DiploG(t), nil, ":MakePeaceWith", k)
+			end
+			if AtWar(t, k) then
+				TX_Probe("AL3T peace", DiploG(k), nil, ":MakePeaceWith", t, true)
+			end
+			Spike("AL3T", "peace P" .. t .. " with P" .. k .. ": at war now=" .. TXD.YN(AtWar(t, k)) .. "; war matrix " ..
+				AL3TWarMatrix(arm, keepers))
+		else
+			Spike("AL3T", "P" .. t .. " not at war with P" .. k .. ": no peace call")
+		end
+	end
+	local still = {}
+	for _, k in ipairs(keepers) do
+		if AtWar(t, k) ~= false then
+			still[#still + 1] = "P" .. k
+		end
+	end
+	if #still > 0 then
+		Spike("AL3T", "WARNING peace failed or unreadable: P" .. t .. " may still be at war with " .. table.concat(still, ",") ..
+			". Load the split save (TX3c_split / TX3c3_split / TX3cAI_split).")
+	end
+	AL3TReadG(arm, "after")
+	ALDone("3T")
 end
 
 -- AL4: a real alliance with a 1-turn duration, so it can expire into

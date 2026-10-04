@@ -1,6 +1,6 @@
 # Team Expulsion Dev Tools (TX_Dev)
 
-Spike panel for Team Expulsion. Version 0.0.1.4, mod id `813c09c2-7476-4882-b8d6-7a0708b0891d`. Needs Gathering Storm only. Never enable it in a real game: it changes teams, declares wars and spawns units. Results go to Lua.log as `[TX][SPIKE]` and `[TX][CHECK]` lines. Read them with `python tools\summarize_log.py`.
+Spike panel for Team Expulsion. Version 0.0.1.5, mod id `813c09c2-7476-4882-b8d6-7a0708b0891d`. Needs Gathering Storm only. Never enable it in a real game: it changes teams, declares wars and spawns units. Results go to Lua.log as `[TX][SPIKE]` and `[TX][CHECK]` lines. Read them with `python tools\summarize_log.py`.
 
 All sessions are hotseat (one copy of the game).
 
@@ -19,7 +19,7 @@ Panel rows:
 
 Roles: keeper = the Target's lowest teammate, other = the lowest major on another team. Session 1 setup: keeper P0, target P1, other P2.
 
-Check IDs: `V1-G.S3LIVE` = item, context (G gameplay, UI panel), phase. Phases: `BASE` (armed, before the change), `S3LIVE` (after the change, no load yet), `S3RELOAD<n>` (after the n-th load since the change). AL, VIS and K IDs add a stage: `AL3-G.S3RELOAD1.after` (`before`, `after`, `turn` = every later turn start). `VIS<n>` and `Kvis` lines are the vision read-out, `AL0fx` / `AL3fx` / `AL3bfx` the war side effects. S3n uses the path `S3n` (`S3nLIVE`, `S3nRELOAD1`). R lines are `R-UI.<step>` (`RK-UI.<step>`), steps `prep`, `apply`, `save`, `query`, `load`.
+Check IDs: `V1-G.S3LIVE` = item, context (G gameplay, UI panel), phase. Phases: `BASE` (armed, before the change), `S3LIVE` (after the change, no load yet), `S3RELOAD<n>` (after the n-th load since the change). AL, VIS and K IDs add a stage: `AL3-G.S3RELOAD1.after` (`before`, `after`, `turn` = every later turn start). `VIS<n>` and `Kvis` lines are the vision read-out, `AL0fx` / `AL3fx` / `AL3bfx` / `AL3Tfx` the war side effects. `AL3T` adds the stage `war` and judges every pair target-keeper in one line. S3n uses the path `S3n` (`S3nLIVE`, `S3nRELOAD1`). R lines are `R-UI.<step>` (`RK-UI.<step>`), steps `prep`, `apply`, `save`, `query`, `load`.
 
 ## Buttons
 
@@ -45,6 +45,7 @@ Check IDs: `V1-G.S3LIVE` = item, context (G gameplay, UI panel), phase. Phases: 
 | AL2 Probe APIs (no calls) | which alliance and peace calls exist |
 | AL3 War then peace (!) | keeper declares war on target, then makes peace |
 | AL3b War(false) then peace (!) | AL3 with DeclareWarOn's third argument false, to compare penalties |
+| AL3T Target declares then peace (!) | HARD kick war step: the target declares war on each remaining teammate, then makes peace with each |
 | AL4 Alliance deal 1 turn (!) | a research alliance keeper-target for 1 turn, so it can expire |
 | AL4L Alliance, friends off (!) | AL4, then AL1 at once. For the run to the alliance's expiry |
 | AL5 SetHasAllied toggle (!) | alliance flag on, then off. May stick for good |
@@ -64,11 +65,11 @@ Check IDs: `V1-G.S3LIVE` = item, context (G gameplay, UI panel), phase. Phases: 
 | Diplo matrix | war, allied, friend, open borders, met, team per pair |
 | Clear spike state | forgets the arm |
 
-The (!) AL and VIS buttons are refused before the split. Each logs a `before` and `after` line, and a `turn` line at every later turn start. AL PASS = keeper and target have met and are no longer `DIPLO_STATE_ALLIED` either way. VIS PASS = the target no longer sees the keeper's marker or far city, while the keeper does ("marker missing" when the keeper doesn't see its own marker: no verdict).
+The (!) AL and VIS buttons are refused before the split (AL3T also when the target has no living teammate left). Each logs a `before` and `after` line, and a `turn` line at every later turn start. AL PASS = keeper and target have met and are no longer `DIPLO_STATE_ALLIED` either way. AL3T PASS = no pair target-keeper is ALLIED or at war. VIS PASS = the target no longer sees the keeper's marker or far city, while the keeper does ("marker missing" when the keeper doesn't see its own marker: no verdict).
 
 ## Saves
 
-The spike saves and reloads its own game (`TX_*`, `TX2_*`, `TX3_*`). That is the one exception to "never load old saves". Never load a save from another game. Don't change Additional Content between saving and loading.
+The spike saves and reloads its own game (`TX_*`, `TX2_*`, `TX3_*`, `TX3b_*`, `TX3c*`). That is the one exception to "never load old saves". Never load a save from another game. Don't change Additional Content between saving and loading.
 
 ## Session 1 (done 2026-10-03, 0.0.1.1)
 
@@ -250,6 +251,50 @@ TX_Dev 0.0.1.4. Can the broken ribbon be avoided, and can one button do the save
    - Result:
 
 Then quit to the desktop and send the raw Lua.log.
+
+## Session 3c (hotseat, new games)
+
+TX_Dev 0.0.1.5. HARD kick war step: the kicked player (target) declares war on each remaining teammate, then makes peace, so the grievances fall on the target. Open: does the target's war work (AL3 was keeper on target), and with 2 keepers is a war on one a war on both, and peace with one peace with both?
+
+`[TX]` lines (`[K]`, `[AL3T]`, every CHECK line) go to Lua.log only, never to the screen.
+
+**a) 2-person team**
+
+1. Setup as Session 1: Hotseat, GS rules, Tiny, Quick. P0, P1, P2 human, P3 AI. Teams {P0,P1} {P2,P3}. Found capitals, end turns to turn 3.
+2. As P0: S1 Team map. Q Setup Session 2. End turn (all). Arm BASE + snapshot.
+   - Expect: New team filled (10), phase BASE.
+   - Result:
+3. Target P1. S3 Set Target's team. Save as `TX3c_split`. Load `TX3c_split`.
+   - Expect: phase S3RELOAD1.
+   - Result:
+4. AL0. AL3T Target declares then peace (!). Look at the notifications, and at the grievances in the diplomacy screen as P0 and as P1. End turn (all). AL0.
+   - Expect: P0 and P1 no longer ALLIED, not at war (`AL3T-*.after` and `.turn` PASS). Grievances held by P0 against P1, not the other way (`AL3Tfx`: "P0 holds against P1" > 0, "P1 holds against P0" = 0).
+   - Result:
+
+**b) 3-person team**
+
+5. New game: P0, P1, P2 human on one team, P3 AI on the other. Found capitals, end turns to turn 3.
+6. As P0: S1 Team map. Target P2 (the > arrow). Q Setup Session 2. End turn (all). Arm BASE + snapshot.
+   - Expect: roles keeper P0, target P2. New team filled.
+   - Result:
+7. S3 Set Target's team. Save as `TX3c3_split`. Load `TX3c3_split`.
+   - Expect: phase S3RELOAD1.
+   - Result:
+8. AL0. AL3T Target declares then peace (!). End turn (all). AL0. Diplo matrix.
+   - Expect: P2 neither ALLIED nor at war with P0 or P1 (`AL3T-*` "2/2 pairs clear" PASS). P0 and P1 still one team, still allied with each other (Diplo matrix: `T` and `A` between them). Grievances held by P0 and by P1 against P2. Leon: how many war and peace notifications?
+   - Result:
+
+**c) AI target**
+
+9. New game: P0 human + P1 AI on one team, P2 human + P3 AI on the other. Found capitals, end turns to turn 3.
+10. As P0: S1 Team map. Target P1. Q Setup Session 2. End turn (all). Arm BASE + snapshot. S3 Set Target's team. Save as `TX3cAI_split`. Load `TX3cAI_split`.
+    - Expect: phase S3RELOAD1.
+    - Result:
+11. AL0. AL3T Target declares then peace (!). End turn (all). AL0. End turn (all) 3 more times, AL0 after each.
+    - Expect: as a): no longer ALLIED, not at war, grievances held by P0 against P1. The AI does not declare war again on its own in the next 3 turns (`AL3T-G.*.turn` PASS each turn, no war notification).
+    - Result:
+
+Then quit to the desktop and send the raw Lua.log file (not only the summary).
 
 ## Afterwards
 

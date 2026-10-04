@@ -610,6 +610,26 @@ class TestSummarizeLog(unittest.TestCase):
         self.assertIn("[K] 1 line(s)", text)
         self.assertIn("[AL3b] 1 line(s)", text)
 
+    def test_tx_dev_al3t_shapes(self):
+        """TX_Dev 0.0.1.5 AL3T lines: AL3T / AL3Tfx IDs with stages (before, war, after, turn), section AL3T."""
+        lines = [
+            "TX_Dev_Gameplay: [TX][CHECK] AL3T-G.S3RELOAD1.before INFO T4 G before: 0/2 pairs clear (not ALLIED, not at war); P0: state now target->keeper=DIPLO_STATE_ALLIED keeper->target=DIPLO_STATE_ALLIED: still ALLIED | P1: state now target->keeper=DIPLO_STATE_ALLIED keeper->target=DIPLO_STATE_ALLIED: still ALLIED; target P2 keepers P0,P1",
+            "TX_Dev_Gameplay: [TX][CHECK] AL3T-G.S3RELOAD1.war INFO T4 G war: 0/2 pairs clear (not ALLIED, not at war); war matrix P0-P1=no P0-P2=yes P1-P2=yes",
+            "TX_Dev_Gameplay: [TX][CHECK] AL3T-G.S3RELOAD1.after PASS T4 G after: 2/2 pairs clear (not ALLIED, not at war); target P2 keepers P0,P1",
+            "TX_Dev_Panel: [TX][CHECK] AL3T-UI.S3RELOAD1.turn PASS T5 UI turn: 2/2 pairs clear (not ALLIED, not at war)",
+            "TX_Dev_Panel: [TX][CHECK] AL3Tfx-UI.S3RELOAD1.after INFO T4 UI after: target P2; P0: grievances P0 holds against P2=100, P2 holds against P0=0",
+            "TX_Dev_Gameplay: [TX][SPIKE][AL3T] G P2 declares war on P0 (DeclareWarOn(0,FORMAL_WAR,true)) ok=true at war=yes",
+            "TX_Dev_Gameplay: [TX][SPIKE][AL3T] G PROBE AL3T peace <userdata>:MakePeaceWith(0,true) exists=function ok=true ret=() err=-",
+        ]
+        code, text = self.run_lines(lines)
+        self.assertEqual(code, 0, text)
+        self.assertRegex(text, r"AL3T-G\.S3RELOAD1\.war +INFO +T4 G war:")
+        self.assertRegex(text, r"AL3T-G\.S3RELOAD1\.after +PASS +T4 G after: 2/2 pairs clear")
+        self.assertRegex(text, r"AL3T-UI\.S3RELOAD1\.turn +PASS +T5 UI turn:")
+        self.assertRegex(text, r"AL3Tfx-UI\.S3RELOAD1\.after +INFO +T4 UI after:")
+        self.assertIn("summarize_log: PASS - 5 check(s)", text)
+        self.assertIn("[AL3T] 2 line(s)", text)
+
     def test_missing_log(self):
         code, text = self.run_log(os.path.join(LOGS, "no_such_Lua.log"))
         self.assertEqual(code, 2)

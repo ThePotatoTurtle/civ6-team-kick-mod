@@ -8,7 +8,7 @@ local ENV = nil
 local function Setup(opts)
 	opts = opts or {}
 	H.world{
-		teams = { [0] = 0, [1] = 0, [2] = 1, [3] = 1 },
+		teams = opts.teams or { [0] = 0, [1] = 0, [2] = 1, [3] = 1 },
 		players = {
 			{ id = 0, human = true }, { id = 1, human = true }, { id = 2, human = true }, { id = 3 },
 			{ id = 62, kind = "FREE_CITIES" }, { id = 63, kind = "BARBARIAN" },
@@ -79,14 +79,14 @@ local LABELS = {
 	"VIS3 SetVisibilityOn 0 (!)", "K Full kick (S3+VIS1) (!)", "AL4L Alliance, friends off (!)",
 	"AL8 Unmeet both ways (!)", "AL9 Unmeet then meet (!)",
 	"S3n Set team, no broadcast (!)", "P-Teams read", "P-Teams WRITE panel copy (!)", "R Apply + reload (hotseat) (!)",
-	"RK Kick + VIS1 + reload (!)",
+	"RK Kick + VIS1 + reload (!)", "AL3T Target declares then peace (!)",
 }
 
 test("init: context shown, Main hidden, hotkey and Esc, every button", function()
 	Setup()
 	H.eq(ENV.ContextPtr:IsHidden(), false, "ContextPtr:SetHide(false) in init")
 	H.eq(ENV.Controls.Main:IsHidden(), true)
-	H.ok(#H.lines("[TX][SPIKE][INIT] UI TX_Dev 0.0.1.4 loaded (for TX 0.0.1 spike)", true) == 1)
+	H.ok(#H.lines("[TX][SPIKE][INIT] UI TX_Dev 0.0.1.5 loaded (for TX 0.0.1 spike)", true) == 1)
 	FAKE_UI.KeyTo(ENV, Keys.D, { ctrl = true, shift = true })
 	H.eq(ENV.Controls.Main:IsHidden(), false, "Ctrl+Shift+D opens")
 	H.ok(string.find(ENV.Controls.RolesLabel:GetText(), "keeper=P0 target=P1 other=P2", 1, true), ENV.Controls.RolesLabel:GetText())
@@ -983,5 +983,90 @@ test("R: no clock for the save name -> R-UI.prep FAIL before the team write", fu
 	H.ok(H.hasLine("[TX][CHECK] R-UI.prep FAIL T1 UI os.date for a unique save name"))
 	H.len(FAKE.teamSets, 0)
 	H.len(FAKE_DEV.saveCalls, 0)
+	NoErrors()
+end)
+
+-- ---------------------------------------------------------------------------
+-- TX_Dev 0.0.1.5: AL3T, the HARD kick's war step (target declares, then peace)
+-- ---------------------------------------------------------------------------
+test("AL3T from the panel: refused before the split, nothing sent", function()
+	Setup()
+	Click("AL3T Target declares then peace (!)")
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] UI refused: arm BASE and split the team first (or load TX3_split)"))
+	ArmNow()
+	Click("AL3T Target declares then peace (!)")
+	H.eq(#H.lines("[TX][SPIKE][AL3T] UI refused: arm BASE and split the team first"), 2)
+	H.isnil(LastRequest("al3t_war_peace"), "nothing sent")
+	local b = FAKE_UI.FindButton("AL3T Target declares then peace (!)")
+	H.ok(string.find(b.tooltip or "", "target declares war on each remaining teammate", 1, true), b.tooltip)
+	NoErrors()
+end)
+
+test("AL3T from the panel, 2-person team: UI before/after PASS, fx shows the keeper holding the grievances, turn reads", function()
+	SplitPanel()
+	Click("AL3T Target declares then peace (!)")
+	H.ok(H.hasLine("[TX][CHECK] AL3T-UI.S3LIVE.before INFO T1 UI before: 0/1 pairs clear (not ALLIED, not at war); P0: state now " ..
+		"target->keeper=DIPLO_STATE_ALLIED keeper->target=DIPLO_STATE_ALLIED: still ALLIED; target P1 keepers P0; P1<->P0 war=no met k->t=yes"))
+	H.ok(H.hasLine("[TX][CHECK] AL3Tfx-UI.S3LIVE.before INFO T1 UI before: target P1; P0: grievances P0 holds against P1=0, " ..
+		"P1 holds against P0=0;"))
+	H.eq(LastRequest("al3t_war_peace").params.cmd, "al3t_war_peace")
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G P1 declares war on P0 (DeclareWarOn(0,FORMAL_WAR,true)) ok=true at war=yes"))
+	H.ok(H.hasLine("[TX][CHECK] AL3T-G.S3LIVE.after PASS"))
+	Frames(1)
+	H.ok(H.hasLine("[TX][CHECK] AL3T-UI.S3LIVE.after PASS T1 UI after: 1/1 pairs clear (not ALLIED, not at war); P0: state now " ..
+		"target->keeper=DIPLO_STATE_UNFRIENDLY keeper->target=DIPLO_STATE_UNFRIENDLY: no longer ALLIED"))
+	local fx = H.lines("[TX][CHECK] AL3Tfx-UI.S3LIVE.after INFO T1 UI after: target P1; P0: grievances P0 holds against P1=100, " ..
+		"P1 holds against P0=0; ")[1]
+	H.notnil(fx, H.Ser(H.lines("AL3Tfx")))
+	for _, part in ipairs({ "AtWarChangeTurn k->t=1 t->k=1", "CanMakePeaceWith k->t=false t->k=false",
+		"DOW warmonger points t->k=50 level=LOC_FAKE_WARMONGER_-50", "open borders target from keeper=no keeper from target=no",
+		"MinPeaceDuration=10", "era score P1=0 P0=0", "Leon: notifications, historic moments" }) do
+		H.ok(string.find(fx, part, 1, true), part .. " in " .. fx)
+	end
+	EndTurn()
+	Events.PlayerTurnActivated(0, true)
+	H.ok(H.hasLine("[TX][CHECK] AL3T-G.S3LIVE.turn PASS T2"))
+	H.ok(H.hasLine("[TX][CHECK] AL3T-UI.S3LIVE.turn PASS T2 UI turn: 1/1 pairs clear"))
+	H.ok(H.hasLine("[TX][CHECK] AL3Tfx-UI.S3LIVE.turn INFO T2 UI turn: target P1; P0: grievances P0 holds against P1=100"))
+	H.len(H.lines("[TX][CHECK] AL3T-UI.S3LIVE.turn INFO"), 0)
+	NoErrors()
+end)
+
+test("AL3T from the panel, 3-person team: target P2, both keepers in the UI and fx lines", function()
+	Setup({ teams = { [0] = 0, [1] = 0, [2] = 0, [3] = 1 } })
+	Events.LoadGameViewStateDone()
+	FAKE.teamModel = "live"
+	FAKE.teamWars = false
+	for _, pr in ipairs({ { 0, 1 }, { 0, 2 }, { 1, 2 } }) do
+		FAKE.PairSet(FAKE.diplo.met, pr[1], pr[2], true)
+		FAKE.PairSet(FAKE.diplo.met, pr[2], pr[1], true)
+	end
+	ENV.Controls.TargetNext:Click()
+	H.clean()
+	SetTeamEdit(2)
+	Click("Arm BASE + snapshot")
+	Frames(1)
+	local arm = H.prop("TX_DEV_ARM")
+	H.eq(arm.target, 2, H.Ser(arm))
+	H.eq(arm.keeper, 0)
+	Click("S3 Set Target's team")
+	Frames(1)
+	for _, k in ipairs({ 0, 1 }) do
+		FAKE_DEV.SetState(2, k, "DIPLO_STATE_ALLIED")
+		FAKE_DEV.SetState(k, 2, "DIPLO_STATE_ALLIED")
+	end
+	H.clean()
+	Click("AL3T Target declares then peace (!)")
+	H.ok(H.hasLine("[TX][CHECK] AL3T-UI.S3LIVE.before INFO T1 UI before: 0/2 pairs clear"))
+	Frames(1)
+	local l = H.lines("[TX][CHECK] AL3T-UI.S3LIVE.after PASS T1 UI after: 2/2 pairs clear (not ALLIED, not at war)")[1]
+	H.notnil(l, H.Ser(H.lines("AL3T-")))
+	H.ok(string.find(l, "target P2 keepers P0,P1; P2<->P0 war=no", 1, true), l)
+	H.ok(string.find(l, "P2<->P1 war=no", 1, true), l)
+	local fx = H.lines("[TX][CHECK] AL3Tfx-UI.S3LIVE.after INFO T1 UI after: target P2; P0: grievances P0 holds against P2=100, " ..
+		"P2 holds against P0=0; ")[1]
+	H.notnil(fx, H.Ser(H.lines("AL3Tfx")))
+	H.ok(string.find(fx, " | P1: grievances P1 holds against P2=100, P2 holds against P1=0; ", 1, true), fx)
+	H.ok(string.find(fx, "era score P2=0 P0=0 P1=0", 1, true), fx)
 	NoErrors()
 end)

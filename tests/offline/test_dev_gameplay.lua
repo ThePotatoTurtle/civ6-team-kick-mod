@@ -63,7 +63,7 @@ end
 
 test("init line and the handler", function()
 	World()
-	H.ok(#H.lines("[TX][SPIKE][INIT] G TX_Dev 0.0.1.4 loaded (for TX 0.0.1 spike) turn=1 armed=0", true) == 1)
+	H.ok(#H.lines("[TX][SPIKE][INIT] G TX_Dev 0.0.1.5 loaded (for TX 0.0.1 spike) turn=1 armed=0", true) == 1)
 	H.eq(GameEvents.TX_Dev.Count(), 1)
 	H.eq(GameEvents.OnGameTurnStarted.Count(), 1)
 	NoErrors()
@@ -752,5 +752,152 @@ test("AL4L: the alliance deal, then friendship off; turn reads every turn start"
 	FAKE_DEV.SetState(1, 0, "DIPLO_STATE_FRIENDLY")
 	H.endTurn()
 	H.ok(H.hasLine("[TX][CHECK] AL4L-G.S3LIVE.turn PASS T4 G turn: state now target->keeper=DIPLO_STATE_FRIENDLY"))
+	NoErrors()
+end)
+
+-- ---------------------------------------------------------------------------
+-- TX_Dev 0.0.1.5: AL3T, the HARD kick's war step (target declares, then peace)
+-- ---------------------------------------------------------------------------
+-- Session 3c b): P0, P1, P2 human on team 0, P3 AI on team 1. Target P2 split to
+-- team 2 (live), leftover ALLIED both ways with P0 and P1, all met.
+local function Split3(opts)
+	opts = opts or {}
+	H.world{
+		teams = { [0] = 0, [1] = 0, [2] = 0, [3] = 1 },
+		players = {
+			{ id = 0, human = true }, { id = 1, human = true, alive = opts.p1Alive ~= false }, { id = 2, human = true }, { id = 3 },
+			{ id = 62, kind = "FREE_CITIES" }, { id = 63, kind = "BARBARIAN" },
+		},
+	}
+	FAKE.dofile("tests/offline/lib/fake_devworld.lua")
+	FAKE_DEV.Install()
+	FAKE_DEV.AddCity(0, 3, 3)
+	FAKE_DEV.AddCity(1, 6, 3)
+	FAKE_DEV.AddCity(2, 18, 10)
+	FAKE_DEV.AddCity(3, 20, 4)
+	H.load(G)
+	FAKE.teamModel = "live"
+	if opts.teamWars ~= nil then
+		FAKE.teamWars = opts.teamWars
+	end
+	local p = { target = 2, team = 2, mp = 0, hotseat = 1 }
+	for i = 0, 3 do p["cfg_" .. i] = PlayerConfigurations[i]:GetTeam() end
+	Req("arm", p)
+	PlayerConfigurations[2]:SetTeam(2)
+	Req("changed", { path = "S3", target = 2, team = 2 })
+	for _, k in ipairs({ 0, 1 }) do
+		FAKE_DEV.SetState(2, k, ALLIED)
+		FAKE_DEV.SetState(k, 2, ALLIED)
+		H.meet(2, k)
+	end
+	H.meet(0, 1)
+	H.clean()
+end
+
+test("AL3T refused unarmed, at BASE and without a keeper; nothing declared", function()
+	World()
+	Req("al3t_war_peace")
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G refused: arm BASE and split the team first (or load TX3_split)"))
+	Arm()
+	Req("al3t_war_peace")
+	H.eq(#H.lines("[TX][SPIKE][AL3T] G refused: arm BASE and split the team first"), 2)
+	H.len(FAKE_DEV.dows, 0)
+	H.isnil(H.prop("TX_DEV_ARM").al)
+	-- split, then the only teammate dies: no keeper left
+	S3Change(2)
+	FAKE.players[0].alive = false
+	Req("al3t_war_peace")
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G refused: the target P1 has no living teammate left from its original team (arm record)"))
+	H.len(FAKE_DEV.dows, 0)
+	H.isnil(H.prop("TX_DEV_ARM").al)
+	NoErrors()
+end)
+
+test("AL3T, 2-person team: P1 declares on P0 (third arg true), peace, PASS, grievances on the target, turn read", function()
+	Split()
+	Req("al3t_war_peace")
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G target P1 declares war on P0, then makes peace"))
+	H.ok(H.hasLine("[TX][CHECK] AL3T-G.S3LIVE.before INFO T1 G before: 0/1 pairs clear (not ALLIED, not at war); P0: state now " ..
+		"target->keeper=DIPLO_STATE_ALLIED keeper->target=DIPLO_STATE_ALLIED: still ALLIED; target P1 keepers P0;"))
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G P1 declares war on P0 (DeclareWarOn(0,FORMAL_WAR,true)) ok=true at war=yes"))
+	H.deq(FAKE_DEV.dows, { { a = 1, b = 0, warType = 1, flag = true } })
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G war matrix after P0: P0-P1=yes"))
+	H.ok(H.hasLine("[TX][CHECK] AL3T-G.S3LIVE.war INFO T1 G war: 0/1 pairs clear"))
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G PROBE AL3T peace <table>:MakePeaceWith(0,true) exists=function ok=true"))
+	H.deq(FAKE_DEV.peace, { { a = 1, b = 0 } }, "the target made peace")
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G peace P1 with P0: at war now=no; war matrix P0-P1=no"))
+	H.len(H.lines("WARNING peace failed"), 0)
+	local l = H.lines("[TX][CHECK] AL3T-G.S3LIVE.after PASS T1 G after: 1/1 pairs clear (not ALLIED, not at war); P0: state now " ..
+		"target->keeper=DIPLO_STATE_UNFRIENDLY keeper->target=DIPLO_STATE_UNFRIENDLY: no longer ALLIED")[1]
+	H.notnil(l, H.Ser(H.lines("AL3T-G")))
+	H.ok(string.find(l, "P1<->P0 G state(target view)=DIPLO_STATE_UNFRIENDLY (keeper view)=DIPLO_STATE_UNFRIENDLY war=no", 1, true), l)
+	H.ok(string.find(l, "; war matrix P0-P1=no", 1, true), l)
+	-- the fake gives the defender 100 grievances against the declarer: the keeper holds them
+	H.eq(FAKE_DEV.grievances["0,1"], 100)
+	H.isnil(FAKE_DEV.grievances["1,0"])
+	H.deq(H.prop("TX_DEV_ARM").al, { n = "3T", turn = 1 })
+	H.endTurn()
+	H.ok(H.hasLine("[TX][CHECK] AL3T-G.S3LIVE.turn PASS T2 G turn: 1/1 pairs clear"))
+	H.ok(H.hasLine("turn 2, AL3T pressed on turn 1"))
+	H.len(H.lines("[TX][CHECK] AL3T-G.S3LIVE.turn INFO"), 0)
+	NoErrors()
+end)
+
+test("AL3T, 2 keepers, separate wars: the target declares on and makes peace with each, PASS for both pairs", function()
+	Split3({ teamWars = false })
+	Req("al3t_war_peace")
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G target P2 declares war on P0,P1, then makes peace"))
+	H.deq(FAKE_DEV.dows, { { a = 2, b = 0, warType = 1, flag = true }, { a = 2, b = 1, warType = 1, flag = true } })
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G war matrix after P0: P0-P1=no P0-P2=yes P1-P2=no"))
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G war matrix after P1: P0-P1=no P0-P2=yes P1-P2=yes"))
+	local w = H.lines("[TX][CHECK] AL3T-G.S3LIVE.war INFO T1 G war: 0/2 pairs clear")[1]
+	H.notnil(w, H.Ser(H.lines("AL3T-G")))
+	H.ok(string.find(w, "P0: state now target->keeper=DIPLO_STATE_WAR keeper->target=DIPLO_STATE_WAR: at war", 1, true), w)
+	H.ok(string.find(w, "target P2 keepers P0,P1", 1, true), w)
+	H.deq(FAKE_DEV.peace, { { a = 2, b = 0 }, { a = 2, b = 1 } }, "peace with each keeper, by the target")
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G peace P2 with P0: at war now=no"))
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G peace P2 with P1: at war now=no"))
+	local l = H.lines("[TX][CHECK] AL3T-G.S3LIVE.after PASS T1 G after: 2/2 pairs clear (not ALLIED, not at war)")[1]
+	H.notnil(l, H.Ser(H.lines("AL3T-G")))
+	H.ok(string.find(l, "P0: state now target->keeper=DIPLO_STATE_UNFRIENDLY keeper->target=DIPLO_STATE_UNFRIENDLY: no longer ALLIED | " ..
+		"P1: state now target->keeper=DIPLO_STATE_UNFRIENDLY", 1, true), l)
+	H.ok(string.find(l, "P2<->P0 G state(target view)=DIPLO_STATE_UNFRIENDLY", 1, true), l)
+	H.ok(string.find(l, "P2<->P1 G state(target view)=DIPLO_STATE_UNFRIENDLY", 1, true), l)
+	H.eq(FAKE_DEV.grievances["0,2"], 100)
+	H.eq(FAKE_DEV.grievances["1,2"], 100)
+	H.eq(PlayerConfigurations[0]:GetTeam(), PlayerConfigurations[1]:GetTeam(), "the keepers stay one team")
+	H.endTurn()
+	H.ok(H.hasLine("[TX][CHECK] AL3T-G.S3LIVE.turn PASS T2 G turn: 2/2 pairs clear"))
+	NoErrors()
+end)
+
+test("AL3T, 2 keepers, team war (fake model): one declaration, peace with P0 only, P1 left ALLIED is INFO", function()
+	Split3({ teamWars = true })
+	Req("al3t_war_peace")
+	H.deq(FAKE_DEV.dows, { { a = 2, b = 0, warType = 1, flag = true } })
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G P2 already at war with P1 (a war on a teammate?): no declaration"))
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G war matrix after P1: P0-P1=no P0-P2=yes P1-P2=yes"))
+	H.deq(FAKE_DEV.peace, { { a = 2, b = 0 } })
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G P2 not at war with P1: no peace call"))
+	local l = H.lines("[TX][CHECK] AL3T-G.S3LIVE.after INFO T1 G after: 1/2 pairs clear")[1]
+	H.notnil(l, H.Ser(H.lines("AL3T-G")))
+	H.ok(string.find(l, "P1: state now target->keeper=DIPLO_STATE_ALLIED keeper->target=DIPLO_STATE_ALLIED: still ALLIED", 1, true), l)
+	H.len(H.lines("AL3T-G.S3LIVE.after PASS"), 0)
+	NoErrors()
+end)
+
+test("AL3T: a dead keeper is skipped; peace that fails is INFO with a WARNING", function()
+	Split3({ teamWars = false, p1Alive = false })
+	for pid = 0, 2 do
+		rawset(FAKE.players[pid].diplomacy, "MakePeaceWith", function() end)
+	end
+	Req("al3t_war_peace")
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G target P2 declares war on P0, then makes peace"))
+	H.deq(FAKE_DEV.dows, { { a = 2, b = 0, warType = 1, flag = true } })
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G PROBE AL3T peace <table>:MakePeaceWith(0) exists=function ok=true"))
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G PROBE AL3T peace <table>:MakePeaceWith(2,true) exists=function ok=true"))
+	H.ok(H.hasLine("[TX][SPIKE][AL3T] G WARNING peace failed or unreadable: P2 may still be at war with P0."))
+	H.ok(H.hasLine("[TX][CHECK] AL3T-G.S3LIVE.after INFO T1 G after: 0/1 pairs clear"))
+	H.len(H.lines("AL3T-G.S3LIVE.after PASS"), 0)
 	NoErrors()
 end)

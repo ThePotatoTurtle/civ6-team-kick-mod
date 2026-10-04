@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Dev_Panel.lua  (TX_Dev 0.0.1.4, spike kit for Team Expulsion 0.0.1)
+-- TX_Dev_Panel.lua  (TX_Dev 0.0.1.5, spike kit for Team Expulsion 0.0.1)
 -- Context: UI (AddUserInterfaces, Context InGame). TESTING ONLY. PLAN I.6.
 --
 -- Panel toggled by Ctrl+Shift+D or the "DEV" launch bar button (copied from
@@ -84,6 +84,7 @@ local RefreshInfo          -- forward
 local CfgMembers           -- forward
 local ALReadUI             -- forward
 local VisReadUI            -- forward
+local AL3TReadUI           -- forward
 
 -- ---------------------------------------------------------------------------
 -- Helpers
@@ -945,8 +946,12 @@ SnapshotUI = function(reason)
 	if reason == "turn" or reason == "loaded" then
 		Safe("AL", function()
 			if type(arm.al) == "table" and TXD.Turn() > (tonumber(arm.al.turn) or 0) then
-				ALReadUI(arm, "AL" .. Str(arm.al.n), "turn", "turn " .. TXD.Turn() .. ", AL" .. Str(arm.al.n) .. " pressed on turn " ..
-					Str(arm.al.turn))
+				local note = "turn " .. TXD.Turn() .. ", AL" .. Str(arm.al.n) .. " pressed on turn " .. Str(arm.al.turn)
+				if arm.al.n == "3T" then
+					AL3TReadUI(arm, "turn", note)
+				else
+					ALReadUI(arm, "AL" .. Str(arm.al.n), "turn", note)
+				end
 			end
 		end)
 		Safe("VIS", function()
@@ -1292,6 +1297,107 @@ VisReadUI = function(arm, item, stage, note)
 		(note and ("; " .. note) or ""))
 end
 
+-- ---------------------------------------------------------------------------
+-- AL3T (0.0.1.5): the HARD kick's war step, UI half. Every pair target<->keeper
+-- (the target's remaining living teammates from the arm record, ascending).
+-- ---------------------------------------------------------------------------
+local function AL3TKeepers(arm)
+	return TXD.BaseKeepers(arm, function(pid) return Flag(function() return Players[pid]:IsAlive() end) end)
+end
+
+-- Grievances both ways per pair (AL3fx style; who holds them: a HARD kick wants
+-- every keeper holding grievances against the target, not the other way), and
+-- per pair the war turn, peace / war allowed, the target's DOW warmonger points
+-- on the keeper, open borders. Then MinPeaceDuration and era scores. All probes.
+local function AL3TFxUI(arm, keepers, stage)
+	local t = arm.target
+	local dt = DiploOf(t)
+	local rf = TX_Probe(false, "WarTypes", nil, "=FORMAL_WAR")
+	local parts = {}
+	for _, k in ipairs(keepers) do
+		local dk = DiploOf(k)
+		local function Both(member)
+			return " k->t=" .. TXD.Tok(TX_Probe(false, dk, nil, member, t)) .. " t->k=" .. TXD.Tok(TX_Probe(false, dt, nil, member, k))
+		end
+		local warmonger
+		if rf.ok and rf.rets[1] ~= nil then
+			local rp = TX_Probe(false, dt, nil, ":ComputeDOWWarmongerPoints", k, rf.rets[1])
+			warmonger = TXD.Tok(rp)
+			if rp.ok and type(rp.rets[1]) == "number" then
+				warmonger = warmonger .. " level=" .. TXD.Tok(TX_Probe(false, dt, nil, ":GetWarmongerLevel", -rp.rets[1]))
+			end
+		else
+			warmonger = "FORMAL_WAR=" .. TXD.Tok(rf)
+		end
+		parts[#parts + 1] = "P" .. k .. ": grievances P" .. k .. " holds against P" .. t .. "=" ..
+			TXD.Tok(TX_Probe(false, dk, nil, ":GetGrievancesAgainst", t)) .. ", P" .. t .. " holds against P" .. k .. "=" ..
+			TXD.Tok(TX_Probe(false, dt, nil, ":GetGrievancesAgainst", k)) .. "; AtWarChangeTurn" .. Both(":GetAtWarChangeTurn") ..
+			"; CanMakePeaceWith" .. Both(":CanMakePeaceWith") .. "; CanDeclareWarOn" .. Both(":CanDeclareWarOn") ..
+			"; DOW warmonger points t->k=" .. warmonger .. "; open borders target from keeper=" .. TXD.YN(HasOB(t, k)) ..
+			" keeper from target=" .. TXD.YN(HasOB(k, t))
+	end
+	local minPeace
+	local rg = TX_Probe(false, "Game", nil, ".GetGameDiplomacy")
+	if rg.ok and rg.rets[1] ~= nil then
+		minPeace = TXD.Tok(TX_Probe(false, rg.rets[1], nil, ":GetMinPeaceDuration"))
+	else
+		minPeace = TXD.Tok(rg)
+	end
+	local era
+	local re = TX_Probe(false, "Game", nil, ".GetEras")
+	if re.ok and re.rets[1] ~= nil then
+		local ids = { t }
+		for _, k in ipairs(keepers) do
+			ids[#ids + 1] = k
+		end
+		local es = {}
+		for _, pid in ipairs(ids) do
+			es[#es + 1] = "P" .. pid .. "=" .. TXD.Tok(TX_Probe(false, re.rets[1], nil, ":GetPlayerCurrentScore", pid))
+		end
+		era = table.concat(es, " ")
+	else
+		era = TXD.Tok(re)
+	end
+	local head = ""
+	if stage ~= nil then
+		head = stage .. ": "
+	end
+	Check(TXD.StepId("AL3Tfx", arm, stage), "INFO", head .. "target P" .. Str(t) .. "; " ..
+		(#parts > 0 and table.concat(parts, " | ") or "no keeper") .. "; MinPeaceDuration=" .. minPeace .. "; era score " .. era ..
+		"; Leon: notifications, historic moments, grievances in the diplomacy screen (who holds them)")
+end
+
+-- The UI read-out over every pair (state both ways, met, war), then the fx line.
+AL3TReadUI = function(arm, stage, note)
+	local t = arm.target
+	local keepers = AL3TKeepers(arm)
+	local list, facts = {}, {}
+	for _, k in ipairs(keepers) do
+		local war = AtWar(t, k)
+		if war ~= true and AtWar(k, t) == true then
+			war = true
+		end
+		local metKT, metTK = Met(k, t), Met(t, k)
+		local sTK, sKT = StateName(t, k), StateName(k, t)
+		list[#list + 1] = { k = k, sTK = sTK, sKT = sKT, metKT = metKT, metTK = metTK, war = war }
+		facts[#facts + 1] = "P" .. Str(t) .. "<->P" .. k .. " war=" .. TXD.YN(war) .. " met k->t=" .. TXD.YN(metKT) ..
+			" t->k=" .. TXD.YN(metTK) .. " CanDeclareWarOn t->k=" .. TXD.Tok(TX_Probe(false, DiploOf(t), nil, ":CanDeclareWarOn", k))
+	end
+	local v, txt = TXD.Verdict.AL3T(TXD.PhaseLabel(arm), list)
+	local head = ""
+	if stage ~= nil then
+		head = stage .. ": "
+	end
+	local ks = {}
+	for _, k in ipairs(keepers) do
+		ks[#ks + 1] = "P" .. k
+	end
+	Check(TXD.StepId("AL3T", arm, stage), v, head .. txt .. "; target P" .. Str(t) .. " keepers " ..
+		(#ks > 0 and table.concat(ks, ",") or "none") .. "; " .. (#facts > 0 and table.concat(facts, "; ") or "no pair") ..
+		(note and ("; " .. note) or ""))
+	AL3TFxUI(arm, keepers, stage)
+end
+
 -- The arm for an AL read: the armed record, or the roles from the panel Target.
 local function ALRoles()
 	local arm = ArmRead()
@@ -1344,6 +1450,17 @@ end
 local function VISStep(n)
 	local item = "VIS" .. n
 	Step(item, "vis_step", { n = n }, function(a, stage) VisReadUI(a, item, stage) end)
+end
+
+-- AL3T: the target declares war on each remaining teammate, then peace (G).
+-- Refused unarmed, at BASE (Step) and with no keeper left.
+local function AL3TStep()
+	local arm = ArmRead()
+	if IsArmed(arm) and arm.phase ~= "BASE" and #AL3TKeepers(arm) == 0 then
+		Spike("AL3T", "refused: the target P" .. Str(arm.target) .. " has no living teammate left from its original team (arm record)")
+		return
+	end
+	Step("AL3T", "al3t_war_peace", nil, function(a, stage) AL3TReadUI(a, stage) end)
 end
 
 -- K: the full kick, a rehearsal of the real mod action. The S3 config write and
@@ -1945,6 +2062,7 @@ local UIFN = {
 	AL2 = AL2Exist,
 	AL3 = function() ALStep("3", "al3_war_peace") end,
 	AL3b = function() ALStep("3b", "al3b_war_peace") end,
+	AL3T = AL3TStep,
 	AL4 = function() AL4Deal("4", "al4_alliance") end,
 	AL4L = function() AL4Deal("4L", "al4l_alliance_long") end,
 	AL8 = function() ALStep("8", "al8_unmeet") end,
@@ -1994,6 +2112,8 @@ local BUTTONS = {
 	{ label = "AL2 Probe APIs (no calls)", ui = "AL2", tip = "existence only of the alliance and peace calls" },
 	{ label = "AL3 War then peace (!)", ui = "AL3", tip = "keeper declares war on target, then makes peace" },
 	{ label = "AL3b War(false) then peace (!)", ui = "AL3b", tip = "as AL3, with DeclareWarOn third argument false" },
+	{ label = "AL3T Target declares then peace (!)", ui = "AL3T",
+		tip = "HARD kick war step: the target declares war on each remaining teammate, then makes peace with each" },
 	{ label = "AL4 Alliance deal 1 turn (!)", ui = "AL4", tip = "research alliance keeper-target, duration 1 turn" },
 	{ label = "AL4L Alliance, friends off (!)", ui = "AL4L",
 		tip = "AL4, then AL1 friendship off. End turns past the expiry: every turn start reads the state" },

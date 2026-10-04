@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Dev_Lib.lua  (TX_Dev 0.0.1.4, spike kit for Team Expulsion 0.0.1)
+-- TX_Dev_Lib.lua  (TX_Dev 0.0.1.5, spike kit for Team Expulsion 0.0.1)
 -- TX:CONTEXT both
 -- TX:GLOBALS TXD TX_Probe
 --
@@ -29,7 +29,7 @@
 local M = {}
 TXD = M
 
-M.VERSION = "0.0.1.4"
+M.VERSION = "0.0.1.5"
 M.FOR_TX = "0.0.1"
 M.ctx = "?"
 M.roots = {}
@@ -1113,7 +1113,7 @@ M.ALLIED = "DIPLO_STATE_ALLIED"
 M.WAR = "DIPLO_STATE_WAR"
 
 -- <item>-<ctx>.<phase>[.<stage>]; stage: before | after | turn | a mid stage | nil.
--- Items: AL0..AL7, AL3b, AL<n>fx, VIS0..VIS3, K, Kvis.
+-- Items: AL0..AL7, AL3b, AL3T, AL<n>fx, VIS0..VIS3, K, Kvis.
 function M.StepId(item, arm, stage)
 	local id = M.Str(item) .. "-" .. M.ctx .. "." .. M.PhaseLabel(arm)
 	if stage ~= nil then
@@ -1150,6 +1150,63 @@ function M.Verdict.AL(phase, sTK, sKT, metKT, metTK)
 		return "PASS", facts .. ": no longer ALLIED"
 	end
 	return "INFO", facts .. ": still ALLIED"
+end
+
+-- AL3T (0.0.1.5): the HARD kick's war step. The target's remaining teammates
+-- from the arm record: every pid on the target's team at arm time (teamsBase),
+-- not the target, not 62/63, alive (isAlive(pid) true; nil isAlive = all).
+-- Ascending pids.
+function M.BaseKeepers(arm, isAlive)
+	local out = {}
+	if type(arm) ~= "table" or type(arm.teamsBase) ~= "table" then
+		return out
+	end
+	local team = nil
+	for _, r in ipairs(arm.teamsBase) do
+		if r.pid == arm.target then
+			team = r.team
+		end
+	end
+	if team == nil then
+		return out
+	end
+	for _, r in ipairs(arm.teamsBase) do
+		if r.team == team and r.pid ~= arm.target and type(r.pid) == "number" and r.pid < 62 and
+			(isAlive == nil or isAlive(r.pid) == true) then
+			out[#out + 1] = r.pid
+		end
+	end
+	table.sort(out)
+	return out
+end
+
+-- AL3T verdict over every pair target<->keeper. list: { { k, sTK, sKT, metKT,
+-- metTK, war } } (war: IsAtWarWith either way, true / false / nil). PASS only
+-- when every pair has met, is readable, and is neither ALLIED nor at war
+-- (Verdict.AL per pair, and war == true is never a PASS). INFO otherwise.
+function M.Verdict.AL3T(phase, list)
+	if type(list) ~= "table" or #list == 0 then
+		return "INFO", INC .. "no remaining living teammate of the target (arm record)"
+	end
+	local parts, nPass = {}, 0
+	for _, p in ipairs(list) do
+		local v, txt = M.Verdict.AL(phase, p.sTK, p.sKT, p.metKT, p.metTK)
+		if v == "PASS" and p.war == true then
+			v, txt = "INFO", txt .. " but IsAtWarWith=yes"
+		end
+		if v == "PASS" then
+			nPass = nPass + 1
+		end
+		parts[#parts + 1] = "P" .. M.Str(p.k) .. ": " .. txt
+	end
+	local head = nPass .. "/" .. #list .. " pairs clear (not ALLIED, not at war)"
+	if M.IsBase(phase) then
+		return "INFO", head .. " (before the change: still teammates); " .. table.concat(parts, " | ")
+	end
+	if nPass == #list then
+		return "PASS", head .. "; " .. table.concat(parts, " | ")
+	end
+	return "INFO", head .. "; " .. table.concat(parts, " | ")
 end
 
 -- ---------------------------------------------------------------------------

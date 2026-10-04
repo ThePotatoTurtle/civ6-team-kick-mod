@@ -780,3 +780,50 @@ test("PatchTeams: the target into Teams[new], out of Teams[orig], on the given t
 	local frozen = setmetatable({}, { __newindex = function() error("read-only") end })
 	H.ok(not pcall(TXD.PatchTeams, frozen, 0, 10, 1), "a refused write throws (the panel uses pcall)")
 end)
+
+-- ---------------------------------------------------------------------------
+-- TX_Dev 0.0.1.5: AL3T keepers and verdict
+-- ---------------------------------------------------------------------------
+test("BaseKeepers: the target's original teammates from teamsBase, alive, ascending, no 62/63", function()
+	Load()
+	local arm = { target = 2, teamsBase = { { pid = 1, team = 0 }, { pid = 0, team = 0 }, { pid = 2, team = 0 },
+		{ pid = 3, team = 1 }, { pid = 62, team = 0 }, { pid = 63, team = 63 } } }
+	H.deq(TXD.BaseKeepers(arm), { 0, 1 })
+	H.deq(TXD.BaseKeepers(arm, function(pid) return pid ~= 1 end), { 0 }, "a dead keeper is left out")
+	H.deq(TXD.BaseKeepers(arm, function() return nil end), {}, "unreadable alive is not alive")
+	H.deq(TXD.BaseKeepers({ target = 3, teamsBase = arm.teamsBase }), {}, "a solo target team")
+	H.deq(TXD.BaseKeepers({ target = 9, teamsBase = arm.teamsBase }), {}, "target not in the record")
+	H.deq(TXD.BaseKeepers({ target = 1 }), {})
+	H.deq(TXD.BaseKeepers(nil), {})
+end)
+
+test("verdicts: AL3T over every pair target<->keeper; StepId AL3T / AL3Tfx", function()
+	Load("UI")
+	local A, W, U = "DIPLO_STATE_ALLIED", "DIPLO_STATE_WAR", "DIPLO_STATE_UNFRIENDLY"
+	local function Pair(k, sTK, sKT, war, met)
+		return { k = k, sTK = sTK, sKT = sKT, metKT = met, metTK = met, war = war }
+	end
+	local v, t = TXD.Verdict.AL3T("S3RELOAD1", { Pair(0, U, U, false, true), Pair(1, U, U, false, true) })
+	H.eq(v, "PASS")
+	H.ok(string.find(t, "^2/2 pairs clear %(not ALLIED, not at war%); P0: state now target%->keeper=DIPLO_STATE_UNFRIENDLY"), t)
+	H.ok(string.find(t, ": no longer ALLIED | P1: state now", 1, true), t)
+	v, t = TXD.Verdict.AL3T("S3RELOAD1", { Pair(0, U, U, false, true), Pair(1, A, A, false, true) })
+	H.eq(v, "INFO")
+	H.ok(string.find(t, "^1/2 pairs clear") and string.find(t, "P1: state now target->keeper=DIPLO_STATE_ALLIED", 1, true), t)
+	v, t = TXD.Verdict.AL3T("S3RELOAD1", { Pair(0, W, W, true, true) })
+	H.ok(v == "INFO" and string.find(t, ": at war (no exit until peace)", 1, true), t)
+	-- IsAtWarWith says war while the state reads otherwise: never a PASS
+	v, t = TXD.Verdict.AL3T("S3RELOAD1", { Pair(0, U, U, true, true) })
+	H.ok(v == "INFO" and string.find(t, "no longer ALLIED but IsAtWarWith=yes", 1, true), t)
+	H.eq(V(TXD.Verdict.AL3T, "S3RELOAD1", { Pair(0, U, U, nil, true) }), "PASS", "war unreadable: the state decides")
+	H.eq(V(TXD.Verdict.AL3T, "S3RELOAD1", { Pair(0, U, U, false, false) }), "INFO", "unmet")
+	H.eq(V(TXD.Verdict.AL3T, "S3RELOAD1", { Pair(0, nil, U, false, true) }), "INFO", "unreadable")
+	v, t = TXD.Verdict.AL3T("BASE", { Pair(0, A, A, false, true) })
+	H.ok(v == "INFO" and string.find(t, "(before the change: still teammates)", 1, true), t)
+	v, t = TXD.Verdict.AL3T("S3RELOAD1", {})
+	H.ok(v == "INFO" and string.find(t, "^INCONCLUSIVE: no remaining living teammate"), t)
+	H.eq(V(TXD.Verdict.AL3T, "S3RELOAD1", nil), "INFO")
+	local arm = { armedTurn = 1, phase = "RELOAD", path = "S3", loads = 1 }
+	H.eq(TXD.StepId("AL3T", arm, "war"), "AL3T-UI.S3RELOAD1.war")
+	H.eq(TXD.StepId("AL3Tfx", arm, "turn"), "AL3Tfx-UI.S3RELOAD1.turn")
+end)
