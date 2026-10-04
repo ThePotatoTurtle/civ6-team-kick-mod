@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ======================================================================
+     TX_ApplyBanner (AddUserInterfaces, Context InGame; PLAN II.11c). The
+     apply seam UI: one banner at the top centre while a passed kick waits.
+     * Banner: the EFV alert banner shape (EFV_Tracker.xml:43-47; works in
+       game): a Container with a GridButton Style="ButtonControl" carrying
+       BannerLabel (FontNormal14). Clicking it opens the Team window.
+       Offset 0,136 instead of EFV's 0,90, so the two banners never overlap
+       when both mods run.
+     * ApplyButton: a GridButton Style="MainButton" (EFV_EntrustPopup.xml:21)
+       on the right of the banner, drawn after BannerButton so it gets the
+       click. Shown only on the host while the kick is not applied yet.
+     Everything starts Hidden="1" (EFV_DestinationPicker.xml:13-15); the Lua
+     un-hides the context in Initialize and toggles Banner only. The
+     confirm, reload, failed and conflict dialogs are PopupDialogInGame
+     (EFV_UnitActions.lua:260-268), so they need no XML here.
+     ====================================================================== -->
+<Context Name="TX_ApplyBanner">
+	<Container ID="Banner" Anchor="C,T" Offset="0,136" Size="720,48" Hidden="1">
+		<GridButton ID="BannerButton" Anchor="C,C" Size="720,48" Style="ButtonControl">
+			<Label ID="BannerLabel" Anchor="L,C" Offset="16,0" Style="FontNormal14" Color="255,230,160,255" WrapWidth="530"/>
+		</GridButton>
+		<GridButton ID="ApplyButton" Anchor="R,C" Offset="8,0" Size="150,38" Style="MainButton" String="LOC_TX_APPLY_BUTTON" Hidden="1"/>
+	</Container>
+</Context>

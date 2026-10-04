@@ -135,7 +135,10 @@ test("ui 1: each context un-hides itself; the window and the popup start hidden;
 	H.len(H.lines("[UITeam] initialized", true), 1)
 	H.len(H.lines("[UIVote] initialized", true), 1)
 	H.len(FAKE_UI.requests, 0, "no request at load")
-	H.isnil(FAKE_TX.ui.ApplyBanner, "chunk D context not built yet")
+	H.notnil(FAKE_TX.ui.ApplyBanner, "chunk D context loaded")
+	H.eq(FAKE_TX.ui.ApplyBanner.ContextPtr:IsHidden(), false, "ApplyBanner ContextPtr:SetHide(false)")
+	H.eq(FAKE_TX.ui.ApplyBanner.Controls.Banner:IsHidden(), true, "Banner hidden without a passed kick")
+	H.len(H.lines("[UIApply] initialized", true), 1)
 	H.clean()
 end)
 
@@ -758,6 +761,7 @@ test("ui xml: every instance control the Lua touches has an ID in the paired XML
 	local pairsList = {
 		{ lua = "TX/UI/TX_TeamWindow.lua", xml = "TX/UI/TX_TeamWindow.xml", vars = { "inst", "m_LaunchInst", "m_PinInst" } },
 		{ lua = "TX/UI/TX_VotePopup.lua", xml = "TX/UI/TX_VotePopup.xml", vars = {} },
+		{ lua = "TX/UI/TX_ApplyBanner.lua", xml = "TX/UI/TX_ApplyBanner.xml", vars = {} },
 	}
 	local checked = 0
 	for _, p in ipairs(pairsList) do
@@ -770,7 +774,7 @@ test("ui xml: every instance control the Lua touches has an ID in the paired XML
 				checked = checked + 1
 			end
 		end
-		-- Controls.X is checked by tools/validate_data.py; repeat it here for the two contexts
+		-- Controls.X is checked by tools/validate_data.py; repeat it here for the three contexts
 		for name in string.gmatch(src, "Controls%.([%a_][%w_]*)") do
 			H.ok(string.find(xml, 'ID="' .. name .. '"', 1, true) ~= nil, p.lua .. ": Controls." .. name)
 			checked = checked + 1

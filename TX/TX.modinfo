@@ -3,7 +3,7 @@
      Built in chunks (PLAN II.16): chunk A has the data and the shared modules,
      chunk B the gameplay modules and AddGameplayScripts; chunk C the UI module
      and the TX_UI AddUserInterfaces action (Team window, vote popup); chunk D
-     adds the third context. -->
+     the third context (apply banner). -->
 <Mod id="9ce6ba3f-a24c-48f3-b642-516121a95502" version="1">
 	<Properties>
 		<Name>LOC_TX_MOD_TITLE</Name>
@@ -49,7 +49,8 @@
 		<AddGameplayScripts id="TX_Gameplay" criteria="TX_XP2">
 			<File>Scripts/TX_Gameplay.lua</File>
 		</AddGameplayScripts>
-		<!-- UI contexts (PLAN II.11): launch-bar Team button and window, vote popup.
+		<!-- UI contexts (PLAN II.11): launch-bar Team button and window, vote popup,
+		     apply banner (the apply seam UI, II.11c).
 		     No LoadOrder; they talk through LuaEvents.TX_* after LoadGameViewStateDone. -->
 		<AddUserInterfaces id="TX_UI" criteria="TX_XP2">
 			<Properties>
@@ -57,6 +58,7 @@
 			</Properties>
 			<File>UI/TX_TeamWindow.xml</File>
 			<File>UI/TX_VotePopup.xml</File>
+			<File>UI/TX_ApplyBanner.xml</File>
 		</AddUserInterfaces>
 	</InGameActions>
 
@@ -90,5 +92,7 @@
 		<File>UI/TX_TeamWindow.lua</File>
 		<File>UI/TX_VotePopup.xml</File>
 		<File>UI/TX_VotePopup.lua</File>
+		<File>UI/TX_ApplyBanner.xml</File>
+		<File>UI/TX_ApplyBanner.lua</File>
 	</Files>
 </Mod>
