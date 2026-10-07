@@ -93,6 +93,16 @@ class FakeDBCase(unittest.TestCase):
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
 
+class TestBigConstructor(unittest.TestCase):
+    def test_flags_big_and_ignores_nested_commas(self):
+        big = "local T = {\n" + "".join("  { a = f(1, 2), b = {3, 4} },\n" for _ in range(41)) + "}\n"
+        hits = check_lua.big_constructors(big)
+        self.assertEqual(hits, [(1, 41)])
+        ok = "local T = {\n" + "".join("  { a = 1 },\n" for _ in range(40)) + "}\n"
+        self.assertEqual(check_lua.big_constructors(ok), [])
+        self.assertEqual(check_lua.big_constructors("local s = '{,,,}' -- {,,}\n"), [])
+
+
 class TestCheckLua(unittest.TestCase):
     def test_runtime_is_lua51(self):
         self.assertIsNotNone(check_lua.lua_runtime(), "lupa Lua 5.1 runtime missing: pip install lupa")

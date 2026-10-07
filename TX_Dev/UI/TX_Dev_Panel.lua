@@ -2045,106 +2045,107 @@ end
 -- ---------------------------------------------------------------------------
 -- Buttons (EFV table shape, EFV_Dev_Panel.lua:1480-1511)
 -- ---------------------------------------------------------------------------
-local UIFN = {
-	S1DumpUI = S1DumpUI,
-	S1MapUI = S1MapUI,
-	S2ProbeUI = S2ProbeUI,
-	S2CallSelected = S2CallSelected,
-	S3SetTarget = function() S3Set("target") end,
-	S3SetSelf = function() S3Set("self") end,
-	S3Undo = S3Undo,
-	ArmBase = ArmBase,
-	SnapshotNow = SnapshotNow,
-	PickBoostUI = PickBoostUI,
-	V8Info = V8Info,
-	ALRead = ALRead,
-	AL1 = function() ALStep("1", "al1_friend_off") end,
-	AL2 = AL2Exist,
-	AL3 = function() ALStep("3", "al3_war_peace") end,
-	AL3b = function() ALStep("3b", "al3b_war_peace") end,
-	AL3T = AL3TStep,
-	AL4 = function() AL4Deal("4", "al4_alliance") end,
-	AL4L = function() AL4Deal("4L", "al4l_alliance_long") end,
-	AL8 = function() ALStep("8", "al8_unmeet") end,
-	AL9 = function() ALStep("9", "al9_remeet") end,
-	AL5 = function() ALStep("5", "al5_allied_toggle") end,
-	AL6 = AL6Valid,
-	AL7Off = function() ALStep("7off", "al7_vis", { on = 0 }) end,
-	AL7On = function() ALStep("7on", "al7_vis", { on = 1 }) end,
-	VIS1 = function() VISStep(1) end,
-	VIS2 = function() VISStep(2) end,
-	VIS3 = function() VISStep(3) end,
-	KFull = KFullKick,
-	S3n = S3nSet,
-	PTeamsRead = PTeamsRead,
-	PTeamsWrite = PTeamsWrite,
-	RApply = function() RGuard(RStart, "R") end,
-	RKApply = function() RGuard(RStart, "RK") end,
-}
+local UIFN = {}   -- filled one field per statement (see BUTTONS below)
+UIFN.S1DumpUI = S1DumpUI
+UIFN.S1MapUI = S1MapUI
+UIFN.S2ProbeUI = S2ProbeUI
+UIFN.S2CallSelected = S2CallSelected
+UIFN.S3SetTarget = function() S3Set("target") end
+UIFN.S3SetSelf = function() S3Set("self") end
+UIFN.S3Undo = S3Undo
+UIFN.ArmBase = ArmBase
+UIFN.SnapshotNow = SnapshotNow
+UIFN.PickBoostUI = PickBoostUI
+UIFN.V8Info = V8Info
+UIFN.ALRead = ALRead
+UIFN.AL1 = function() ALStep("1", "al1_friend_off") end
+UIFN.AL2 = AL2Exist
+UIFN.AL3 = function() ALStep("3", "al3_war_peace") end
+UIFN.AL3b = function() ALStep("3b", "al3b_war_peace") end
+UIFN.AL3T = AL3TStep
+UIFN.AL4 = function() AL4Deal("4", "al4_alliance") end
+UIFN.AL4L = function() AL4Deal("4L", "al4l_alliance_long") end
+UIFN.AL8 = function() ALStep("8", "al8_unmeet") end
+UIFN.AL9 = function() ALStep("9", "al9_remeet") end
+UIFN.AL5 = function() ALStep("5", "al5_allied_toggle") end
+UIFN.AL6 = AL6Valid
+UIFN.AL7Off = function() ALStep("7off", "al7_vis", { on = 0 }) end
+UIFN.AL7On = function() ALStep("7on", "al7_vis", { on = 1 }) end
+UIFN.VIS1 = function() VISStep(1) end
+UIFN.VIS2 = function() VISStep(2) end
+UIFN.VIS3 = function() VISStep(3) end
+UIFN.KFull = KFullKick
+UIFN.S3n = S3nSet
+UIFN.PTeamsRead = PTeamsRead
+UIFN.PTeamsWrite = PTeamsWrite
+UIFN.RApply = function() RGuard(RStart, "R") end
+UIFN.RKApply = function() RGuard(RStart, "RK") end
 
-local BUTTONS = {
-	{ header = "S1 API discovery" },
-	{ label = "S1 Dump (UI)", ui = "S1DumpUI" },
-	{ label = "S1 Dump (G)", cmd = "s1_dump" },
-	{ label = "S1 Team map", ui = "S1MapUI" },
-	{ header = "S2 engine setter" },
-	{ label = "S2 Probe setters (no calls)", ui = "S2ProbeUI" },
-	{ label = "S2 CALL selected setter (!)", ui = "S2CallSelected" },
-	{ header = "S3 config change" },
-	{ label = "S3 Set Target's team", ui = "S3SetTarget" },
-	{ label = "S3 Set MY team", ui = "S3SetSelf" },
-	{ label = "S3 Undo (Target)", ui = "S3Undo" },
-	{ header = "Checklist" },
-	{ label = "Q Setup Session 2", cmd = "q_setup2", tip = "V10 friends, V9 deals, V5 marker in one press (no V4)" },
-	{ label = "Arm BASE + snapshot", ui = "ArmBase" },
-	{ label = "Snapshot now", ui = "SnapshotNow" },
-	{ label = "V4 Boost (keeper)", ui = "PickBoostUI" },
-	{ label = "V5 Marker (keeper)", cmd = "v5_marker" },
-	{ label = "V6 Other declares war on keeper", cmd = "v6_war" },
-	{ label = "V9 Deals target-other", cmd = "v9_deals" },
-	{ label = "V10 Friends target-other", cmd = "v10_friend" },
-	{ label = "V3 Domination: keeper", cmd = "v3_setup", who = "keeper" },
-	{ label = "V3 Domination: target", cmd = "v3_setup", who = "target" },
-	{ label = "V8 War allowed?", ui = "V8Info" },
-	{ header = "AL alliance tests (load TX3_split before each !)" },
-	{ label = "AL0 Read state (UI+G)", ui = "ALRead", tip = "read only: diplo state both ways, HasAllied, friendship, war, vision" },
-	{ label = "AL1 Friendship off (!)", ui = "AL1", tip = "SetHasDeclaredFriendship false, keeper and target, both ways" },
-	{ label = "AL2 Probe APIs (no calls)", ui = "AL2", tip = "existence only of the alliance and peace calls" },
-	{ label = "AL3 War then peace (!)", ui = "AL3", tip = "keeper declares war on target, then makes peace" },
-	{ label = "AL3b War(false) then peace (!)", ui = "AL3b", tip = "as AL3, with DeclareWarOn third argument false" },
-	{ label = "AL3T Target declares then peace (!)", ui = "AL3T",
-		tip = "HARD kick war step: the target declares war on each remaining teammate, then makes peace with each" },
-	{ label = "AL4 Alliance deal 1 turn (!)", ui = "AL4", tip = "research alliance keeper-target, duration 1 turn" },
-	{ label = "AL4L Alliance, friends off (!)", ui = "AL4L",
-		tip = "AL4, then AL1 friendship off. End turns past the expiry: every turn start reads the state" },
-	{ label = "AL5 SetHasAllied toggle (!)", ui = "AL5", tip = "SetHasAllied true both ways, then false. May stick for good." },
-	{ label = "AL6 War/denounce valid? (UI)", ui = "AL6", tip = "read only: may keeper declare war on or denounce target?" },
-	{ label = "AL7 Vision OFF (all teams!)", ui = "AL7Off",
-		tip = "GLOBAL: switches team vision off for EVERY team, the intact one too. Press AL7 Vision ON after." },
-	{ label = "AL7 Vision ON (restore)", ui = "AL7On", tip = "GLOBAL: switches team vision back on for every team" },
-	{ label = "AL8 Unmeet both ways (!)", ui = "AL8", tip = "clean break probe: SetHasMet(other, false), keeper and target" },
-	{ label = "AL9 Unmeet then meet (!)", ui = "AL9", tip = "clean break probe: SetHasMet(false) both ways, then SetHasMet again" },
-	{ header = "VIS vision tests (load TX3_split, V5 Marker, end turn)" },
-	{ label = "VIS1 Remove outgoing vis (!)", ui = "VIS1", tip = "RemoveOutgoingVisibility keeper->target and target->keeper" },
-	{ label = "VIS2 Recheck visibility (!)", ui = "VIS2", tip = "RecheckVisibilityOnAll and RecheckVisibilityOn, keeper and target" },
-	{ label = "VIS3 SetVisibilityOn 0 (!)", ui = "VIS3", tip = "diplomatic visibility level 0, both ways (GetVisibilityOn logged)" },
-	{ header = "K full kick (load TX3_base, armed at BASE)" },
-	{ label = "K Full kick (S3+VIS1) (!)", ui = "KFull",
-		tip = "S3 set + broadcast, then RemoveOutgoingVisibility both ways (no war). Then save TX3_kick and load it." },
-	{ header = "Session 3b: S3n, P-Teams, R reload (hotseat)" },
-	{ label = "S3n Set team, no broadcast (!)", ui = "S3n",
-		tip = "config team of the Target = New team, WITHOUT Network.BroadcastPlayerInfo. Leon: watch the ribbon" },
-	{ label = "P-Teams read", ui = "PTeamsRead", tip = "read only: this panel's Teams table, #Teams[orig], Teams[new]" },
-	{ label = PTW_LABEL_TEXT, ui = "PTeamsWrite",
-		tip = "after S3: Teams[new] = {target}, target out of Teams[orig], in THIS panel's context only; then a broadcast" },
-	{ label = "R Apply + reload (hotseat) (!)", ui = "RApply",
-		tip = "at BASE: S3 set + broadcast, save TX_autoreload_<date_time>, then load it by itself. Hotseat, your turn only" },
-	{ label = "RK Kick + VIS1 + reload (!)", ui = "RKApply",
-		tip = "at BASE: K (S3 + VIS1), then save TX_autoreload_<date_time> and load it by itself" },
-	{ header = "Misc" },
-	{ label = "Diplo matrix", cmd = "diplo" },
-	{ label = "Clear spike state", cmd = "clear" },
-}
+-- Built one entry per statement: a single 50+ entry constructor fails in the game's
+-- compiler ("requires too many registers", Lua.log 2026-10-07, 53 entries).
+local BUTTONS = {}
+local function B(def) BUTTONS[#BUTTONS + 1] = def end
+	B({ header = "S1 API discovery" })
+	B({ label = "S1 Dump (UI)", ui = "S1DumpUI" })
+	B({ label = "S1 Dump (G)", cmd = "s1_dump" })
+	B({ label = "S1 Team map", ui = "S1MapUI" })
+	B({ header = "S2 engine setter" })
+	B({ label = "S2 Probe setters (no calls)", ui = "S2ProbeUI" })
+	B({ label = "S2 CALL selected setter (!)", ui = "S2CallSelected" })
+	B({ header = "S3 config change" })
+	B({ label = "S3 Set Target's team", ui = "S3SetTarget" })
+	B({ label = "S3 Set MY team", ui = "S3SetSelf" })
+	B({ label = "S3 Undo (Target)", ui = "S3Undo" })
+	B({ header = "Checklist" })
+	B({ label = "Q Setup Session 2", cmd = "q_setup2", tip = "V10 friends, V9 deals, V5 marker in one press (no V4)" })
+	B({ label = "Arm BASE + snapshot", ui = "ArmBase" })
+	B({ label = "Snapshot now", ui = "SnapshotNow" })
+	B({ label = "V4 Boost (keeper)", ui = "PickBoostUI" })
+	B({ label = "V5 Marker (keeper)", cmd = "v5_marker" })
+	B({ label = "V6 Other declares war on keeper", cmd = "v6_war" })
+	B({ label = "V9 Deals target-other", cmd = "v9_deals" })
+	B({ label = "V10 Friends target-other", cmd = "v10_friend" })
+	B({ label = "V3 Domination: keeper", cmd = "v3_setup", who = "keeper" })
+	B({ label = "V3 Domination: target", cmd = "v3_setup", who = "target" })
+	B({ label = "V8 War allowed?", ui = "V8Info" })
+	B({ header = "AL alliance tests (load TX3_split before each !)" })
+	B({ label = "AL0 Read state (UI+G)", ui = "ALRead", tip = "read only: diplo state both ways, HasAllied, friendship, war, vision" })
+	B({ label = "AL1 Friendship off (!)", ui = "AL1", tip = "SetHasDeclaredFriendship false, keeper and target, both ways" })
+	B({ label = "AL2 Probe APIs (no calls)", ui = "AL2", tip = "existence only of the alliance and peace calls" })
+	B({ label = "AL3 War then peace (!)", ui = "AL3", tip = "keeper declares war on target, then makes peace" })
+	B({ label = "AL3b War(false) then peace (!)", ui = "AL3b", tip = "as AL3, with DeclareWarOn third argument false" })
+	B({ label = "AL3T Target declares then peace (!)", ui = "AL3T",
+		tip = "HARD kick war step: the target declares war on each remaining teammate, then makes peace with each" })
+	B({ label = "AL4 Alliance deal 1 turn (!)", ui = "AL4", tip = "research alliance keeper-target, duration 1 turn" })
+	B({ label = "AL4L Alliance, friends off (!)", ui = "AL4L",
+		tip = "AL4, then AL1 friendship off. End turns past the expiry: every turn start reads the state" })
+	B({ label = "AL5 SetHasAllied toggle (!)", ui = "AL5", tip = "SetHasAllied true both ways, then false. May stick for good." })
+	B({ label = "AL6 War/denounce valid? (UI)", ui = "AL6", tip = "read only: may keeper declare war on or denounce target?" })
+	B({ label = "AL7 Vision OFF (all teams!)", ui = "AL7Off",
+		tip = "GLOBAL: switches team vision off for EVERY team, the intact one too. Press AL7 Vision ON after." })
+	B({ label = "AL7 Vision ON (restore)", ui = "AL7On", tip = "GLOBAL: switches team vision back on for every team" })
+	B({ label = "AL8 Unmeet both ways (!)", ui = "AL8", tip = "clean break probe: SetHasMet(other, false), keeper and target" })
+	B({ label = "AL9 Unmeet then meet (!)", ui = "AL9", tip = "clean break probe: SetHasMet(false) both ways, then SetHasMet again" })
+	B({ header = "VIS vision tests (load TX3_split, V5 Marker, end turn)" })
+	B({ label = "VIS1 Remove outgoing vis (!)", ui = "VIS1", tip = "RemoveOutgoingVisibility keeper->target and target->keeper" })
+	B({ label = "VIS2 Recheck visibility (!)", ui = "VIS2", tip = "RecheckVisibilityOnAll and RecheckVisibilityOn, keeper and target" })
+	B({ label = "VIS3 SetVisibilityOn 0 (!)", ui = "VIS3", tip = "diplomatic visibility level 0, both ways (GetVisibilityOn logged)" })
+	B({ header = "K full kick (load TX3_base, armed at BASE)" })
+	B({ label = "K Full kick (S3+VIS1) (!)", ui = "KFull",
+		tip = "S3 set + broadcast, then RemoveOutgoingVisibility both ways (no war). Then save TX3_kick and load it." })
+	B({ header = "Session 3b: S3n, P-Teams, R reload (hotseat)" })
+	B({ label = "S3n Set team, no broadcast (!)", ui = "S3n",
+		tip = "config team of the Target = New team, WITHOUT Network.BroadcastPlayerInfo. Leon: watch the ribbon" })
+	B({ label = "P-Teams read", ui = "PTeamsRead", tip = "read only: this panel's Teams table, #Teams[orig], Teams[new]" })
+	B({ label = PTW_LABEL_TEXT, ui = "PTeamsWrite",
+		tip = "after S3: Teams[new] = {target}, target out of Teams[orig], in THIS panel's context only; then a broadcast" })
+	B({ label = "R Apply + reload (hotseat) (!)", ui = "RApply",
+		tip = "at BASE: S3 set + broadcast, save TX_autoreload_<date_time>, then load it by itself. Hotseat, your turn only" })
+	B({ label = "RK Kick + VIS1 + reload (!)", ui = "RKApply",
+		tip = "at BASE: K (S3 + VIS1), then save TX_autoreload_<date_time> and load it by itself" })
+	B({ header = "Misc" })
+	B({ label = "Diplo matrix", cmd = "diplo" })
+	B({ label = "Clear spike state", cmd = "clear" })
 
 local function OnButton(def)
 	RebuildTargets()

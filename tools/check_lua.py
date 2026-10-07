@@ -169,6 +169,46 @@ _ANNOT_LOCAL = re.compile(r"^\s*local\s+[A-Za-z_]\w*\s*:\s*[A-Za-z_]")
 _ANNOT_PARAM = re.compile(r"\bfunction\b[^(]*\([^)]*\b[A-Za-z_]\w*\s*:\s*[A-Za-z_]\w*")
 
 
+MAX_CONSTRUCTOR_FIELDS = 40
+
+
+def big_constructors(src, limit=MAX_CONSTRUCTOR_FIELDS):
+    """Table constructors with more than `limit` fields. The game's (Havok) Lua compiler
+    rejects a big one with "Function or expression requires too many registers (too
+    complex)" (TX_Dev_Panel.lua, 53 entries, Lua.log 2026-10-07) while stock Lua 5.1
+    compiles it, so the lupa compile alone can't catch it. 46 entries loaded in game."""
+    hits = []
+    try:
+        toks, _ = L.lex(src)
+    except L.LexError:
+        return hits
+    stack = []   # entries: [kind, line, count, pending]
+    for t in toks:
+        if t.kind != "op":
+            if stack and stack[-1][0] == "{":
+                stack[-1][3] = True
+            continue
+        v = t.val
+        if v in ("{", "(", "["):
+            if stack and stack[-1][0] == "{":
+                stack[-1][3] = True
+            stack.append([v, t.line, 0, False])
+        elif v in ("}", ")", "]"):
+            if not stack:
+                continue
+            fr = stack.pop()
+            if fr[0] == "{":
+                n = fr[2] + (1 if fr[3] else 0)
+                if n > limit:
+                    hits.append((fr[1], n))
+        elif v in (",", ";") and stack and stack[-1][0] == "{":
+            stack[-1][2] += 1
+            stack[-1][3] = False
+        elif stack and stack[-1][0] == "{":
+            stack[-1][3] = True
+    return hits
+
+
 def annotation_hits(src):
     """Havok/Firaxis type annotations. Token based so strings/comments are ignored."""
     hits = []
@@ -266,6 +306,10 @@ def check(root, basic=False, globals_check=True, luacheck="auto", rep=None):
         text = raw.decode("utf-8", "replace")
         for ln in annotation_hits(text):
             rep.error(f, ln, "type-annotation", "Havok/Firaxis type annotation (e.g. `local x:number`) is not plain Lua 5.1")
+        for ln, n in big_constructors(text):
+            rep.error(f, ln, "big-constructor",
+                      "table constructor with %d fields (max %d): the game's compiler fails with \"too many registers\"; "
+                      "fill the table one statement per entry" % (n, MAX_CONSTRUCTOR_FIELDS))
         if basic:
             try:
                 toks, _ = L.lex(text)
