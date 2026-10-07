@@ -283,7 +283,13 @@ end
 
 -- The manual fallback: no kick save was made (or it was not confirmed).
 local function ReloadDialog()
-	Notice("TX_ReloadNow", "LOC_TX_RELOAD_TITLE", L("LOC_TX_RELOAD_TEXT"))
+	local key = "LOC_TX_RELOAD_TEXT_LOCAL"
+	if TX_UI.NetMP() then
+		key = "LOC_TX_RELOAD_TEXT_NETMP"
+	elseif TX_UI.Hotseat() then
+		key = "LOC_TX_RELOAD_TEXT"
+	end
+	Notice("TX_ReloadNow", "LOC_TX_RELOAD_TITLE", L(key))
 end
 
 -- The kick save is done: how everyone loads it (hotseat, network MP, single machine).

@@ -244,7 +244,13 @@
 			<Text>Save and reload now</Text>
 		</Row>
 		<Row Tag="LOC_TX_RELOAD_TEXT" Language="en_US">
-			<Text>The kick is applied, but the game couldn't save itself. Now:[NEWLINE]1. Menu > Save Game, under a new name.[NEWLINE]2. Exit to the main menu and load that save: Multiplayer > Hotseat > Load Game (online: Host Game > Load Game, then everyone rejoins). Loading from the in-game menu makes a hotseat game single player.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
+			<Text>The kick is applied, but the game couldn't save itself. Now:[NEWLINE]1. Menu > Save Game, under a new name.[NEWLINE]2. Exit to the main menu and load that save: Multiplayer > Hotseat > Load Game. Don't use Load Game in the in-game menu: that makes a hotseat game single player.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
+		</Row>
+		<Row Tag="LOC_TX_RELOAD_TEXT_NETMP" Language="en_US">
+			<Text>The kick is applied, but the game couldn't save itself. Now:[NEWLINE]1. Host: Menu > Save Game, under a new name.[NEWLINE]2. Everyone exits to the main menu, the host loads that save from Multiplayer > Host Game > Load Game, then everyone rejoins.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
+		</Row>
+		<Row Tag="LOC_TX_RELOAD_TEXT_LOCAL" Language="en_US">
+			<Text>The kick is applied, but the game couldn't save itself. Now save the game under a new name and load it: Menu > Save Game, then Menu > Load Game.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
 		</Row>
 		<Row Tag="LOC_TX_SAVED_TITLE" Language="en_US">
 			<Text>Load the save to finish the kick</Text>
