@@ -25,9 +25,9 @@ end
 -- ---------------------------------------------------------------------------
 -- TX_Config, TX_Util
 -- ---------------------------------------------------------------------------
-test("config: version 0.1.0 matches the modinfo title and description", function()
+test("config: version 1.0.0 matches the modinfo title and description", function()
 	include("TX_Config")
-	H.eq(TX_Config.VERSION, "0.1.0")
+	H.eq(TX_Config.VERSION, "1.0.0")
 	local mi = __py_read("TX/TX.modinfo")
 	H.ok(string.find(mi, "<en_US>Team Kick v" .. TX_Config.VERSION .. "</en_US>", 1, true), "modinfo title")
 	H.ok(string.find(mi, "Version " .. TX_Config.VERSION .. ".[NEWLINE]", 1, true), "modinfo description")

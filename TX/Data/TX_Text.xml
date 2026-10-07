@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ======================================================================
      TX_Text.xml  (modinfo InGameActions UpdateText TX_Text)
-     Team Kick 0.1.0, PLAN II.13. Every in-game string of the mod.
+     Team Kick 1.0.0, PLAN II.13. Every in-game string of the mod.
      Draft wording: Leon reviews it in Session 4 (PLAN II.17).
      Format as EFV/Data/EFV_Text.xml: <Row Tag="LOC_TX_..." Language="en_US">.
      Plurals: {n_Num} {n_Num : plural 1?turn; other?turns;}. The game does not replace # in plural forms (Session 4: "# turns left").

@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Notify.lua  (Team Kick 0.1.0)
+-- TX_Notify.lua  (Team Kick 1.0.0)
 -- TX:CONTEXT G
 --
 -- Gameplay only: include("TX_Notify") from TX_Gameplay.lua. The notification

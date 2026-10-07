@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Store.lua  (Team Kick 0.1.0)
+-- TX_Store.lua  (Team Kick 1.0.0)
 -- TX:CONTEXT both
 --
 -- The vote record store and its persistence in Game properties (PLAN II.5).

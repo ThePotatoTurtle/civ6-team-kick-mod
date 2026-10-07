@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_UIShared.lua  (Team Kick 0.1.0)
+-- TX_UIShared.lua  (Team Kick 1.0.0)
 -- TX:CONTEXT UI
 --
 -- UI module (PLAN II.10): include("TX_UIShared") from every TX UI context

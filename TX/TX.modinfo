@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Team Kick 0.1.0 (PLAN II.1). Ids, criteria and action shapes as EFV/EFV.modinfo:1-147.
+<!-- Team Kick 1.0.0 (PLAN II.1). Ids, criteria and action shapes as EFV/EFV.modinfo:1-147.
      Built in chunks (PLAN II.16): chunk A has the data and the shared modules,
      chunk B the gameplay modules and AddGameplayScripts; chunk C the UI module
      and the TX_UI AddUserInterfaces action (Team window, vote popup); chunk D
@@ -66,13 +66,13 @@
 	     Data/TX_Text.xml (EFV.modinfo:103-115). Public text: a draft, shown to Leon before release. -->
 	<LocalizedText>
 		<Text id="LOC_TX_MOD_TITLE">
-			<en_US>Team Kick v0.1.0</en_US>
+			<en_US>Team Kick v1.0.0</en_US>
 		</Text>
 		<Text id="LOC_TX_MOD_TEASER">
 			<en_US>Vote a teammate off your team in the middle of a game.</en_US>
 		</Text>
 		<Text id="LOC_TX_MOD_DESCRIPTION">
-			<en_US>Version 0.1.0.[NEWLINE][NEWLINE]Vote a teammate off your team in the middle of a game. The kicked player plays on alone and no longer shares victory or wars with the team.[NEWLINE][NEWLINE]- Team button: on the launch bar. Shows your teammates, the open vote and past votes.[NEWLINE]- Votes: every other human teammate has to vote yes within 5 turns. One no ends the vote. AI teammates don't vote.[NEWLINE]- Secret until it passes: the player being voted on never sees the vote.[NEWLINE]- Kick modes: soft (stays allied with the team) or hard (the alliance is ended with a war and an instant peace; the grievances fall on the kicked player).[NEWLINE]- Two-player teams: one click dissolves the team.[NEWLINE][NEWLINE]Requires Gathering Storm.[NEWLINE][NEWLINE]Known limitations:[NEWLINE]- When a kick passes, the host applies it and the game saves itself. Load that new save to see the new teams.[NEWLINE]- Ex-teammates still see each other's map. After a soft kick they also stay allied.</en_US>
+			<en_US>Version 1.0.0.[NEWLINE][NEWLINE]Vote a teammate off your team in the middle of a game. The kicked player plays on alone and no longer shares victory or wars with the team.[NEWLINE][NEWLINE]- Team button: on the launch bar. Shows your teammates, the open vote and past votes.[NEWLINE]- Votes: every other human teammate has to vote yes within 5 turns. One no ends the vote. AI teammates don't vote.[NEWLINE]- Secret until it passes: the player being voted on never sees the vote.[NEWLINE]- Kick modes: soft (stays allied with the team) or hard (the alliance is ended with a war and an instant peace; the grievances fall on the kicked player).[NEWLINE]- Two-player teams: one click dissolves the team.[NEWLINE][NEWLINE]Requires Gathering Storm.[NEWLINE][NEWLINE]Known limitations:[NEWLINE]- When a kick passes, the host applies it and the game saves itself. Load that new save to see the new teams.[NEWLINE]- Ex-teammates still see each other's map. After a soft kick they also stay allied.</en_US>
 		</Text>
 	</LocalizedText>
 

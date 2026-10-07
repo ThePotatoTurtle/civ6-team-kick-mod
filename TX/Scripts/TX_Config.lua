@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Config.lua  (Team Kick 0.1.0)
+-- TX_Config.lua  (Team Kick 1.0.0)
 -- TX:CONTEXT both
 --
 -- Constants and shared names (PLAN II.3). Included by gameplay and UI with
@@ -19,7 +19,7 @@ TX_Config = {}
 
 -- Keep equal to LOC_TX_MOD_TITLE / LOC_TX_MOD_DESCRIPTION in TX.modinfo.
 -- TX_Gameplay logs it at load, so a Lua.log names the installed build.
-TX_Config.VERSION = "0.1.0"
+TX_Config.VERSION = "1.0.0"
 TX_Config.SCHEMA = 1                -- TX_Store schema
 
 TX_Config.VOTE_TURNS = 5            -- TP 2.1, DEC 3: expiry after 5 turns
@@ -91,7 +91,7 @@ TX_Config.HARD_KICK_ENABLED = true
 TX_Config.WAIT_POLL = 0.3
 TX_Config.WAIT_MAX = 5
 
--- Seams (PLAN II.12). No final behaviour in 0.1.0.
+-- Seams (PLAN II.12). No final behaviour in 1.0.0.
 TX_Config.ALLOW_NETWORK_APPLY = true    -- SEAM O4: the host may apply in network MP (untested warning)
 -- Kick save (DEC 2026-10-07, replaces SEAM O3): after gameplay confirms the
 -- apply, the host's UI saves as <SAVE_PREFIX>_<target>_T<turn>_<HHMM> and

@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Util.lua  (Team Kick 0.1.0)
+-- TX_Util.lua  (Team Kick 1.0.0)
 -- TX:CONTEXT both
 --
 -- Shared helpers (PLAN II.4): log, the only pairs(), deep copy, small value

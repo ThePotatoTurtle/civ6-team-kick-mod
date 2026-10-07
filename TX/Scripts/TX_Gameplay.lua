@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Gameplay.lua  (Team Kick 0.1.0)
+-- TX_Gameplay.lua  (Team Kick 1.0.0)
 -- TX:CONTEXT G
 --
 -- Gameplay entry point (modinfo AddGameplayScripts TX_Gameplay; PLAN II.8).
