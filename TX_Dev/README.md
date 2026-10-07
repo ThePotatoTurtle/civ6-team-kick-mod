@@ -272,38 +272,41 @@ TX_Dev 0.0.1.5. HARD kick war step: the kicked player (target) declares war on e
 1. Setup as Session 1: Hotseat, GS rules, Tiny, Quick. P0, P1, P2 human, P3 AI. Teams {P0,P1} {P2,P3}. Found capitals, end turns to turn 3.
 2. As P0: S1 Team map. Q Setup Session 2. End turn (all). Arm BASE + snapshot.
    - Expect: New team filled (10), phase BASE.
-   - Result:
+   - Result: done
 3. Target P1. S3 Set Target's team. Save as `TX3c_split`. Load `TX3c_split`.
    - Expect: phase S3RELOAD1.
-   - Result:
+   - Result: done
 4. AL0. AL3T Target declares then peace (!). Look at the notifications, and at the grievances in the diplomacy screen as P0 and as P1. End turn (all). AL0.
    - Expect: P0 and P1 no longer ALLIED, not at war (`AL3T-*.after` and `.turn` PASS). Grievances held by P0 against P1, not the other way (`AL3Tfx`: "P0 holds against P1" > 0, "P1 holds against P0" = 0).
-   - Result:
+   - Result: notification: P1 declared on P0 -> P1 made peace with P0 (inspiration for defensive tactics; not a problem since it's an early civic which the user probably has already). P0 viewing P1 diplomacy: 100 grievances against them. P1 viewing P0 diplomacy: 100 grievances against us. Both parties no longer allied. (Log: `AL3T-*.after PASS`; P0 holds 100 against P1, P1 holds -100 against P0: the grievances sit with the team, as wanted.)
 
 **b) 3-person team**
 
 5. New game: P0, P1, P2 human on one team, P3 AI on the other. Found capitals, end turns to turn 3.
 6. As P0: S1 Team map. Target P2 (the > arrow). Q Setup Session 2. End turn (all). Arm BASE + snapshot.
    - Expect: roles keeper P0, target P2. New team filled.
-   - Result:
+   - Result: done
 7. S3 Set Target's team. Save as `TX3c3_split`. Load `TX3c3_split`.
    - Expect: phase S3RELOAD1.
-   - Result:
+   - Result: done
 8. AL0. AL3T Target declares then peace (!). End turn (all). AL0. Diplo matrix.
    - Expect: P2 neither ALLIED nor at war with P0 or P1 (`AL3T-*` "2/2 pairs clear" PASS). P0 and P1 still one team, still allied with each other (Diplo matrix: `T` and `A` between them). Grievances held by P0 and by P1 against P2. Leon: how many war and peace notifications?
-   - Result:
+   - Result: as expected. I ran this one a second time from TX3c3_split just to count the war and peace notifications: 2 declarions of war (P2 on P0, P2 on P1), 2 peace notifications (same). (Log: the war on P0 put P2 at war with P1 too, and one peace with P0 ended both, so the game itself sends one notification per keeper. `2/2 pairs clear` PASS.)
 
 **c) AI target**
 
 9. New game: P0 human + P1 AI on one team, P2 human + P3 AI on the other. Found capitals, end turns to turn 3.
 10. As P0: S1 Team map. Target P1. Q Setup Session 2. End turn (all). Arm BASE + snapshot. S3 Set Target's team. Save as `TX3cAI_split`. Load `TX3cAI_split`.
     - Expect: phase S3RELOAD1.
-    - Result:
+    - Result: done
 11. AL0. AL3T Target declares then peace (!). End turn (all). AL0. End turn (all) 3 more times, AL0 after each.
     - Expect: as a): no longer ALLIED, not at war, grievances held by P0 against P1. The AI does not declare war again on its own in the next 3 turns (`AL3T-G.*.turn` PASS each turn, no war notification).
-    - Result:
+    - Result: AI declared war and then peaced with P0; P0 has greivances towards AI (P1).. AI does not declare war after 8 turns. Grievances P0 has towards AI fades to 0 after 10 turns.
 
 Then quit to the desktop and send the raw Lua.log file (not only the summary).
+
+Summary: the HARD kick war step works as designed. The kicked player's war on one teammate is a war on the whole team, and one peace ends it. The ex-teammates end UNFRIENDLY, then NEUTRAL, with the grievances held by the team against the kicked player. An AI target stays peaceful. Side effect: a Defensive Tactics inspiration for the declared-on players.
+
 
 ## Afterwards
 
