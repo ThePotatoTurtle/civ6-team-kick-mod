@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Mod id="813c09c2-7476-4882-b8d6-7a0708b0891d" version="1">
   <Properties>
-    <Name>Team Kick Dev Tools (testing only) v0.0.1.5</Name>
+    <Name>Team Kick Dev Tools (testing only) v0.0.1.6</Name>
     <Teaser>Spike panel for Team Kick. Not for normal play.</Teaser>
-    <Description>Version 0.0.1.5 (Team Kick 0.0.1 spike).[NEWLINE][NEWLINE]Developer panel for the Team Kick feasibility spike: API discovery, team setter probes, config team change, checklist snapshots, alliance, vision, full-kick, reload and hard-kick war tests. Open it with Ctrl+Shift+D or the DEV button. Writes to Lua.log. Needs no other mod. Never enable it in a real game.</Description>
+    <Description>Version 0.0.1.6 (Team Kick 0.0.1 spike).[NEWLINE][NEWLINE]Developer panel for the Team Kick feasibility spike: API discovery, team setter probes, config team change, checklist snapshots, alliance, vision, full-kick, reload and hard-kick war tests. Open it with Ctrl+Shift+D or the DEV button. Writes to Lua.log. Needs no other mod. Never enable it in a real game.</Description>
     <Authors>ThePotatoTurtle</Authors>
     <AffectsSavedGames>1</AffectsSavedGames>
     <CompatibleVersions>2.0</CompatibleVersions>

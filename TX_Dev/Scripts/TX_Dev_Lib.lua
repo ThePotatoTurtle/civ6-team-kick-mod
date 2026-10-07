@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Dev_Lib.lua  (TX_Dev 0.0.1.5, spike kit for Team Kick 0.0.1)
+-- TX_Dev_Lib.lua  (TX_Dev 0.0.1.6, spike kit for Team Kick 0.0.1)
 -- TX:CONTEXT both
 -- TX:GLOBALS TXD TX_Probe
 --
@@ -29,7 +29,7 @@
 local M = {}
 TXD = M
 
-M.VERSION = "0.0.1.5"
+M.VERSION = "0.0.1.6"
 M.FOR_TX = "0.0.1"
 M.ctx = "?"
 M.roots = {}

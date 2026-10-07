@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_Dev_Panel.lua  (TX_Dev 0.0.1.5, spike kit for Team Kick 0.0.1)
+-- TX_Dev_Panel.lua  (TX_Dev 0.0.1.6, spike kit for Team Kick 0.0.1)
 -- Context: UI (AddUserInterfaces, Context InGame). TESTING ONLY. PLAN I.6.
 --
 -- Panel toggled by Ctrl+Shift+D or the "DEV" launch bar button (copied from
@@ -1697,6 +1697,12 @@ local function RPrep()
 	Enum("optQuick", "SaveLocationOptions", "QUICKSAVE")
 	Enum("optMeta", "SaveLocationOptions", "LOAD_METADATA")
 	Enum("serverNone", "ServerType", "SERVER_TYPE_NONE")
+	-- Session 3b: loading a hotseat save with SERVER_TYPE_NONE made it single player (the
+	-- other humans' turns were skipped). The hotseat lobby uses SERVER_TYPE_HOTSEAT
+	-- (LobbyTypes.lua:23, HostGame.lua:730 -> LoadGameMenu.lua:108; Lua.log "HOTSEAT serverType: 5").
+	if Hotseat() == 1 then
+		Enum("serverHotseat", "ServerType", "SERVER_TYPE_HOTSEAT")
+	end
 	local st = TX_Probe(false, "Network", nil, ".GetGameConfigurationSaveType")
 	if st.ok and st.rets[1] ~= nil then
 		e.saveType = st.rets[1]
@@ -1772,12 +1778,16 @@ local function RLoad(list)
 		RFail("load", "Network.LeaveGame " .. TXD.Tok(rl))
 		return
 	end
-	local rd = TX_Probe("R load", "Network", nil, ".LoadGame", entry, r.e.serverNone)
+	local server, serverName = r.e.serverNone, "SERVER_TYPE_NONE"
+	if r.e.serverHotseat ~= nil then
+		server, serverName = r.e.serverHotseat, "SERVER_TYPE_HOTSEAT"
+	end
+	local rd = TX_Probe("R load", "Network", nil, ".LoadGame", entry, server)
 	if not rd.ok then
 		RFail("load", "Network.LoadGame " .. TXD.Tok(rd))
 		return
 	end
-	Check(RId("load"), "INFO", "Network.LoadGame(" .. name .. ", SERVER_TYPE_NONE) requested; expect the load screen, then " ..
+	Check(RId("load"), "INFO", "Network.LoadGame(" .. name .. ", " .. serverName .. ") requested; expect the load screen, then " ..
 		"phase S3RELOAD1 and V1 PASS")
 end
 

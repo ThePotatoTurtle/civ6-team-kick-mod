@@ -621,7 +621,7 @@ function FAKE_DEV.InstallSaves(opts)
 	SaveLocations = { LOCAL_STORAGE = 1 }
 	SaveFileTypes = { GAME_STATE = 1, GAME_CONFIGURATION = 2 }
 	SaveLocationOptions = { NO_OPTIONS = 0, NORMAL = 1, QUICKSAVE = 2, AUTOSAVE = 4, LOAD_METADATA = 16 }
-	ServerType = { SERVER_TYPE_NONE = 0, SERVER_TYPE_INTERNET = 2 }
+	ServerType = { SERVER_TYPE_NONE = 0, SERVER_TYPE_INTERNET = 2, SERVER_TYPE_HOTSEAT = 5 }
 	SaveTypes = { SINGLE_PLAYER = 0, HOTSEAT = 2 }
 	Network.GetGameConfigurationSaveType = function()
 		if D.hotseat then return SaveTypes.HOTSEAT end

@@ -1,6 +1,6 @@
 # Team Kick Dev Tools (TX_Dev)
 
-Spike panel for Team Kick. Version 0.0.1.5, mod id `813c09c2-7476-4882-b8d6-7a0708b0891d`. Needs Gathering Storm only. Never enable it in a real game: it changes teams, declares wars and spawns units. Results go to Lua.log as `[TX][SPIKE]` and `[TX][CHECK]` lines. Read them with `python tools\summarize_log.py`.
+Spike panel for Team Kick. Version 0.0.1.6, mod id `813c09c2-7476-4882-b8d6-7a0708b0891d`. Needs Gathering Storm only. Never enable it in a real game: it changes teams, declares wars and spawns units. Results go to Lua.log as `[TX][SPIKE]` and `[TX][CHECK]` lines. Read them with `python tools\summarize_log.py`.
 
 All sessions are hotseat (one copy of the game).
 
@@ -233,24 +233,33 @@ TX_Dev 0.0.1.4. Can the broken ribbon be avoided, and can one button do the save
 
 1. Setup as Session 1, turn 3. As P0: S1 Team map. Arm BASE + snapshot. Save as `TX3b_base`.
    - Expect: New team filled (10), phase BASE.
-   - Result:
+   - Result: as expected
 2. S3n Set team, no broadcast (!). End turn (all). Look at the ribbon as P0, P1 and P2.
    - Expect: `S3n-UI.S3nLIVE PASS`. Does `V1-G.S3nLIVE` say the teams differ? Any `LeaderIcon` error or broken ribbon?
-   - Result:
+   - Result: as P0, P1 still appeares allied and with same team banner, and upon clicking P1's banner, I get broken UI. Reloaded game at TX3b_base and restarted this step. Didn't click the banner this time, next turned to P1. P1 sees no other players on banner except himself, clicking his own banner also breaks the UI. Restarted from TX3b_base again, this time next turning until P3 after S3n, without clicking any banners. As P3, still allied and teamed with P4, clicking banners don't break UI. After P3 end turn, from P0 perspective, P1 has no stats/yields banner; clicking portrait breaks UI. Reloaded from TX3b_base two more times just to double check. (So the broken ribbon does not come from the broadcast.)
 3. Save as `TX3b_s3n`. Load `TX3b_s3n`.
    - Expect: does P1 have the new team after the load (`V1-*.S3nRELOAD1 PASS`)?
-   - Result:
+   - Result: after load, from P0's view P1 is no longer on the same team (in fact team 1 banner is gone entirely from banners and world rankings). Clicking P1 portrait leads to normal diplomacy, but P0 and P1 are still timeless allied. From P1's perspective, it is the same (no longer teams with P0 but allies still, clicking portaits leads to diplomacy screen). P3's view is still the same as before reload. (S3n without the broadcast also applies after a reload.)
 4. Load `TX3b_base`. S1 Team map. S3 Set Target's team. P-Teams read. P-Teams WRITE panel copy (!). Click P1's portrait.
    - Expect: `PTeams-UI.*.write` says changed=yes. Does the ribbon still break (a new `LeaderIcon.lua:143` error after the `ribbon refresh` line)?
-   - Result:
+   - Result: clicked P-teams read 2-3 times and P-teams WRITE 1-2 times. Clicking P1's portrait still deleted the UI. (The write changed only the panel's own copy; the ribbon has its own.)
 5. Load `TX3b_base`. R Apply + reload (hotseat) (!).
    - Expect: the game reloads by itself into `TX_autoreload_<date>_<time>` (the `R-UI.prep` line names it), then `V1-*.S3RELOAD1 PASS`, no ribbon errors. A `MANUAL` line means: load the save it names from Menu > Load Game by hand.
-   - Result:
+   - Result: Game reloaded without going back to main menu. From P0's perspective, P1 is no longer teamed but still allied; clicking P1's portrait does not glitch UI. However, ending turn now ends turn immediately back to P0 without going to P1 or P3's turns. (Log: the chain loaded with SERVER_TYPE_NONE, which made the game single player. Fixed in 0.0.1.6: hotseat now loads with SERVER_TYPE_HOTSEAT, as the hotseat lobby does.)
 6. Optional: load `TX3b_base`. RK Kick + VIS1 + reload (!). End turn (all). AL0.
    - Expect: as 5, plus `Kvis-*.turn PASS`.
-   - Result:
+   - Result: Game reloaded without going  back to main menu. P1 is allied but no longer teamed. Ending turn ends turn immediately back to P0 without going to P1 or P3's turns. (Same cause as step 5.)
 
 Then quit to the desktop and send the raw Lua.log.
+
+Summary: the ribbon breaks with or without the broadcast, and patching the panel's own Teams copy doesn't help, so a reload is needed. The one-click save and reload works, but it loaded the hotseat game as single player. 0.0.1.6 loads with the hotseat server type.
+
+**Session 3b re-test (TX_Dev 0.0.1.6)**
+
+7. New hotseat game as Session 1, turn 3. As P0: S1 Team map. Arm BASE + snapshot. R Apply + reload (hotseat) (!).
+   - Expect: the game reloads, maybe through the hotseat player setup screen (if so, set the same players and start). P1 no longer on P0's team. End turn goes P0, P1, P2 in turn, not straight back to P0.
+   - Result:
+
 
 ## Session 3c (hotseat, new games)
 
