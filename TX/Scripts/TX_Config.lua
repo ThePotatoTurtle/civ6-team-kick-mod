@@ -83,9 +83,7 @@ TX_Config.NKEY_TURN = "TX_Turn"
 -- A record without a mode (saved before kick modes) loads as MODE_DEFAULT.
 TX_Config.MODE = { SOFT = "SOFT", HARD = "HARD" }
 TX_Config.MODE_DEFAULT = "SOFT"         -- the dialog's default and the mode of old records
--- PROVISIONAL: the kicked-player-declares direction and the multi-keeper
--- order are tested by the TX_Dev Session 3c spike (Session 3 AL3 had the
--- keeper declare). false: the dialog offers Soft only, gameplay refuses HARD
+-- The kicked-player-declares war step was verified in TX_Dev Session 3c. false: the dialog offers Soft only, gameplay refuses HARD
 -- (BAD_MODE) and a stored HARD record gets no war step (it ends as a soft kick).
 TX_Config.HARD_KICK_ENABLED = true
 

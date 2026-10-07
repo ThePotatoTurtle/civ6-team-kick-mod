@@ -963,7 +963,7 @@ test("modes 2: HARD after the reload: P1 declares war on P0 (the team war covers
 		H.eq(FAKE_TX.Grievance(1, k), 0, "the kicked player holds none")
 	end
 	for _, l in ipairs({
-		"[Apply] AfterReload rec=1 target=P1 mode=HARD: war then peace (PROVISIONAL, Session 3c)",
+		"[Apply] AfterReload rec=1 target=P1 mode=HARD: war then peace",
 		"[Apply] HARD rec=1: P1 ends the alliance with its old team 0: keepers [P0,P2]",
 		"[Apply] HARD rec=1 war P1->P0: declared, at war=yes",
 		"[Apply] HARD rec=1 war P1->P2: already at war, no declaration",

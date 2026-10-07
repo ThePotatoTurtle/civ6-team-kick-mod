@@ -23,11 +23,10 @@
 --         keepers then hold the grievances against the kicked player (AL3:
 --         the target held 100 against the declarer). The third DeclareWarOn
 --         argument must be true to declare on an ally (AL3b).
---         PROVISIONAL (TX_Dev Session 3c tests it now): AL3 had the KEEPER
---         declare on the target; this reverse direction (kicked on keeper)
---         and the multi-keeper behaviour (is the war team wide after the
---         first declaration, does one peace end it for every keeper?) are not
---         measured yet. The loop handles both answers: a keeper already at
+--         VERIFIED in TX_Dev Session 3c (2026-10-07): the kicked player's
+--         war on one keeper is a war on the whole team and one peace ends it
+--         for every keeper; the keepers hold the grievances; an AI target
+--         stays at peace. The loop handles both answers: a keeper already at
 --         war gets no new declaration, a keeper no longer at war gets no
 --         peace call. TX_Config.HARD_KICK_ENABLED = false switches it off.
 --
@@ -112,12 +111,12 @@ function TX_Apply.HardKick(rec, world)
 	local ok = true
 	local warSeen = {}
 
-	-- 1. War: P<t> declares on each keeper (PROVISIONAL direction, see the header).
+	-- 1. War: P<t> declares on each keeper (verified, Session 3c).
 	for _, k in ipairs(keepers) do
 		local before = AtWar(t, k)
 		if before == true then
 			-- A war declared on an earlier keeper may already cover this one
-			-- (team wide war; PROVISIONAL, Session 3c).
+			-- (team wide war, verified in Session 3c).
 			warSeen[k] = true
 			Log(2, "HARD rec=%d war P%d->P%d: already at war, no declaration", rec.id, t, k)
 		else
@@ -202,7 +201,7 @@ function TX_Apply.AfterReload(rec, world)
 			TX_Util.Str(rec.id), TX_Util.Str(rec.targetID), TX_Util.Str(rec.hardDone))
 		return TX_Apply.SKIP
 	end
-	Log(2, "AfterReload rec=%s target=P%s mode=HARD: war then peace (PROVISIONAL, Session 3c)",
+	Log(2, "AfterReload rec=%s target=P%s mode=HARD: war then peace",
 		TX_Util.Str(rec.id), TX_Util.Str(rec.targetID))
 	if TX_Apply.HardKick(rec, world) then
 		return TX_Apply.OK
