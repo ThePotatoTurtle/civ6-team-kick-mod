@@ -319,13 +319,13 @@ test("ui 4e: HARD_KICK_ENABLED = false: the dialog offers Soft only; gameplay re
 	H.clean()
 end)
 
-test("ui 4f: without PopupDialog AddButton the dialog still opens with Soft kick and Cancel; the probe logs the failure", function()
+test("ui 4f: without PopupDialogInGame AddCustomButton the dialog still opens with Soft kick and Cancel; the probe logs the failure", function()
 	Setup()
-	PopupDialogInGame.AddButton = nil
+	PopupDialogInGame.AddCustomButton = nil
 	OpenWindow()
 	local d = Kick(1)
 	H.len(d.buttons, 0, "no Hard kick button")
-	H.ok(H.hasLine("[UIShared] PROBE UI PopupDialogInGame:AddButton FAILED: "))
+	H.ok(H.hasLine("[UIShared] PROBE UI PopupDialogInGame:AddCustomButton FAILED: "))
 	d.confirm()
 	H.eq(Rec(1).mode, "SOFT")
 	H.clean()

@@ -41,7 +41,7 @@
 --     ["peace:<a>><b>"] = "error" (the call throws) | "noop" (it returns and
 --     changes nothing). FAKE_TX.DiploState(a, b) -> "WAR", "ALLIED",
 --     "UNFRIENDLY" or "NEUTRAL"; FAKE_TX.Grievance(holder, against).
---   PopupDialogInGame (fake_ui) gets AddButton(label, fn) (PopupDialog,
+--   PopupDialogInGame (fake_ui) gets AddCustomButton(label, fn) (PopupDialog.lua:497,
 --     BASE24 EndGameMenu.lua:1236-1237) recorded in dialog.buttons, and the
 --     confirm and cancel labels (dialog.confirmLabel, dialog.cancelLabel).
 --
@@ -199,13 +199,13 @@ function FAKE_TX.Calls(fn)
 	return out
 end
 
--- PopupDialogInGame extras (fake_ui stays unchanged): AddButton and labels.
+-- PopupDialogInGame extras (fake_ui stays unchanged): AddCustomButton and labels.
 local function PatchPopup()
 	if PopupDialogInGame == nil or rawget(PopupDialogInGame, "TX_patched") then
 		return
 	end
 	rawset(PopupDialogInGame, "TX_patched", true)
-	function PopupDialogInGame:AddButton(label, fn)
+	function PopupDialogInGame:AddCustomButton(label, fn)
 		self.buttons[#self.buttons + 1] = { label = label, fn = fn }
 	end
 	function PopupDialogInGame:AddConfirmButton(label, fn)

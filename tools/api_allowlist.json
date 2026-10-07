@@ -4462,7 +4462,7 @@
    "note": "Team Expulsion kick modes (DEC 2026-10-04; PLAN Part II notes 'Kick modes', Appendix B): HARD kick in TX_Apply.HardKick (G, synced RELOADED handler). TX_Dev calls it only through TX_Probe (not audited). Verified with the keeper as the declarer; the kicked player as the declarer is PROVISIONAL (TX_Dev Session 3c).",
    "source": "TX"
   },
-  "AddButton": {
+  "AddCustomButton": {
    "ctx": {
     "UI": {
      "level": "L",
@@ -4470,10 +4470,9 @@
     }
    },
    "refs": [
-    "BASE24 EndGameMenu.lua:1236-1237 (g_kPopupDialog:AddButton(label, callback, nil, nil, style) on a PopupDialog in game)",
-    "BASE24 StagingRoom.lua:3263-3264, 1027-1028 (same shape)"
+    "BASE24 Popups/PopupDialog.lua:497-499 (PopupDialogInGame:AddCustomButton(label, callback): a click-only button; AddButton exists only on PopupDialog)"
    ],
-   "note": "Team Expulsion kick modes: the Hard kick button of the kick confirm dialog (PopupDialogInGame, which builds on PopupDialog). Session 4 checks it.",
+   "note": "Team Kick kick modes: the Hard kick button of the kick confirm dialog. Session 4 step 3 showed PopupDialogInGame has no AddButton.",
    "source": "TX"
   }
  },

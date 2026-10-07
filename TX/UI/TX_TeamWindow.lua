@@ -36,7 +36,7 @@
 --     TX_Votes.ConfirmKind text (VOTE / DISSOLVE for a team of 2 / AI_ONLY),
 --     one line per kick mode (LOC_TX_MODE_LINE) and LOC_TX_CONFIRM_AFTER.
 --     Buttons (DEC 2026-10-04 kick modes): Soft kick (the confirm button, the
---     default), Hard kick (PopupDialog:AddButton, only while
+--     default), Hard kick (PopupDialogInGame:AddCustomButton, only while
 --     TX_Config.HARD_KICK_ENABLED), Cancel. A mode button sends TX_Propose
 --     { targetID, mode } only if the local player is still the one who
 --     clicked (hotseat hand-off). The open vote, the passed / applied line
@@ -338,7 +338,7 @@ end
 
 -- OnKickClicked(targetID): re-check for the display, then PopupDialogInGame
 -- (EFV_UnitActions.lua:260-268). Soft kick (confirm button, the default) or
--- Hard kick (AddButton, BASE24 EndGameMenu.lua:1236-1237): TX_Propose
+-- Hard kick (AddCustomButton, BASE24 Popups/PopupDialog.lua:497-499): TX_Propose
 -- { targetID, mode }, only while the local player is still the one who
 -- clicked (hotseat hand-off between the click and the answer sends nothing).
 -- Cancel sends nothing.
@@ -369,10 +369,11 @@ local function OnKickClicked(targetID)
 	end
 	popup:AddConfirmButton(L("LOC_TX_MODE_SOFT"), function() Send(TX_Config.MODE.SOFT) end)
 	if TX_Config.HARD_KICK_ENABLED == true then
-		-- AddButton is VERIFIED-BY-SOURCE on PopupDialog (Appendix B): a probe,
-		-- so a missing method costs only the Hard kick button (Session 4 step 3).
-		TX_UI.TryProbe("UI PopupDialogInGame:AddButton", function()
-			popup:AddButton(L("LOC_TX_MODE_HARD"), function() Send(TX_Config.MODE.HARD) end)
+		-- Session 4 step 3: PopupDialogInGame has no AddButton (that is PopupDialog), so the
+		-- Hard kick button never showed. PopupDialogInGame:AddCustomButton(label, callback)
+		-- is its click-only button (BASE24 Popups/PopupDialog.lua:497-499). Still a probe.
+		TX_UI.TryProbe("UI PopupDialogInGame:AddCustomButton", function()
+			popup:AddCustomButton(L("LOC_TX_MODE_HARD"), function() Send(TX_Config.MODE.HARD) end)
 		end)
 	end
 	popup:AddCancelButton(L("LOC_TX_CANCEL"), nil)

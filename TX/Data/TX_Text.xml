@@ -113,7 +113,7 @@
 			<Text>Hard kick</Text>
 		</Row>
 		<Row Tag="LOC_TX_MODE_SOFT_INFO" Language="en_US">
-			<Text>Leaves the team but stays allied with you. Good for kicking an AI that took over a player who left.</Text>
+			<Text>Leaves the team but stays allied with you. Good for kicking an AI that took over a player.</Text>
 		</Row>
 		<Row Tag="LOC_TX_MODE_HARD_INFO" Language="en_US">
 			<Text>Leaves the team and the alliance is ended. They declare war and make peace at once; the grievances fall on them.</Text>
@@ -211,7 +211,7 @@
 
 		<!-- Apply banner and dialogs (apply seam, PLAN II.11c) -->
 		<Row Tag="LOC_TX_BANNER_HOST" Language="en_US">
-			<Text>The kick of {1_Player} passed. Apply it, then everyone loads the save it makes.</Text>
+			<Text>The kick of {1_Player} passed. Apply it, then load the save.</Text>
 		</Row>
 		<Row Tag="LOC_TX_BANNER_WAIT" Language="en_US">
 			<Text>The kick of {1_Player} passed. Waiting for the host to apply it.</Text>
