@@ -2,7 +2,7 @@
 <!-- ======================================================================
      TX_Text.xml  (modinfo InGameActions UpdateText TX_Text)
      Team Kick 1.0.0, PLAN II.13. Every in-game string of the mod.
-     Draft wording: Leon reviews it in Session 4 (PLAN II.17).
+     Wording reviewed by Leon in Session 4 (2026-10-07).
      Format as EFV/Data/EFV_Text.xml: <Row Tag="LOC_TX_..." Language="en_US">.
      Plurals: {n_Num} {n_Num : plural 1?turn; other?turns;}. The game does not replace # in plural forms (Session 4: "# turns left").
 
@@ -157,7 +157,7 @@
 			<Text>The {2_Mode} of {1_Player} passed. Waiting for the host to apply it.</Text>
 		</Row>
 		<Row Tag="LOC_TX_APPLIED_LINE" Language="en_US">
-			<Text>The {2_Mode} of {1_Player} is applied. Save and reload the game now.</Text>
+			<Text>The {2_Mode} of {1_Player} is applied. Load the save made for it now.</Text>
 		</Row>
 
 		<!-- History section -->
@@ -235,7 +235,7 @@
 			<Text>Move {1_Player} to a team of their own now?[NEWLINE][NEWLINE]Right after this the game saves itself, and everyone loads that save. Civ VI only shows the new teams after a reload.</Text>
 		</Row>
 		<Row Tag="LOC_TX_APPLY_CONFIRM_NETMP" Language="en_US">
-			<Text>[NEWLINE][NEWLINE][COLOR:Red]Network multiplayer isn't tested yet.[ENDCOLOR] After the save, everyone exits to the main menu, the host loads it from Multiplayer > Host Game > Load Game, and the others rejoin.</Text>
+			<Text>[NEWLINE][NEWLINE]After the save, everyone exits to the main menu, the host loads it from Multiplayer > Host Game > Load Game, and the others rejoin.</Text>
 		</Row>
 		<Row Tag="LOC_TX_APPLY_CONFIRM_HARD" Language="en_US">
 			<Text>[NEWLINE][NEWLINE]This is a hard kick. Right after the reload they declare war on their old team and make peace at once, which ends the alliance.</Text>
@@ -288,7 +288,7 @@
 			<Text>Kicked off a team</Text>
 		</Row>
 		<Row Tag="LOC_NOTIFICATION_TX_KICK_PASSED_SUMMARY" Language="en_US">
-			<Text>{1_Player} was voted off their team ({2_Mode}). It takes effect once the host applies it and the game is saved and reloaded.</Text>
+			<Text>{1_Player} was voted off their team ({2_Mode}). It takes effect once the host applies it and the new save is loaded.</Text>
 		</Row>
 		<Row Tag="LOC_NOTIFICATION_TX_KICK_DONE_MESSAGE" Language="en_US">
 			<Text>Team changed</Text>

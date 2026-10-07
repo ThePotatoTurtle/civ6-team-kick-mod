@@ -92,7 +92,7 @@ TX_Config.WAIT_POLL = 0.3
 TX_Config.WAIT_MAX = 5
 
 -- Seams (PLAN II.12). No final behaviour in 1.0.0.
-TX_Config.ALLOW_NETWORK_APPLY = true    -- SEAM O4: the host may apply in network MP (untested warning)
+TX_Config.ALLOW_NETWORK_APPLY = true    -- SEAM O4: the host may apply in network MP (online load instructions)
 -- Kick save (DEC 2026-10-07, replaces SEAM O3): after gameplay confirms the
 -- apply, the host's UI saves as <SAVE_PREFIX>_<target>_T<turn>_<HHMM> and
 -- waits up to SAVE_MAX s for Events.SaveComplete. The mod never loads a game

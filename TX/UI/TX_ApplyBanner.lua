@@ -648,7 +648,7 @@ local function OnApply(recID)
 		text = text .. L("LOC_TX_APPLY_CONFIRM_HARD")   -- the war then peace runs after the reload
 	end
 	if TX_UI.NetMP() then
-		text = text .. L("LOC_TX_APPLY_CONFIRM_NETMP")   -- SEAM O4: untested warning
+		text = text .. L("LOC_TX_APPLY_CONFIRM_NETMP")   -- online load instructions
 	end
 	Log(2, "apply rec=%d: confirm for P%d (target P%d newTeam=%d)", recID, TX_UI.Local(), rec.targetID, rec.newTeamID)
 	local popup = PopupDialogInGame:new("TX_ConfirmApply")

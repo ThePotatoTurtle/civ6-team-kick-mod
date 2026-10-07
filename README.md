@@ -4,7 +4,7 @@ Vote a teammate off your team in the middle of a game. Made for team games where
 
 The kicked player plays on alone. They no longer share victory or wars with the team.
 
-Requires Gathering Storm. Version 0.1.0.
+Requires Gathering Storm. Version 1.0.0.
 
 ## Features
 
@@ -21,7 +21,7 @@ Requires Gathering Storm. Version 0.1.0.
 1. A teammate opens the Team window, presses Kick on a player and picks Soft or Hard.
 2. The other human teammates vote yes within 5 turns.
 3. The host gets an Apply banner and presses Apply. The game saves itself under a name like `TeamKick_<civ>_T42_1830`.
-4. Load that new save. The new teams show after the load. A hard kick ends the alliance right after the load.
+4. Load that new save (a popup says where to load it from). The new teams show after the load. A hard kick ends the alliance right after the load.
 
 Until the save is loaded, the leader portraits at the top can look wrong. Don't click them.
 
@@ -47,5 +47,4 @@ Copy the `TX` folder into `Documents\My Games\Sid Meier's Civilization VI\Mods`,
 
 ## Changelog
 
-Unreleased:
-- 0.1.0: First version. Team button and window, secret unanimous votes, soft and hard kicks, automatic save after a kick.
+- 1.0.0: First release. Team button and window, secret votes, soft and hard kicks, automatic save after a kick.
