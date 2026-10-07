@@ -35,7 +35,9 @@ test("config: version 0.1.0 matches the modinfo title and description", function
 	H.eq(TX_Config.MAX_TEAM_ID, 63)
 	H.eq(TX_Config.REQ_PROPOSE, "TX_Propose")
 	H.eq(TX_Config.ALLOW_NETWORK_APPLY, true)
-	H.eq(TX_Config.AUTO_RELOAD, false)
+	H.eq(TX_Config.AUTO_RELOAD, nil)
+	H.eq(TX_Config.SAVE_PREFIX, "TeamKick")
+	H.eq(TX_Config.SAVE_MAX, 10)
 	-- the load-once guard keeps a changed value
 	TX_Config.VOTE_TURNS = 9
 	include("TX_Config")

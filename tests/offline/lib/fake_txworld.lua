@@ -19,6 +19,12 @@
 --     GameConfiguration.IsNetworkMultiplayer, GameConfiguration.IsHotseat.
 --   PlayerConfigurations[i]:GetLeaderName() -> "LOC_LEADER_FAKE_<i>_NAME" on
 --     every config object (also ones created later).
+--   Kick save (TX_ApplyBanner StartSave; shapes from FAKE_DEV.InstallSaves,
+--     values from the Session 3b log: Location 1, Type 3, args (0,3,0,0)):
+--     SaveLocations, SaveFileTypes, Network.GetGameConfigurationSaveType,
+--     Network.SaveGame (recorded in FAKE_TX.saveCalls, pending until
+--     FAKE_TX.FinishSave(), which fires Events.SaveComplete(0, 3, 0, 0)).
+--     opts.saveFail = true: Network.SaveGame throws. No LoadGame / LeaveGame.
 --
 --   Diplomacy for the HARD kick (kick modes; test assumptions from Session 2
 --     and 3 AL3 / AL3b, the reverse direction is PROVISIONAL, Session 3c):
@@ -40,7 +46,7 @@
 --     confirm and cancel labels (dialog.confirmLabel, dialog.cancelLabel).
 --
 -- Helpers: World(opts), LoadUI(), Reload(), Activate(pid, typeName),
--- Hotseat(pid), Ally(a, b), AllyTeam(team), DiploState, Grievance. LoadUI and Reload run the TX entry files that exist; files of
+-- Hotseat(pid), FinishSave(), Ally(a, b), AllyTeam(team), DiploState, Grievance. LoadUI and Reload run the TX entry files that exist; files of
 -- later build chunks (PLAN II.16) are skipped while they are missing.
 -- Every model here is a test assumption except where it cites F1 to F7.
 -- ===========================================================================
@@ -234,6 +240,18 @@ function FAKE_TX.Install(opts)
 		Attach(id)
 		WrapDiplomacy(id)
 	end
+	T.saveCalls, T.pendingSaves = {}, {}
+	T.saveFail = opts.saveFail == true
+	SaveLocations = { LOCAL_STORAGE = 1 }
+	SaveFileTypes = { GAME_STATE = 0, GAME_CONFIGURATION = 2 }
+	Network.GetGameConfigurationSaveType = function() return 3 end
+	Network.SaveGame = function(file)
+		if T.saveFail then
+			error("fake: Network.SaveGame failed")
+		end
+		T.saveCalls[#T.saveCalls + 1] = { file = FAKE.DeepCopy(file), turn = FAKE.turn, localPlayer = FAKE.localPlayer }
+		T.pendingSaves[#T.pendingSaves + 1] = FAKE.DeepCopy(file)
+	end
 	Network.IsGameHost = function() return T.host end
 	Network.GetGameHostPlayerID = function() return T.hostID end
 	GameConfiguration.IsNetworkMultiplayer = function() return T.netMP end
@@ -288,6 +306,17 @@ function FAKE_TX.World(opts)
 	end
 	FAKE_TX.Install(opts)
 	return FAKE.players
+end
+
+-- Finishes the pending saves: Events.SaveComplete once per save (in game the
+-- event carries no file name: (0,3,0,0)). Returns how many finished.
+function FAKE_TX.FinishSave()
+	local n = #FAKE_TX.pendingSaves
+	FAKE_TX.pendingSaves = {}
+	for _ = 1, n do
+		Events.SaveComplete(0, 3, 0, 0)
+	end
+	return n
 end
 
 -- Loads the TX UI contexts that exist (FAKE_UI.Enable first if needed), then

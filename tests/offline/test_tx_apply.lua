@@ -127,12 +127,25 @@ local function OpenNotifs(pid, typeName)
 	return out
 end
 
--- Apply rec 1 through the banner and confirm it.
-local function ApplyNow()
+-- Apply rec 1 through the banner and confirm it; the kick save that follows
+-- finishes (Events.SaveComplete) unless keepSave.
+local function ApplyNow(keepSave)
 	local d = ClickApply()
 	H.eq(d.id, "TX_ConfirmApply")
 	d.confirm()
+	if not keepSave then
+		FAKE_TX.FinishSave()
+	end
 	return d
+end
+
+-- Runs fn with os.date answering stamp (the HHMM part of the save name).
+local function WithClock(stamp, fn)
+	local saved = os.date
+	os.date = function() return stamp end
+	local ok, err = pcall(fn)
+	os.date = saved
+	if not ok then error(err, 0) end
 end
 
 -- ===========================================================================
@@ -203,20 +216,28 @@ test("apply 2: Apply, confirm: config write + broadcast, WRITTEN, applied 1, rel
 	H.eq(Rec(1).appliedBy, 0)
 	H.eq(Rec(1).appliedAttempt, 1)
 	H.len(Requests("TX_ApplyDone", "UNDONE"), 0, "nothing undone on the normal path")
+	-- the kick save: requested, the dialog waits for Events.SaveComplete
+	H.len(FAKE_TX.saveCalls, 1)
+	local name = FAKE_TX.saveCalls[1].file.Name
+	H.eq(LastDialog().id, "TX_ConfirmApply", "no dialog before SaveComplete")
+	H.eq(BannerText(), T("LOC_TX_BANNER_SAVING"))
+	H.eq(FAKE_TX.FinishSave(), 1)
 	local r = LastDialog()
-	H.eq(r.id, "TX_ReloadNow")
-	H.eq(r.title, T("LOC_TX_RELOAD_TITLE"))
-	H.eq(DialogText(r), T("LOC_TX_RELOAD_TEXT"))
+	H.eq(r.id, "TX_KickSaved")
+	H.eq(r.title, T("LOC_TX_SAVED_TITLE"))
+	H.eq(DialogText(r), T("LOC_TX_SAVED_TEXT_HOTSEAT", name))
+	H.ok(string.find(DialogText(r), "Saved as " .. name .. ".", 1, true) ~= nil, "the dialog names the save")
 	H.ok(r.confirm == nil and r.cancel == nil, "one OK button that only closes it")
-	H.eq(BannerText(), T("LOC_TX_BANNER_RELOAD"))
+	H.eq(BannerText(), T("LOC_TX_BANNER_SAVED", name))
 	H.eq(ApplyShown(), false)
 	H.len(H.notifs(nil, DONE_N), 0, "no KICK_DONE before the reload")
 	H.ok(H.hasLine("[UIApply] apply rec=1: about to set the config team of P1 0 -> 6 and broadcast"))
 	H.ok(H.hasLine("[UIApply] apply rec=1: set ok broadcast ok; config team of P1 now 6"))
-	H.ok(H.hasLine("[UIApply] apply rec=1 confirmed by gameplay: P1 reads team 6; save and reload now"))
-	-- every local player now sees the reload banner
+	H.ok(H.hasLine("[UIApply] apply rec=1 confirmed by gameplay: P1 reads team 6; saving the game"))
+	H.ok(H.hasLine("[UIApply] kick save rec=1: saved as " .. name .. " (Events.SaveComplete 0,3,0,0)"))
+	-- every local player now sees the saved banner
 	FAKE_TX.Hotseat(3)
-	H.eq(BannerText(), T("LOC_TX_BANNER_RELOAD"))
+	H.eq(BannerText(), T("LOC_TX_BANNER_SAVED", name))
 	H.eq(ApplyShown(), false)
 	-- the kicked player's Team button goes right after the write (TeamWindow chunk C)
 	FAKE_TX.Hotseat(1)
@@ -239,11 +260,14 @@ test("apply 2b: the wait polls: an answer that comes later ends it; a second App
 	FAKE_UI.Update(Ban(), 0.3)
 	FAKE_UI.Update(Ban(), 0.3)
 	H.eq(#FAKE_UI.popups, n, "still waiting")
+	H.len(FAKE_TX.saveCalls, 0, "no save before gameplay confirmed WRITTEN")
 	H.eq(FAKE_UI.DeliverRequests(), 1)
 	FAKE_UI.Update(Ban(), 0.3)
-	H.eq(LastDialog().id, "TX_ReloadNow")
+	H.len(FAKE_TX.saveCalls, 1, "the save right after the answer")
+	FAKE_TX.FinishSave()
+	H.eq(LastDialog().id, "TX_KickSaved")
 	H.len(FAKE.teamSets, 1, "no undo")
-	H.eq(BannerText(), T("LOC_TX_BANNER_RELOAD"))
+	H.eq(BannerText(), T("LOC_TX_BANNER_SAVED", FAKE_TX.saveCalls[1].file.Name))
 	H.clean()
 end)
 
@@ -262,7 +286,7 @@ test("apply 3: before the reload no RELOADED is sent, also not after a turn", fu
 	Poll()
 	H.len(Requests("TX_ApplyDone", "RELOADED"), 0, "the UI live team is still old (F3)")
 	H.eq(Rec(1).state, "PENDING_APPLY")
-	H.eq(BannerText(), T("LOC_TX_BANNER_RELOAD"))
+	H.eq(BannerText(), T("LOC_TX_BANNER_SAVED", FAKE_TX.saveCalls[1].file.Name))
 	H.clean()
 end)
 
@@ -428,7 +452,7 @@ test("apply 6d: slow gameplay accepts WRITTEN after the UI timed out and undid i
 	local w = Requests("TX_ApplyDone", "WRITTEN")
 	H.eq(w[#w].params.attempt, 2)
 	H.eq(Rec(1).applied, 1)
-	H.eq(LastDialog().id, "TX_ReloadNow")
+	H.eq(LastDialog().id, "TX_KickSaved")
 	ENVS = FAKE_TX.Reload()
 	H.eq(Rec(1).state, "DONE")
 end, { allowErrors = true })
@@ -455,7 +479,7 @@ test("apply 6e: UNDONE handled before the late WRITTEN: the WRITTEN is refused, 
 	local w = Requests("TX_ApplyDone", "WRITTEN")
 	H.eq(w[#w].params.attempt, written.params.attempt + 1)
 	H.eq(Rec(1).applied, 1)
-	H.eq(LastDialog().id, "TX_ReloadNow")
+	H.eq(LastDialog().id, "TX_KickSaved")
 end, { allowErrors = true })
 
 test("apply 6c: the record left PENDING_APPLY during the wait (victory): undo", function()
@@ -555,7 +579,7 @@ test("apply 8b: an applied kick is not cancelled by a victory and still gets the
 	ApplyNow()
 	Events.TeamVictory(0, 3, 1)
 	H.eq(Rec(1).state, "PENDING_APPLY")
-	H.eq(BannerText(), T("LOC_TX_BANNER_RELOAD"))
+	H.eq(BannerText(), T("LOC_TX_BANNER_SAVED", FAKE_TX.saveCalls[1].file.Name))
 	ENVS = FAKE_TX.Reload()
 	H.eq(Rec(1).state, "DONE")
 	H.clean()
@@ -582,49 +606,179 @@ test("apply 9: network MP adds the untested warning; ALLOW_NETWORK_APPLY = false
 end)
 
 -- ===========================================================================
--- 10. SEAM O3: no save or load call
+-- 10. Kick save (DEC 2026-10-07): the host saves after WRITTEN, never loads
 -- ===========================================================================
-test("apply 10: AUTO_RELOAD false (and the unported true): no save or load call is ever touched", function()
+test("apply 10: the save name: TeamKick_<civ>_T<turn>_<HHMM>, the Session 3b file shape; a repeat gets _2", function()
 	Setup()
-	local touched = {}
-	local function Trap(root, name)
-		setmetatable(root, { __index = function(_, k)
-			touched[#touched + 1] = name .. "." .. tostring(k)
-			return nil
-		end })
+	FAKE.players[1].civ = "Rome"
+	FAKE.players[4].civ = "Rome"
+	Pass()
+	Poll()
+	WithClock("1430", function() ApplyNow() end)
+	H.len(FAKE_TX.saveCalls, 1)
+	H.deq(FAKE_TX.saveCalls[1].file, { Name = "TeamKick_Rome_T1_1430", Location = SaveLocations.LOCAL_STORAGE, Type = 3,
+		FileType = SaveFileTypes.GAME_STATE, IsAutosave = false, IsQuicksave = false })
+	H.eq(FAKE_TX.saveCalls[1].localPlayer, 0, "saved by the host's UI")
+	H.ok(H.hasLine("PROBE UI Network.SaveGame ok"))
+	H.eq(DialogText(LastDialog()), T("LOC_TX_SAVED_TEXT_HOTSEAT", "TeamKick_Rome_T1_1430"))
+	-- a second kick (P4, the same civ name) in the same minute: _2
+	GPropose(3, 4)
+	H.eq(Rec(2).state, "PENDING_APPLY")
+	FAKE_TX.Hotseat(3)
+	FAKE_TX.Activate(3, PASSED_N)
+	WithClock("1430", function()
+		LastDialog().confirm()
+		FAKE_TX.FinishSave()
+	end)
+	H.eq(FAKE_TX.saveCalls[2].file.Name, "TeamKick_Rome_T1_1430_2")
+	H.eq(FAKE_TX.saveCalls[2].localPlayer, 3)
+	H.eq(LastDialog().id, "TX_KickSaved")
+	H.clean()
+end)
+
+test("apply 10b: the save name keeps letters, digits and _ only", function()
+	Setup()
+	FAKE.players[1].civ = "Côte d'Ivoire 2!"
+	Pass()
+	Poll()
+	WithClock("0905", function() ApplyNow() end)
+	H.eq(FAKE_TX.saveCalls[1].file.Name, "TeamKick_CtedIvoire2_T1_0905")
+	H.clean()
+end)
+
+test("apply 10b2: no civ short name: the leader name, cut to 20 characters; os.date failing: no stamp", function()
+	Setup()
+	FAKE.players[1].civ = ""
+	Pass()
+	Poll()
+	local saved = os.date
+	os.date = function() error("no clock") end
+	local ok, err = pcall(function() ApplyNow() end)
+	os.date = saved
+	H.ok(ok, tostring(err))
+	H.eq(FAKE_TX.saveCalls[1].file.Name, "TeamKick_LOC_LEADER_FAKE_1_NA_T1", "leader name, cut to 20 characters")
+	H.eq(LastDialog().id, "TX_KickSaved")
+	H.clean()
+end)
+
+test("apply 10c: the save only on the host and only after gameplay confirmed WRITTEN", function()
+	Setup()
+	Pass()
+	Poll()
+	FAKE_UI.deferRequests = true
+	ApplyNow(true)
+	H.len(FAKE_TX.saveCalls, 0, "WRITTEN sent, not answered: no save")
+	FAKE_TX.host = false                        -- the host flag reads false by the time gameplay answers
+	FAKE_UI.DeliverRequests()
+	FAKE_UI.Update(Ban(), 0.3)
+	H.eq(Rec(1).applied, 1)
+	H.len(FAKE_TX.saveCalls, 0, "not the host: no save")
+	H.eq(LastDialog().id, "TX_ReloadNow", "the manual steps instead")
+	H.ok(H.hasLine("[UIApply] kick save rec=1: not the host, no save here"))
+end, { allowErrors = true })
+
+test("apply 10c2: the undo path (NOT_SEEN) never saves", function()
+	Setup({ split = false })
+	Pass()
+	Poll()
+	ApplyNow(true)
+	H.eq(LastDialog().id, "TX_ApplyFailed")
+	H.len(FAKE_TX.saveCalls, 0)
+end, { allowErrors = true })
+
+test("apply 10d: no SaveComplete within SAVE_MAX: the manual reload dialog, logged; a late SaveComplete is ignored", function()
+	Setup()
+	Pass()
+	Poll()
+	ApplyNow(true)
+	H.len(FAKE_TX.saveCalls, 1)
+	local name = FAKE_TX.saveCalls[1].file.Name
+	H.eq(ApplyShown(), false)
+	for _ = 1, 33 do
+		FAKE_UI.Update(Ban(), 0.3)             -- 9.9 s
 	end
-	Trap(Network, "Network")
-	Trap(UI, "UI")
-	H.eq(TX_Config.AUTO_RELOAD, false)
+	H.eq(LastDialog().id, "TX_ConfirmApply", "still waiting at 9.9 s")
+	FAKE_UI.Update(Ban(), 0.3)
+	local r = LastDialog()
+	H.eq(r.id, "TX_ReloadNow")
+	H.eq(r.title, T("LOC_TX_RELOAD_TITLE"))
+	H.eq(DialogText(r), T("LOC_TX_RELOAD_TEXT"))
+	H.ok(H.hasLine("[UIApply] ERROR kick save rec=1 " .. name .. ": no Events.SaveComplete within 10 s; asking for a manual save and reload"))
+	H.eq(BannerText(), T("LOC_TX_BANNER_RELOAD"))
+	local n = #FAKE_UI.popups
+	FAKE_TX.FinishSave()
+	H.eq(#FAKE_UI.popups, n, "the late SaveComplete opens nothing")
+	H.eq(BannerText(), T("LOC_TX_BANNER_RELOAD"))
+end, { allowErrors = true })
+
+test("apply 10e: Network.SaveGame fails: the manual reload dialog at once, logged", function()
+	Setup({ saveFail = true })
+	Pass()
+	Poll()
+	ApplyNow(true)
+	H.eq(LastDialog().id, "TX_ReloadNow")
+	H.ok(H.hasLine("PROBE UI Network.SaveGame FAILED"))
+	H.ok(H.hasLine("Network.SaveGame failed; asking for a manual save and reload"))
+	H.eq(BannerText(), T("LOC_TX_BANNER_RELOAD"))
+	H.eq(Rec(1).applied, 1, "the kick stays applied")
+end, { allowErrors = true })
+
+test("apply 10f: guard: a SaveComplete with no save waiting does nothing; one after a player change is not taken as ours", function()
+	Setup()
+	Events.SaveComplete(0, 3, 0, 0)            -- an autosave, nothing waits
+	H.len(FAKE_UI.popups, 0)
+	Pass()
+	Poll()
+	ApplyNow(true)
+	FAKE_TX.Hotseat(3)                         -- the turn passed on before the save finished
+	FAKE_TX.FinishSave()
+	H.eq(LastDialog().id, "TX_ReloadNow")
+	H.ok(H.hasLine("came after a turn or player change, so it may not be ours"))
+end, { allowErrors = true })
+
+test("apply 10g: the saved dialog's wording in network MP", function()
+	Setup({ netMP = true })
 	Pass()
 	Poll()
 	ApplyNow()
-	H.eq(LastDialog().id, "TX_ReloadNow")
-	-- the hook itself, switched on: it only logs (the R chain is not ported)
-	TX_Config.AUTO_RELOAD = true
-	GPropose(3, 4)
+	local name = FAKE_TX.saveCalls[1].file.Name
+	H.eq(DialogText(LastDialog()), T("LOC_TX_SAVED_TEXT_NETMP", name))
+	H.clean()
+end)
+
+test("apply 10g2: the saved dialog's wording on a single machine (neither hotseat nor network MP)", function()
+	Setup({ hotseat = false })
+	Pass()
 	Poll()
-	Events.PlayerTurnActivated(0, true)
-	H.eq(Rec(2).state, "PENDING_APPLY")
-	-- record 2 is P4's kick; record 1 already shows the reload banner, so apply it from its notification
-	FAKE_TX.Hotseat(3)
-	FAKE_TX.Activate(3, PASSED_N)
-	LastDialog().confirm()
-	H.ok(H.hasLine("[UIApply] AutoReload rec=2: AUTO_RELOAD is on but the R chain is not ported yet; save and load by hand"))
-	H.deq(touched, {}, "no Network / UI member outside the fake's set was read")
-	-- and no save, load or leave call anywhere in TX/ code (comments aside)
-	for _, rel in ipairs({ "TX/UI/TX_ApplyBanner.lua", "TX/UI/TX_UIShared.lua", "TX/UI/TX_TeamWindow.lua",
-			"TX/UI/TX_VotePopup.lua", "TX/Scripts/TX_Gameplay.lua", "TX/Scripts/TX_Apply.lua" }) do
+	ApplyNow()
+	H.eq(DialogText(LastDialog()), T("LOC_TX_SAVED_TEXT_LOCAL", FAKE_TX.saveCalls[1].file.Name))
+	H.clean()
+end)
+
+test("apply 10h: TX never loads or leaves a game: no LoadGame, LeaveGame or save list call in any TX Lua file", function()
+	local mi = __py_read("TX/TX.modinfo")
+	local files = {}
+	for rel in string.gmatch(mi, "<File>([^<]+%.lua)</File>") do
+		files[#files + 1] = "TX/" .. rel
+	end
+	H.ok(#files >= 10, "the modinfo lists the TX Lua files")
+	local saves = 0
+	for _, rel in ipairs(files) do
 		local src = __py_read(rel)
+		H.ok(src ~= nil, rel)
 		for line in string.gmatch(src, "[^\n]*") do
 			local code = string.gsub(line, "%-%-.*$", "")
-			for _, bad in ipairs({ "Network.SaveGame", "Network.LoadGame", "Network.LeaveGame", "UI.QuerySaveGameList",
-					"Events.SaveComplete", "FileListQueryResults" }) do
+			for _, bad in ipairs({ "LoadGame(", "Network.LoadGame", "LeaveGame", "SERVER_TYPE", "QuerySaveGameList",
+					"FileListQueryResults", "ExitToMainMenu" }) do
 				H.ok(string.find(code, bad, 1, true) == nil, rel .. ": " .. bad .. " in code: " .. line)
+			end
+			if string.find(code, "Network.SaveGame(", 1, true) ~= nil then
+				saves = saves + 1
+				H.eq(rel, BANNER, "Network.SaveGame only in the apply banner")
 			end
 		end
 	end
-	H.clean()
+	H.eq(saves, 1, "one Network.SaveGame call")
 end)
 
 -- ===========================================================================
@@ -660,7 +814,8 @@ test("apply e2e: kick from the window, vote from the notification, the target ap
 	H.eq(LastDialog().id, "TX_ConfirmApply")
 	LastDialog().confirm()
 	H.eq(Rec(1).appliedBy, 1)
-	H.eq(LastDialog().id, "TX_ReloadNow")
+	FAKE_TX.FinishSave()
+	H.eq(LastDialog().id, "TX_KickSaved")
 	-- save and load
 	ENVS = FAKE_TX.Reload()
 	H.eq(Rec(1).state, "DONE")

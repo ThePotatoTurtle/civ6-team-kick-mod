@@ -6,12 +6,15 @@
 -- II.9, II.11c). Controls: Banner, BannerButton, BannerLabel, ApplyButton.
 -- The UI half of the apply seam (provisional Mode B, DEC 2026-10-04): the
 -- host's UI writes the target's config team and broadcasts it, gameplay
--- confirms, then the players save and reload by hand.
+-- confirms, the host's UI saves the game under a clear name (DEC
+-- 2026-10-07), and everyone loads that save from the main menu.
 --
 --   * Banner for the local machine, first match over the PENDING_APPLY
 --     records (ascending id):
 --       1. written, not reloaded (the target's config team is newTeamID or
 --          gameplay confirmed it, and its UI live team is not, F3):
+--          LOC_TX_BANNER_SAVING while the kick save runs, LOC_TX_BANNER_SAVED
+--          {name} once it is saved (this Lua state only), else
 --          LOC_TX_BANNER_RELOAD, on every machine and for every local player;
 --       2. applied = 0, the host (F7), no victory, and network apply allowed
 --          (SEAM O4): LOC_TX_BANNER_HOST plus the Apply button;
@@ -32,8 +35,12 @@
 --          for applied = 1 (TX_Dev_Panel.lua:435-447, 2134-2172). attempt:
 --          a new number per try, above this Lua state's last one and the
 --          record's undoneAttempt;
---       5. answered: the blocking LOC_TX_RELOAD_TITLE / _TEXT dialog, banner
---          1 from now on, then AutoReload(rec) (SEAM O3 hook, off);
+--       5. answered: banner 1 from now on, and the kick save (StartSave,
+--          host only): Network.SaveGame as TeamKick_<target>_T<turn>_<HHMM>,
+--          then on Events.SaveComplete the blocking LOC_TX_SAVED_TITLE /
+--          _TEXT_HOTSEAT / _NETMP / _LOCAL dialog with the name. A failed save
+--          call or no SaveComplete within SAVE_MAX s: the manual
+--          LOC_TX_RELOAD_TITLE / _TEXT dialog ("save and reload now");
 --       6. no answer, a REQUEST_FAILED for the record (NOT_SEEN), or the
 --          record left PENDING_APPLY: undo with SetTeam(old team) + broadcast
 --          (TX_Dev S3 Undo, TX_Dev_Panel.lua:684-711) and
@@ -59,10 +66,16 @@
 --
 -- MP: SetTeam and BroadcastPlayerInfo run only here, only on the host, only
 -- for a PENDING_APPLY record with applied 0 and no victory, and always lead to
--- the reload dialog or the undo. No save, load, diplomacy or visibility call
--- (PLAN II.12). Gameplay re-validates every request (TP 2.5).
+-- the kick save, the reload dialog or the undo. The save runs only here, only
+-- on the host, only after gameplay confirmed WRITTEN. No load, leave,
+-- diplomacy or visibility call (PLAN II.12; why no load: "Kick save" below).
+-- Gameplay re-validates every request (TP 2.5).
 -- Engine calls (PLAN Appendix B, UI): PlayerConfigurations[t]:SetTeam,
--- :GetTeam, Network.BroadcastPlayerInfo (C, hotseat), Events.TeamVictory
+-- :GetTeam, Network.BroadcastPlayerInfo (C, hotseat), Network.SaveGame,
+-- Network.GetGameConfigurationSaveType, SaveLocations.LOCAL_STORAGE,
+-- SaveFileTypes.GAME_STATE, Events.SaveComplete (C, TX_Dev R / RK save,
+-- Session 3b, all through TX_UI.TryProbe), os.date (C, the same runs),
+-- :GetCivilizationShortDescription (C), Events.TeamVictory
 -- (VERIFIED-BY-SOURCE), Events.NotificationActivated (PROBE for a custom type,
 -- through TX_UI.ActivatedRecord), NotificationManager.GetList / Find /
 -- :GetType / :GetValue (C), PopupDialogInGame (C), ContextPtr SetUpdate (C),
@@ -87,6 +100,10 @@ local m_ViewReady = false           -- set on LoadGameViewStateDone (EFV_Tracker
 local m_SentReloaded = {}           -- [recID] = true: RELOADED sent in this Lua state
 local m_SentVictory = false         -- TX_Victory sent in this Lua state
 local m_Wait = nil                  -- the apply in flight (at most one)
+local m_Save = nil                  -- the kick save in flight (at most one)
+local m_SaveListening = false       -- Events.SaveComplete listener added in this Lua state
+local m_SavedName = {}              -- [recID] = save name, saved in this Lua state
+local m_UsedNames = {}              -- [name] = true: save names requested in this Lua state
 local m_Attempts = {}               -- [recID] = last apply attempt number sent in this Lua state
 local m_BannerRecID = nil           -- record the Apply button applies
 local m_BannerKey = nil             -- "<kind>:<id>" shown now (nil: hidden)
@@ -164,7 +181,7 @@ local function ApplyCodes(store, world, rec)
 	if Won(store) then
 		codes[#codes + 1] = "VICTORY"
 	end
-	if m_Wait ~= nil then
+	if m_Wait ~= nil or m_Save ~= nil then
 		codes[#codes + 1] = "BUSY"
 	end
 	if not TX_Votes.IsLivingMajor(world, rec.targetID) then
@@ -227,14 +244,20 @@ local function RefreshBanner()
 		end
 		local label = TX_UI.Label(rec.targetID)
 		if kind == KIND_RELOAD then
-			Controls.BannerLabel:SetText(L("LOC_TX_BANNER_RELOAD"))
+			if m_Save ~= nil and m_Save.recID == rec.id then
+				Controls.BannerLabel:SetText(L("LOC_TX_BANNER_SAVING"))
+			elseif m_SavedName[rec.id] ~= nil then
+				Controls.BannerLabel:SetText(L("LOC_TX_BANNER_SAVED", m_SavedName[rec.id]))
+			else
+				Controls.BannerLabel:SetText(L("LOC_TX_BANNER_RELOAD"))
+			end
 		elseif kind == KIND_HOST then
 			Controls.BannerLabel:SetText(L("LOC_TX_BANNER_HOST", label))
 		else
 			Controls.BannerLabel:SetText(L("LOC_TX_BANNER_WAIT", label))
 		end
 		m_BannerRecID = rec.id
-		Controls.ApplyButton:SetHide(kind ~= KIND_HOST or m_Wait ~= nil)
+		Controls.ApplyButton:SetHide(kind ~= KIND_HOST or m_Wait ~= nil or m_Save ~= nil)
 		Controls.Banner:SetHide(false)
 	end)
 	if not ok then
@@ -249,7 +272,7 @@ end
 -- ---------------------------------------------------------------------------
 -- Dialogs (PopupDialogInGame, EFV_UnitActions.lua:260-268)
 -- ---------------------------------------------------------------------------
--- One OK button: the reload instruction, the failed and the conflict notes.
+-- One OK button: the saved and reload instructions, the failed and the conflict notes.
 local function Notice(id, titleKey, text)
 	local popup = PopupDialogInGame:new(id)
 	popup:AddTitle(L(titleKey))
@@ -258,8 +281,22 @@ local function Notice(id, titleKey, text)
 	popup:Open()
 end
 
+-- The manual fallback: no kick save was made (or it was not confirmed).
 local function ReloadDialog()
 	Notice("TX_ReloadNow", "LOC_TX_RELOAD_TITLE", L("LOC_TX_RELOAD_TEXT"))
+end
+
+-- The kick save is done: how everyone loads it (hotseat, network MP, single machine).
+local function SavedDialog(name)
+	local text
+	if TX_UI.NetMP() then
+		text = L("LOC_TX_SAVED_TEXT_NETMP", name)
+	elseif TX_UI.Hotseat() then
+		text = L("LOC_TX_SAVED_TEXT_HOTSEAT", name)
+	else
+		text = L("LOC_TX_SAVED_TEXT_LOCAL", name)
+	end
+	Notice("TX_KickSaved", "LOC_TX_SAVED_TITLE", text)
 end
 
 local function FailedDialog()
@@ -271,26 +308,160 @@ local function ConflictDialog()
 end
 
 -- ---------------------------------------------------------------------------
--- SEAM O3: one-click save and reload (PLAN II.9, II.12; research/RELOAD.md 3).
--- AutoReload(rec) -> true when it started a save and reload by itself.
--- Off in 0.1.0: TX_Config.AUTO_RELOAD is false until Session 3b (R, RK)
--- passes, so the players save and load by hand, guided by the reload dialog
--- and the banner. No save or load call exists in TX/ in 0.1.0.
--- TODO(Session 3b): port the TX_Dev R chain here (TX_Dev_Panel.lua:1462-1830:
--- RPrep, RSave = Network.SaveGame and Events.SaveComplete, RQuery =
--- UI.QuerySaveGameList and LuaEvents.FileListQueryResults, RLoad =
--- Network.LeaveGame + Network.LoadGame(entry, ServerType.SERVER_TYPE_NONE)),
--- hotseat only, with its refusals (network MP, not the active turn,
--- UI.HasFeature) and its "load by hand" fallback text. Add the calls to
--- Appendix B and the allowlist first.
+-- Kick save (DEC 2026-10-07; replaces the SEAM O3 one-click reload).
+-- After gameplay confirms WRITTEN, the host's UI saves the game under a clear
+-- name and, on Events.SaveComplete, tells everyone to load that save.
+--
+-- The mod never loads a game. TX_Dev Session 3b (SPIKE_RESULTS.md) tried the
+-- R chain's in-game load of a hotseat game: Network.LeaveGame +
+-- Network.LoadGame(entry, SERVER_TYPE_NONE) reloads it, but as a single
+-- player game (the other humans' turns are skipped); SERVER_TYPE_HOTSEAT
+-- drops to the main menu (the hotseat load only works from the front-end
+-- lobby). Network MP clients have to rejoin by hand in any case. So the
+-- players load the save from the main menu, and TX has no load or leave call
+-- (test_tx_apply.lua asserts it).
+--
+-- Calls, all through TX_UI.TryProbe (PLAN Appendix B; VERIFIED-IN-GAME by the
+-- TX_Dev R / RK save step, Session 3b, three PASS): Network.SaveGame{Name,
+-- Location = SaveLocations.LOCAL_STORAGE, Type =
+-- Network.GetGameConfigurationSaveType(), FileType = SaveFileTypes.GAME_STATE,
+-- IsAutosave = false, IsQuicksave = false} (SaveGameMenu.lua:52-66), then
+-- Events.SaveComplete (Automation_StandardTests.lua:37; in game its arguments
+-- were (0,3,0,0): no file name).
+-- Guard: one SaveComplete is taken, only while a kick save waits, and only
+-- when the turn and the local player are still those of the request, so an
+-- autosave at a turn change cannot pass for ours. A failed call or no
+-- SaveComplete within TX_Config.SAVE_MAX s: the manual reload dialog.
 -- ---------------------------------------------------------------------------
-local function AutoReload(rec)
-	if TX_Config.AUTO_RELOAD ~= true then
-		Log(3, "AutoReload rec=%d: off (SEAM O3), save and load by hand", rec.id)
+local NAME_PART_MAX = 20            -- characters of the target part of the name
+
+-- Letters, digits and underscores only (no spaces or accents in a file name).
+local function SafePart(text)
+	if type(text) ~= "string" then
+		return ""
+	end
+	local out = string.gsub(text, "[^A-Za-z0-9_]", "")
+	return string.sub(out, 1, NAME_PART_MAX)
+end
+
+-- The target's civ short name (e.g. "Rome"), else its leader, else P<id>.
+local function TargetPart(pid)
+	local ok, key = pcall(function() return PlayerConfigurations[pid]:GetCivilizationShortDescription() end)
+	local part = ""
+	if ok then
+		part = SafePart(L(key))
+	end
+	if part == "" then
+		ok, key = pcall(function() return PlayerConfigurations[pid]:GetLeaderName() end)
+		if ok then
+			part = SafePart(L(key))
+		end
+	end
+	if part == "" then
+		part = "P" .. tostring(pid)
+	end
+	return part
+end
+
+-- TeamKick_<target>_T<turn>_<HHMM> (local time, os.date as TX_Dev R and
+-- TopPanel.lua:283), plus _2, _3 when this Lua state already used the name.
+local function SaveName(rec)
+	local base = TX_Config.SAVE_PREFIX .. "_" .. TargetPart(rec.targetID) .. "_T" .. tostring(TX_UI.Turn())
+	local ok, stamp = pcall(function() return os.date("%H%M") end)
+	if ok and type(stamp) == "string" and string.match(stamp, "^%d%d%d%d$") ~= nil then
+		base = base .. "_" .. stamp
+	end
+	local name, n = base, 1
+	while m_UsedNames[name] do
+		n = n + 1
+		name = base .. "_" .. n
+	end
+	m_UsedNames[name] = true
+	return name
+end
+
+local function ArgsText(...)
+	local parts = {}
+	for i = 1, select("#", ...) do
+		parts[i] = Str((select(i, ...)))
+	end
+	return table.concat(parts, ",")
+end
+
+-- The save did not happen or is not confirmed: log it, the manual dialog.
+local function SaveFailed(s, why)
+	Log(1, "kick save rec=%d %s: %s; asking for a manual save and reload", s.recID, s.name, why)
+	ReloadDialog()
+	RefreshBanner()
+end
+
+-- Events.SaveComplete(...): ours only while a kick save waits (see the guard).
+local function OnSaveComplete(...)
+	local args = ArgsText(...)
+	local s = m_Save
+	if s == nil then
+		Log(3, "Events.SaveComplete (%s): no kick save waits, ignored", args)
+		return
+	end
+	m_Save = nil
+	if TX_UI.Turn() ~= s.turn or TX_UI.Local() ~= s.localID then
+		SaveFailed(s, "Events.SaveComplete (" .. args .. ") came after a turn or player change, so it may not be ours")
+		return
+	end
+	m_SavedName[s.recID] = s.name
+	Log(2, "kick save rec=%d: saved as %s (Events.SaveComplete %s)", s.recID, s.name, args)
+	SavedDialog(s.name)
+	RefreshBanner()
+end
+
+-- StartSave(rec) -> true when the save was requested (the dialog follows on
+-- SaveComplete or the timeout); false: nothing saved, the caller shows the
+-- manual reload dialog.
+local function StartSave(rec)
+	if not TX_UI.IsHost() then
+		Log(2, "kick save rec=%d: not the host, no save here", rec.id)
 		return false
 	end
-	Log(2, "AutoReload rec=%d: AUTO_RELOAD is on but the R chain is not ported yet; save and load by hand", rec.id)
-	return false
+	if m_Save ~= nil then
+		Log(1, "kick save rec=%d: the save of rec=%d still runs", rec.id, m_Save.recID)
+		return false
+	end
+	if not m_SaveListening then
+		Log(1, "kick save rec=%d: no Events.SaveComplete listener; asking for a manual save and reload", rec.id)
+		return false
+	end
+	local name = SaveName(rec)
+	local okFile, file = TX_UI.TryProbe("UI kick save file", function()
+		return { Name = name, Location = SaveLocations.LOCAL_STORAGE, Type = Network.GetGameConfigurationSaveType(),
+			FileType = SaveFileTypes.GAME_STATE, IsAutosave = false, IsQuicksave = false }
+	end)
+	if not okFile or type(file) ~= "table" or file.Location == nil or file.Type == nil or file.FileType == nil then
+		Log(1, "kick save rec=%d %s: no save file shape (%s); asking for a manual save and reload", rec.id, name, Str(file))
+		return false
+	end
+	-- Set before the call: a SaveComplete fired from inside it still finds the wait.
+	m_Save = { recID = rec.id, name = name, elapsed = 0, turn = TX_UI.Turn(), localID = TX_UI.Local() }
+	Log(2, "kick save rec=%d: Network.SaveGame{Name=%s, Location=%s, Type=%s, FileType=%s}; waiting for Events.SaveComplete (%s s)",
+		rec.id, name, Str(file.Location), Str(file.Type), Str(file.FileType), Str(TX_Config.SAVE_MAX))
+	local okSave = TX_UI.TryProbe("UI Network.SaveGame", function() Network.SaveGame(file) end)
+	if not okSave then
+		m_Save = nil
+		Log(1, "kick save rec=%d %s: Network.SaveGame failed; asking for a manual save and reload", rec.id, name)
+		return false
+	end
+	return true
+end
+
+local function TickSave(dt)
+	local s = m_Save
+	if s == nil then
+		return
+	end
+	s.elapsed = s.elapsed + dt
+	if s.elapsed > TX_Config.SAVE_MAX then
+		m_Save = nil
+		SaveFailed(s, "no Events.SaveComplete within " .. tostring(TX_Config.SAVE_MAX) .. " s")
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -355,10 +526,9 @@ end
 local function Answered(w)
 	m_Wait = nil
 	local rec = TX_Store.Get(TX_UI.ReadStore(), w.recID)
-	Log(2, "apply rec=%d confirmed by gameplay: P%d reads team %d; save and reload now", w.recID, w.target, w.newTeam)
-	ReloadDialog()
-	if rec ~= nil then
-		AutoReload(rec)
+	Log(2, "apply rec=%d confirmed by gameplay: P%d reads team %d; saving the game", w.recID, w.target, w.newTeam)
+	if rec == nil or not StartSave(rec) then
+		ReloadDialog()
 	end
 	RefreshBanner()
 end
@@ -602,6 +772,7 @@ end
 local function OnUpdate(fDTime)
 	local dt = tonumber(fDTime) or 0
 	TickWait(dt)
+	TickSave(dt)
 	m_PollElapsed = m_PollElapsed + dt
 	if m_PollElapsed < POLL_SECONDS or not m_ViewReady then
 		return
@@ -644,8 +815,8 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Initialize(): contexts load HIDDEN (PB 3), so the context is shown here;
--- the banner state is the Banner control. The update handler runs the wait
--- and the poll (one handler per context).
+-- the banner state is the Banner control. The update handler runs the wait,
+-- the kick save timeout and the poll (one handler per context).
 -- ---------------------------------------------------------------------------
 local function Initialize()
 	ContextPtr:SetHide(false)
@@ -654,6 +825,7 @@ local function Initialize()
 	Controls.ApplyButton:RegisterCallback(Mouse.eLClick, OnApplyClicked)
 	Controls.BannerButton:RegisterCallback(Mouse.eLClick, OnBannerClicked)
 	ContextPtr:SetUpdate(OnUpdate)
+	m_SaveListening = TX_UI.TryProbe("UI Events.SaveComplete.Add", function() Events.SaveComplete.Add(OnSaveComplete) end)
 	Events.LoadGameViewStateDone.Add(OnLoadGameViewStateDone)
 	Events.PlayerTurnActivated.Add(OnPlayerTurnActivated)
 	Events.LocalPlayerChanged.Add(OnLocalPlayerChanged)

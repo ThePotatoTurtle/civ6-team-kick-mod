@@ -1,6 +1,6 @@
 # Team Kick: hotseat test (Session 4)
 
-Team Kick 0.1.0 (`TX`), first test of the real mod. Two short new games, hotseat, about 25 minutes. Only load the saves you make in this session.
+Team Kick 0.1.0 (`TX`), first test of the real mod. Two short new games, hotseat, about 25 minutes. Only load the saves made in this session. Load them from the main menu (Multiplayer > Hotseat > Load Game), never from the in-game menu: that makes a hotseat game single player.
 
 P0, P1, P2 are the hotseat players in slot order (Player 1, Player 2, Player 3). A "turn" below means everyone ends their turn once.
 
@@ -28,9 +28,11 @@ Setup: Hotseat, GS rules, Tiny, Quick, fewest city-states. P0, P1, P2 human, P3 
    - Expect: no vote. A "Kicked off a team" notification that says "soft kick", and a banner at the top with an Apply button.
    - Result:
 5. As P2: Apply, then Yes.
-   - Expect: a "Save and reload now" popup with the steps. The banner now says to save and reload.
+   - Expect: the game saves itself (the banner says "Saving the game..." for a moment). Then a "Load the save to finish the kick" popup: "Saved as TeamKick_<P3's civ>_T<turn>_<time>" and the hotseat steps. Write the name down. The banner says "Kick applied and saved as" that name.
+   - If you get "Save and reload now" instead, the automatic save failed: write that down, save by hand as `TX4_a`, and load that in step 6.
+   - Lua.log: `[UIApply] kick save rec=1: saved as TeamKick_...`, no ERROR.
    - Result:
-6. Menu > Save Game as `TX4_a`. Menu > Load Game, load `TX4_a`.
+6. Menu > Exit to Main Menu. Main Menu > Multiplayer > Hotseat > Load Game, load the TeamKick save from step 5.
    - Expect: no error popups, a normal leader ribbon. A "Team changed" notification that says P3 stays allied. No war or peace notification. The banner is gone. P0 and P1 still have the Team button, P2 doesn't. Diplomacy screen: P2 and P3 still allied.
    - Result:
 
@@ -60,9 +62,10 @@ New game. Setup: Hotseat, GS rules, Tiny, Quick, fewest city-states. P0, P1, P2 
     - Expect: P2's notification, popup and window say "hard kick". Then a "Kicked off a team" notification that says "hard kick", and the banner with Apply.
     - Result:
 14. As P2: Apply, then Yes.
-    - Expect: the confirm says it's a hard kick (war and peace right after the reload). Then the "Save and reload now" popup. The banner says to save and reload.
+    - Expect: the confirm says it's a hard kick (war and peace right after the reload). Then the game saves itself and the "Load the save to finish the kick" popup names the save (TeamKick_<P1's civ>_T<turn>_<time>). Write the name down. The banner names it too.
+    - If you get "Save and reload now" instead: write that down, save by hand as `TX4_kick`, and load that in step 15.
     - Result:
-15. Menu > Save Game as `TX4_kick`. Menu > Load Game, load `TX4_kick`. Play each player's turn.
+15. Menu > Exit to Main Menu. Main Menu > Multiplayer > Hotseat > Load Game, load the TeamKick save from step 14. Play each player's turn.
     - Expect: no error popups, a normal ribbon. Right after the load: P1 declares war on P0 and P2 and makes peace at once (base-game war and peace notifications), then a "Hard kick" notification for P0, P1 and P2 saying the alliance has been ended. No "Team changed". No banner. P1 has no Team button. P0's window lists P0 and P2, and history says P1 was kicked (hard kick). World Rankings shows P1 apart. Diplomacy screen: P1 is not allied with P0 or P2, and P0 and P2 hold the grievances against P1 (not the other way round).
     - Lua.log: `[Apply] HARD rec=` lines, one war and one peace step per teammate or "already at war", and `done`, no ERROR.
     - Result:

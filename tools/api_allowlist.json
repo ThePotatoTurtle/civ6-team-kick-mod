@@ -907,34 +907,30 @@
   "SaveLocations": {
    "ctx": {
     "UI": {
-     "level": "L",
+     "level": "C",
      "tests": []
     }
    },
    "refs": [
     "BASE24 UI/InGame.lua:194 and Menus/SaveGameMenu.lua:57 (gameFile.Location = SaveLocations.LOCAL_STORAGE, in-game UI)",
-    "BASE24 UI/FrontEnd/LoadSaveMenu_Shared.lua:1060 (UI.QuerySaveGameList(saveLocation, ...)); research/RELOAD.md 2"
+    "BASE24 UI/FrontEnd/LoadSaveMenu_Shared.lua:1060 (UI.QuerySaveGameList(saveLocation, ...)); research/RELOAD.md 2",
+    "upload 04552dda-Lua.log:3393-3394 and 3892-3893, 47e5b983-Lua.log:663-664 (TX_Dev R-UI.save / RK-UI.save PASS, Session 3b hotseat: Network.SaveGame{Name=TX_autoreload_<stamp>, Location=1, Type=3, FileType=0}, then Events.SaveComplete args=(0,3,0,0))"
    ],
-   "note": "TX_Dev 0.0.1.4 R reload chain: root of the probe resolver only, read as '=<NAME>' through TX_Probe.",
-   "only_paths": [
-    "TX_Dev/"
-   ],
+   "note": "TX_Dev 0.0.1.4 R reload chain: root of the probe resolver only, read as '=<NAME>' through TX_Probe. Team Kick 0.1.0: the kick save file (TX_ApplyBanner StartSave, DEC 2026-10-07).",
    "source": "TX"
   },
   "SaveFileTypes": {
    "ctx": {
     "UI": {
-     "level": "L",
+     "level": "C",
      "tests": []
     }
    },
    "refs": [
-    "BASE24 UI/FrontEnd/LoadSaveMenu_Shared.lua:331 (g_FileType = SaveFileTypes.GAME_STATE); Menus/SaveGameMenu.lua:64 (gameFile.FileType); research/RELOAD.md 2"
+    "BASE24 UI/FrontEnd/LoadSaveMenu_Shared.lua:331 (g_FileType = SaveFileTypes.GAME_STATE); Menus/SaveGameMenu.lua:64 (gameFile.FileType); research/RELOAD.md 2",
+    "upload 04552dda-Lua.log:3393-3394 and 3892-3893, 47e5b983-Lua.log:663-664 (TX_Dev R-UI.save / RK-UI.save PASS, Session 3b hotseat: Network.SaveGame{Name=TX_autoreload_<stamp>, Location=1, Type=3, FileType=0}, then Events.SaveComplete args=(0,3,0,0))"
    ],
-   "note": "TX_Dev 0.0.1.4 R reload chain: root of the probe resolver only, read as '=<NAME>' through TX_Probe.",
-   "only_paths": [
-    "TX_Dev/"
-   ],
+   "note": "TX_Dev 0.0.1.4 R reload chain: root of the probe resolver only, read as '=<NAME>' through TX_Probe. Team Kick 0.1.0: the kick save file (TX_ApplyBanner StartSave, DEC 2026-10-07).",
    "source": "TX"
   },
   "SaveLocationOptions": {
@@ -2334,17 +2330,15 @@
   "GameConfiguration.IsHotseat": {
    "ctx": {
     "UI": {
-     "level": "L",
+     "level": "C",
      "tests": []
     }
    },
    "refs": [
-    "R E: EndGameMenu.lua:257 (BASE24 UI, one of 66 shipped UI uses)"
+    "R E: EndGameMenu.lua:257 (BASE24 UI, one of 66 shipped UI uses)",
+    "upload 04552dda-Lua.log:750, 761 (TX_Dev UI snapshot hotseat=1, Session 3b hotseat)"
    ],
-   "note": "TX_Dev Machine() and the arm's hotseat flag.",
-   "only_paths": [
-    "TX_Dev/"
-   ],
+   "note": "TX_Dev Machine() and the arm's hotseat flag. Team Kick 0.1.0: TX_UI.Hotseat picks the kick save dialog's wording (DEC 2026-10-07).",
    "source": "TX"
   },
   "Game.GetWinningTeam": {
@@ -2436,6 +2430,66 @@
     "LocalPlayerActionSupport.lua:28, 39 (BASE24 UI)"
    ],
    "note": "Team Expulsion 0.1.0 (PLAN II.15, Appendix B). TX_UI.NetMP: the untested network MP warning (seam O4).",
+   "source": "TX"
+  },
+  "Network.SaveGame": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "upload 04552dda-Lua.log:3393-3394 and 3892-3893, 47e5b983-Lua.log:663-664 (TX_Dev R-UI.save / RK-UI.save PASS, Session 3b hotseat: Network.SaveGame{Name=TX_autoreload_<stamp>, Location=1, Type=3, FileType=0}, then Events.SaveComplete args=(0,3,0,0))",
+    "SPIKE_RESULTS.md Session 3b results ('The save part works (SaveGame + SaveComplete PASS every time)')",
+    "BASE24 UI/Menus/SaveGameMenu.lua:52-66, InGame.lua:189-201 (in-game UI); research/RELOAD.md 2"
+   ],
+   "note": "Team Kick 0.1.0 kick save (DEC 2026-10-07, PLAN Appendix B): TX_ApplyBanner StartSave on the host after gameplay confirms WRITTEN, through TX_UI.TryProbe.",
+   "source": "TX"
+  },
+  "Network.GetGameConfigurationSaveType": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "upload 04552dda-Lua.log:3393-3394 and 3892-3893, 47e5b983-Lua.log:663-664 (TX_Dev R-UI.save / RK-UI.save PASS, Session 3b hotseat: Network.SaveGame{Name=TX_autoreload_<stamp>, Location=1, Type=3, FileType=0}, then Events.SaveComplete args=(0,3,0,0))",
+    "SPIKE_RESULTS.md Session 3b results ('The save part works (SaveGame + SaveComplete PASS every time)')",
+    "BASE24 UI/FrontEnd/LoadSaveMenu_Shared.lua:318-331, InGame.lua:195"
+   ],
+   "note": "Team Kick 0.1.0 kick save (DEC 2026-10-07, PLAN Appendix B): TX_ApplyBanner StartSave on the host after gameplay confirms WRITTEN, through TX_UI.TryProbe. The save file's Type.",
+   "source": "TX"
+  },
+  "SaveLocations.LOCAL_STORAGE": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "upload 04552dda-Lua.log:3393-3394 and 3892-3893, 47e5b983-Lua.log:663-664 (TX_Dev R-UI.save / RK-UI.save PASS, Session 3b hotseat: Network.SaveGame{Name=TX_autoreload_<stamp>, Location=1, Type=3, FileType=0}, then Events.SaveComplete args=(0,3,0,0))",
+    "SPIKE_RESULTS.md Session 3b results ('The save part works (SaveGame + SaveComplete PASS every time)')",
+    "BASE24 UI/InGame.lua:194, Menus/SaveGameMenu.lua:57"
+   ],
+   "note": "Team Kick 0.1.0 kick save (DEC 2026-10-07, PLAN Appendix B): TX_ApplyBanner StartSave on the host after gameplay confirms WRITTEN, through TX_UI.TryProbe. The save file's Location.",
+   "source": "TX"
+  },
+  "SaveFileTypes.GAME_STATE": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "upload 04552dda-Lua.log:3393-3394 and 3892-3893, 47e5b983-Lua.log:663-664 (TX_Dev R-UI.save / RK-UI.save PASS, Session 3b hotseat: Network.SaveGame{Name=TX_autoreload_<stamp>, Location=1, Type=3, FileType=0}, then Events.SaveComplete args=(0,3,0,0))",
+    "SPIKE_RESULTS.md Session 3b results ('The save part works (SaveGame + SaveComplete PASS every time)')",
+    "BASE24 UI/FrontEnd/LoadSaveMenu_Shared.lua:331, Menus/SaveGameMenu.lua:64"
+   ],
+   "note": "Team Kick 0.1.0 kick save (DEC 2026-10-07, PLAN Appendix B): TX_ApplyBanner StartSave on the host after gameplay confirms WRITTEN, through TX_UI.TryProbe. The save file's FileType.",
    "source": "TX"
   }
  },
@@ -4853,6 +4907,21 @@
     "BASE24 NotificationPanel.lua:1102-1108, 1637, 1859; R C"
    ],
    "note": "Team Expulsion 0.1.0 (PLAN II.15, Appendix B). Vote popup and Apply from a notification click. PROBE for a custom type on the default handler (fallback: Team window, Vote button); Session 4 step 4.",
+   "source": "TX"
+  },
+  "Events.SaveComplete": {
+   "ctx": {
+    "UI": {
+     "level": "C",
+     "tests": []
+    }
+   },
+   "refs": [
+    "upload 04552dda-Lua.log:3393-3394 and 3892-3893, 47e5b983-Lua.log:663-664 (TX_Dev R-UI.save / RK-UI.save PASS, Session 3b hotseat: Network.SaveGame{Name=TX_autoreload_<stamp>, Location=1, Type=3, FileType=0}, then Events.SaveComplete args=(0,3,0,0))",
+    "SPIKE_RESULTS.md Session 3b results ('The save part works (SaveGame + SaveComplete PASS every time)')",
+    "BASE24 Automation/Automation_StandardTests.lua:24-37 ('Saves are not immediate, wait for the completion event')"
+   ],
+   "note": "Team Kick 0.1.0 kick save (DEC 2026-10-07, PLAN Appendix B): TX_ApplyBanner StartSave on the host after gameplay confirms WRITTEN, through TX_UI.TryProbe. Taken only while a kick save waits, same turn and local player; no file name in the arguments.",
    "source": "TX"
   }
  },

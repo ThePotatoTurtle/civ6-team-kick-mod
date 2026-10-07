@@ -211,13 +211,19 @@
 
 		<!-- Apply banner and dialogs (apply seam, PLAN II.11c) -->
 		<Row Tag="LOC_TX_BANNER_HOST" Language="en_US">
-			<Text>The kick of {1_Player} passed. Apply it, then save and reload.</Text>
+			<Text>The kick of {1_Player} passed. Apply it, then everyone loads the save it makes.</Text>
 		</Row>
 		<Row Tag="LOC_TX_BANNER_WAIT" Language="en_US">
 			<Text>The kick of {1_Player} passed. Waiting for the host to apply it.</Text>
 		</Row>
 		<Row Tag="LOC_TX_BANNER_RELOAD" Language="en_US">
-			<Text>Kick applied. Save and reload the game now, and don't click leader portraits until then.</Text>
+			<Text>Kick applied. Everyone loads the save made for it (the host has its name; if there is none, save and reload). Don't click leader portraits until then.</Text>
+		</Row>
+		<Row Tag="LOC_TX_BANNER_SAVING" Language="en_US">
+			<Text>Kick applied. Saving the game...</Text>
+		</Row>
+		<Row Tag="LOC_TX_BANNER_SAVED" Language="en_US">
+			<Text>Kick applied and saved as {1_Name}. Everyone loads this save to finish it. Don't click leader portraits until then.</Text>
 		</Row>
 		<Row Tag="LOC_TX_APPLY_BUTTON" Language="en_US">
 			<Text>Apply</Text>
@@ -226,10 +232,10 @@
 			<Text>Apply the kick</Text>
 		</Row>
 		<Row Tag="LOC_TX_APPLY_CONFIRM" Language="en_US">
-			<Text>Move {1_Player} to a team of their own now?[NEWLINE][NEWLINE]Right after this, save the game and load that save. Civ VI only shows the new teams after a reload.</Text>
+			<Text>Move {1_Player} to a team of their own now?[NEWLINE][NEWLINE]Right after this the game saves itself, and everyone loads that save. Civ VI only shows the new teams after a reload.</Text>
 		</Row>
 		<Row Tag="LOC_TX_APPLY_CONFIRM_NETMP" Language="en_US">
-			<Text>[NEWLINE][NEWLINE][COLOR:Red]Network multiplayer isn't tested yet.[ENDCOLOR] After saving, everyone exits to the main menu, the host loads the save from Multiplayer > Host Game > Load Game, and the others rejoin.</Text>
+			<Text>[NEWLINE][NEWLINE][COLOR:Red]Network multiplayer isn't tested yet.[ENDCOLOR] After the save, everyone exits to the main menu, the host loads it from Multiplayer > Host Game > Load Game, and the others rejoin.</Text>
 		</Row>
 		<Row Tag="LOC_TX_APPLY_CONFIRM_HARD" Language="en_US">
 			<Text>[NEWLINE][NEWLINE]This is a hard kick. Right after the reload they declare war on their old team and make peace at once, which ends the alliance.</Text>
@@ -238,7 +244,19 @@
 			<Text>Save and reload now</Text>
 		</Row>
 		<Row Tag="LOC_TX_RELOAD_TEXT" Language="en_US">
-			<Text>The kick is applied. Now:[NEWLINE]1. Menu > Save Game, under a new name.[NEWLINE]2. Menu > Load Game, and load that save.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
+			<Text>The kick is applied, but the game couldn't save itself. Now:[NEWLINE]1. Menu > Save Game, under a new name.[NEWLINE]2. Exit to the main menu and load that save: Multiplayer > Hotseat > Load Game (online: Host Game > Load Game, then everyone rejoins). Loading from the in-game menu makes a hotseat game single player.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
+		</Row>
+		<Row Tag="LOC_TX_SAVED_TITLE" Language="en_US">
+			<Text>Load the save to finish the kick</Text>
+		</Row>
+		<Row Tag="LOC_TX_SAVED_TEXT_HOTSEAT" Language="en_US">
+			<Text>Saved as {1_Name}.[NEWLINE][NEWLINE]To finish the kick, everyone loads this save: Main Menu > Multiplayer > Hotseat > Load Game. Don't use Load Game in the in-game menu: that makes a hotseat game single player.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
+		</Row>
+		<Row Tag="LOC_TX_SAVED_TEXT_NETMP" Language="en_US">
+			<Text>Saved as {1_Name}.[NEWLINE][NEWLINE]To finish the kick, everyone loads this save: everyone exits to the main menu, the host loads it from Multiplayer > Host Game > Load Game, then everyone rejoins.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
+		</Row>
+		<Row Tag="LOC_TX_SAVED_TEXT_LOCAL" Language="en_US">
+			<Text>Saved as {1_Name}.[NEWLINE][NEWLINE]To finish the kick, load this save: Menu > Load Game.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
 		</Row>
 		<Row Tag="LOC_TX_APPLY_FAILED_TITLE" Language="en_US">
 			<Text>Kick not applied</Text>

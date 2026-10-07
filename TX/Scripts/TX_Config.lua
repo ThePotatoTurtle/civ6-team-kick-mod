@@ -95,6 +95,11 @@ TX_Config.WAIT_MAX = 5
 
 -- Seams (PLAN II.12). No final behaviour in 0.1.0.
 TX_Config.ALLOW_NETWORK_APPLY = true    -- SEAM O4: the host may apply in network MP (untested warning)
-TX_Config.AUTO_RELOAD = false           -- SEAM O3: one-click save and reload (Session 3b)
+-- Kick save (DEC 2026-10-07, replaces SEAM O3): after gameplay confirms the
+-- apply, the host's UI saves as <SAVE_PREFIX>_<target>_T<turn>_<HHMM> and
+-- waits up to SAVE_MAX s for Events.SaveComplete. The mod never loads a game
+-- (TX_ApplyBanner.lua "Kick save" says why).
+TX_Config.SAVE_PREFIX = "TeamKick"
+TX_Config.SAVE_MAX = 10
 
 TX_Config.LOADED = 1

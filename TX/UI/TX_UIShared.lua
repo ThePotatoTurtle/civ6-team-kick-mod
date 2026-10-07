@@ -27,8 +27,9 @@
 --   TX_UI.PortraitIcon(pid)   "ICON_" .. GetLeaderTypeName() (DiplomacyRibbon.lua:219).
 --   TX_UI.Request(onStart, params)  EFV_UIShared.lua:576-610.
 --   TX_UI.ReasonText(codes)   LOC_TX_REASON_<code> lines.
---   TX_UI.IsHost(), TX_UI.NetMP()   Network.IsGameHost(),
---                             GameConfiguration.IsNetworkMultiplayer() in pcall.
+--   TX_UI.IsHost(), TX_UI.NetMP(), TX_UI.Hotseat()   Network.IsGameHost(),
+--                             GameConfiguration.IsNetworkMultiplayer(),
+--                             GameConfiguration.IsHotseat() in pcall.
 --   TX_UI.Hash(typeName)      GameInfo.Types[typeName].Hash.
 --   TX_UI.Sweep(localID, typeName, keep)  EFV SweepStale (EFV_Tracker.lua:564-622).
 --   TX_UI.TryProbe(label, fn) logged pcall wrapper for PROBE calls.
@@ -43,7 +44,8 @@
 -- Locale.Lookup (C), GameInfo.Types (C), NotificationManager.GetList / Find /
 -- Dismiss, :GetType / :GetValue (C, EFV U15, T21: Dismiss is deferred),
 -- UI.RequestPlayerOperation with PlayerOperations.EXECUTE_SCRIPT (C, EFV U01),
--- Network.IsGameHost (C, LOG:1136), GameConfiguration.IsNetworkMultiplayer (C).
+-- Network.IsGameHost (C, LOG:1136), GameConfiguration.IsNetworkMultiplayer (C),
+-- GameConfiguration.IsHotseat (C, TX_Dev UI snapshots, Session 3b hotseat=1).
 -- MP: the UI never writes state; no pairs() (TX_Util.SortedKeys only).
 -- ===========================================================================
 
@@ -321,6 +323,12 @@ end
 
 function TX_UI.NetMP()
 	local ok, v = pcall(function() return GameConfiguration.IsNetworkMultiplayer() end)
+	return ok and v == true
+end
+
+-- GameConfiguration.IsHotseat() in pcall (the kick save dialog's wording).
+function TX_UI.Hotseat()
+	local ok, v = pcall(function() return GameConfiguration.IsHotseat() end)
 	return ok and v == true
 end
 
