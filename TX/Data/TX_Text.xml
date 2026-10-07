@@ -4,7 +4,7 @@
      Team Kick 0.1.0, PLAN II.13. Every in-game string of the mod.
      Draft wording: Leon reviews it in Session 4 (PLAN II.17).
      Format as EFV/Data/EFV_Text.xml: <Row Tag="LOC_TX_..." Language="en_US">.
-     Plurals: {n_Num : plural 1?1 turn; other?# turns;} (base-game syntax).
+     Plurals: {n_Num} {n_Num : plural 1?turn; other?turns;}. The game does not replace # in plural forms (Session 4: "# turns left").
 
      NOT here: LOC_TX_MOD_TITLE / _TEASER / _DESCRIPTION live in the
      TX.modinfo <LocalizedText> block (mod browser, PB 3 "Data").
@@ -94,7 +94,7 @@
 			<Text>Kick a teammate</Text>
 		</Row>
 		<Row Tag="LOC_TX_CONFIRM_VOTE" Language="en_US">
-			<Text>Start a vote to kick {1_Player} off your team? Every other human teammate has to vote yes within {2_Num : plural 1?1 turn; other?# turns;}. One no vote ends it.</Text>
+			<Text>Start a vote to kick {1_Player} off your team? Every other human teammate has to vote yes within {2_Num} {2_Num : plural 1?turn; other?turns;}. One no vote ends it.</Text>
 		</Row>
 		<Row Tag="LOC_TX_CONFIRM_DISSOLVE" Language="en_US">
 			<Text>This dissolves your team right away. {1_Player} will no longer share victory with you.</Text>
@@ -103,7 +103,7 @@
 			<Text>Your other teammates are AI and don't vote, so this passes right away. {1_Player} will no longer share victory with your team.</Text>
 		</Row>
 		<Row Tag="LOC_TX_CONFIRM_AFTER" Language="en_US">
-			<Text>Once it passes, the host applies it and the game has to be saved and reloaded.</Text>
+			<Text>Once it passes, the host applies it and the game saves itself.</Text>
 		</Row>
 		<!-- Kick modes (DEC 2026-10-04): the proposer picks one in the confirm dialog -->
 		<Row Tag="LOC_TX_MODE_SOFT" Language="en_US">
@@ -133,7 +133,7 @@
 
 		<!-- Open vote section -->
 		<Row Tag="LOC_TX_VOTE_LINE" Language="en_US">
-			<Text>{1_Player} wants to kick {2_Player} ({4_Mode}). {3_Num : plural 1?1 turn; other?# turns;} left.</Text>
+			<Text>{1_Player} wants to kick {2_Player} ({4_Mode}). {3_Num} {3_Num : plural 1?turn; other?turns;} left.</Text>
 		</Row>
 		<Row Tag="LOC_TX_VOTER_PROPOSER" Language="en_US">
 			<Text>{1_Player}: started the vote</Text>
@@ -197,7 +197,7 @@
 			<Text>Team vote</Text>
 		</Row>
 		<Row Tag="LOC_TX_POPUP_TEXT" Language="en_US">
-			<Text>{1_Player} wants to kick {2_Player} off your team.[NEWLINE][NEWLINE]{4_Mode}[NEWLINE][NEWLINE]Every other human teammate has to vote yes. One no vote ends it. {3_Num : plural 1?1 turn; other?# turns;} left.</Text>
+			<Text>{1_Player} wants to kick {2_Player} off your team.[NEWLINE][NEWLINE]{4_Mode}[NEWLINE][NEWLINE]Every other human teammate has to vote yes. {3_Num} {3_Num : plural 1?turn; other?turns;} left.</Text>
 		</Row>
 		<Row Tag="LOC_TX_POPUP_YES" Language="en_US">
 			<Text>Yes, kick them</Text>
@@ -282,7 +282,7 @@
 			<Text>Team vote</Text>
 		</Row>
 		<Row Tag="LOC_NOTIFICATION_TX_VOTE_REQUIRED_SUMMARY" Language="en_US">
-			<Text>{1_Player} wants to kick {2_Player} off your team ({4_Mode}). Vote within {3_Num : plural 1?1 turn; other?# turns;}.</Text>
+			<Text>{1_Player} wants to kick {2_Player} off your team ({4_Mode}). Vote within {3_Num} {3_Num : plural 1?turn; other?turns;}.</Text>
 		</Row>
 		<Row Tag="LOC_NOTIFICATION_TX_KICK_PASSED_MESSAGE" Language="en_US">
 			<Text>Kicked off a team</Text>

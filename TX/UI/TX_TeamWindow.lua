@@ -333,7 +333,7 @@ local function ConfirmText(world, me, targetID)
 	for _, mode in ipairs(TX_Votes.Modes()) do
 		modes[#modes + 1] = TX_UI.ModeLine(mode)
 	end
-	return text .. "[NEWLINE][NEWLINE]" .. table.concat(modes, "[NEWLINE]") .. "[NEWLINE][NEWLINE]" .. L("LOC_TX_CONFIRM_AFTER"), kind
+	return text .. "[NEWLINE][NEWLINE]" .. table.concat(modes, "[NEWLINE][NEWLINE]") .. "[NEWLINE][NEWLINE]" .. L("LOC_TX_CONFIRM_AFTER"), kind
 end
 
 -- OnKickClicked(targetID): re-check for the display, then PopupDialogInGame
@@ -376,6 +376,10 @@ local function OnKickClicked(targetID)
 			popup:AddCustomButton(L("LOC_TX_MODE_HARD"), function() Send(TX_Config.MODE.HARD) end)
 		end)
 	end
+	-- Session 4: three buttons in one row ran past the dialog. Base PopupDialog puts
+	-- buttons that follow each other in one row and starts a new row after a text
+	-- (PopupDialog.lua:159, 183-190), so an empty text puts Cancel on its own row.
+	popup:AddText("")
 	popup:AddCancelButton(L("LOC_TX_CANCEL"), nil)
 	popup:Open()
 end

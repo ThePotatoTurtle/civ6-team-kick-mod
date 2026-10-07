@@ -74,7 +74,7 @@
 	<!-- Launch bar button (built into /InGame/LaunchBar/ButtonStack); EFV_Tracker.xml:118-127 -->
 	<Instance Name="TX_LaunchBarItem">
 		<Button ID="LaunchItemButton" Anchor="L,C" Size="49,49" Texture="LaunchBar_Hook_GreatPeopleButton" Style="ButtonNormalText" TextureOffset="0,-1" StateOffsetIncrement="0,49" ToolTip="LOC_TX_LAUNCH_TT">
-			<Label ID="LaunchItemLabel" Anchor="C,C" Offset="0,1" Style="FontNormal12" Color="255,230,160,255" String="LOC_TX_LAUNCH_LABEL"/>
+			<Label ID="LaunchItemLabel" Anchor="C,C" Offset="0,1" Style="FontNormal10" Color="255,230,160,255" String="LOC_TX_LAUNCH_LABEL"/>
 			<Label ID="AlertIndicator" String="[ICON_New]" Anchor="R,T" AnchorSide="O,O" Offset="-18,-18" Hidden="1"/>
 		</Button>
 	</Instance>

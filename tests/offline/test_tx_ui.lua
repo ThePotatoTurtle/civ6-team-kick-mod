@@ -50,7 +50,7 @@ local function ModeLines(hard)
 	if hard ~= false then
 		lines[2] = T("LOC_TX_MODE_LINE", T("LOC_TX_MODE_HARD"), T("LOC_TX_MODE_HARD_INFO"))
 	end
-	return "[NEWLINE][NEWLINE]" .. table.concat(lines, "[NEWLINE]") .. "[NEWLINE][NEWLINE]"
+	return "[NEWLINE][NEWLINE]" .. table.concat(lines, "[NEWLINE][NEWLINE]") .. "[NEWLINE][NEWLINE]"
 end
 local function Has(s, sub) return type(s) == "string" and string.find(s, sub, 1, true) ~= nil end
 
@@ -121,7 +121,16 @@ local function PopupOpen()
 	return not Pop().Controls.PopupRoot:IsHidden() and FAKE_UI.queued[Pop().ContextPtr] == true
 end
 local function LastDialog() return FAKE_UI.popups[#FAKE_UI.popups] end
-local function DialogText(d) return table.concat(d.texts, "|") end
+-- Empty texts are layout only (the kick confirm puts Cancel on its own row with one).
+local function DialogText(d)
+	local out = {}
+	for _, s in ipairs(d.texts) do
+		if s ~= "" then
+			out[#out + 1] = s
+		end
+	end
+	return table.concat(out, "|")
+end
 
 local function Kick(pid)
 	local row = MemberRow(pid)
@@ -251,6 +260,7 @@ test("ui 4: Kick confirm VOTE (team of 3): title, text with the label and 5 turn
 	H.eq(d.title, T("LOC_TX_CONFIRM_TITLE"))
 	H.eq(DialogText(d), "VOTE " .. Label(1) .. "|5" .. ModeLines() .. T("LOC_TX_CONFIRM_AFTER"))
 	H.notnil(d.confirm, "Soft kick button")
+	H.eq(d.texts[#d.texts], "", "an empty text last, so Cancel gets its own row (Session 4 layout)")
 	H.eq(d.confirmLabel, "Soft kick", "the default (confirm) button is Soft")
 	H.len(d.buttons, 1, "one more choice")
 	H.eq(d.buttons[1].label, "Hard kick")
