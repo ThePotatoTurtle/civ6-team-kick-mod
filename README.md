@@ -43,7 +43,6 @@ Copy the `TX` folder into `Documents\My Games\Sid Meier's Civilization VI\Mods`,
 - `TX_Dev`: dev tools used to test whether the mod was possible at all. Never enable them in a real game.
 - `tools`: install script, static checks and a log summarizer.
 - `tests/offline`: tests that run the mod's scripts against a fake game engine.
-- `docs/TESTING.md`: the in-game test steps.
 
 ## Changelog
 

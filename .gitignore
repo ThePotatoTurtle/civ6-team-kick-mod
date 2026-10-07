@@ -1,4 +1,5 @@
-# Internal design and research docs (not public)
+# Internal design, research and test docs (not public). All docs live in docs/.
+docs/
 PLAN.md
 SPIKES.md
 SPIKE_RESULTS.md
