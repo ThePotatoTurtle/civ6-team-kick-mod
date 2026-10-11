@@ -15,7 +15,8 @@
 --
 -- Record (PLAN II.6):
 --   { id, teamID, proposerID, targetID, mode = "SOFT" | "HARD",
---     voters = { { pid = 0, v = "YES" }, { pid = 2, v = "PENDING" } },
+--     kind = "KICK" | "LEAVE",                     -- missing: KICK (saved before Leave team)
+--     voters = { { pid = 0, v = "YES" }, { pid = 2, v = "PENDING" } },  -- LEAVE: none
 --     openedTurn, expiresTurn, state,
 --     closedTurn, reason,                          -- once it leaves OPEN
 --     newTeamID, applied, appliedTurn, appliedBy,  -- from the pass on
@@ -64,6 +65,7 @@ TX_Votes.ALL_REASON_CODES = {
 	"NO_VOTERS",
 	"NO_FREE_TEAM",
 	"BAD_MODE",
+	"NO_TEAM",
 }
 
 -- Confirm dialog kinds (TP 2.3 wording, PLAN II.11a).
@@ -259,6 +261,19 @@ function TX_Votes.Modes()
 	return { M.SOFT }
 end
 
+-- TX_Votes.RecKind(rec) -> KICK or LEAVE; KICK for a record without a valid
+-- kind (saved before Leave team).
+function TX_Votes.RecKind(rec)
+	if rec ~= nil and rec.kind == TX_Config.KIND.LEAVE then
+		return TX_Config.KIND.LEAVE
+	end
+	return TX_Config.KIND.KICK
+end
+
+function TX_Votes.IsLeave(rec)
+	return TX_Votes.RecKind(rec) == TX_Config.KIND.LEAVE
+end
+
 local function Cancel(rec, reason, turn)
 	rec.state = TX_Config.ST.CANCELLED
 	rec.reason = reason
@@ -361,6 +376,7 @@ function TX_Votes.Propose(store, world, senderID, targetID, mode)
 		teamID = TX_Votes.TeamOf(world, senderID),
 		proposerID = senderID,
 		targetID = targetID,
+		kind = TX_Config.KIND.KICK,
 		mode = mode,
 		voters = TX_Votes.Voters(world, senderID, targetID),
 		openedTurn = turn,
@@ -369,6 +385,78 @@ function TX_Votes.Propose(store, world, senderID, targetID, mode)
 	}
 	TX_Store.Add(store, rec)
 	TX_Votes.Evaluate(rec, turn)
+	return rec, codes
+end
+
+-- ===========================================================================
+-- Leave team (PLAN Part II notes "Leave team")
+-- ===========================================================================
+-- TX_Votes.LeaveReasons(store, world, senderID) -> codes (empty: ok)
+-- Order: VICTORY; NOT_HUMAN; NOT_ALIVE; NO_TEAM (not on a team with 2+
+-- living majors); then the team's active record: APPLY_PENDING, or
+-- VOTE_OPEN, which is TEAM_BUSY when the sender is that vote's target (the
+-- target must not learn of the vote, DEC 2). The same cases that disable
+-- Kick for the team.
+function TX_Votes.LeaveReasons(store, world, senderID)
+	local codes = {}
+	if store.victoryTurn ~= nil then
+		codes[#codes + 1] = "VICTORY"
+	end
+	local s = TX_Votes.Slot(world, senderID)
+	if s == nil or s.human ~= 1 then
+		codes[#codes + 1] = "NOT_HUMAN"
+	end
+	if not LivingMajorSlot(s) then
+		codes[#codes + 1] = "NOT_ALIVE"
+	elseif s.team < 0 or #TX_Votes.Members(world, s.team) < 2 then
+		codes[#codes + 1] = "NO_TEAM"
+	end
+	if s ~= nil and s.team >= 0 then
+		local active = TX_Votes.Active(store, s.team)
+		if active ~= nil then
+			if active.state == TX_Config.ST.OPEN then
+				if active.targetID == senderID then
+					codes[#codes + 1] = "TEAM_BUSY"
+				else
+					codes[#codes + 1] = "VOTE_OPEN"
+				end
+			else
+				codes[#codes + 1] = "APPLY_PENDING"
+			end
+		end
+	end
+	return codes
+end
+
+-- TX_Votes.Leave(store, world, senderID, mode) -> rec, codes
+-- Refused: nil and the reason codes (LeaveReasons, then BAD_MODE when mode
+-- is not TX_Votes.ModeOK). Else a LEAVE record (proposer = target = the
+-- sender, no voters, openedTurn = expiresTurn = closedTurn = the turn) is
+-- added and finished exactly as a passed kick (FinishPass): PENDING_APPLY
+-- with newTeamID, or CANCELLED NO_FREE_TEAM.
+function TX_Votes.Leave(store, world, senderID, mode)
+	local codes = TX_Votes.LeaveReasons(store, world, senderID)
+	if not TX_Votes.ModeOK(mode) then
+		codes[#codes + 1] = "BAD_MODE"
+	end
+	if #codes > 0 then
+		return nil, codes
+	end
+	local turn = world.turn
+	local rec = {
+		teamID = TX_Votes.TeamOf(world, senderID),
+		proposerID = senderID,
+		targetID = senderID,
+		kind = TX_Config.KIND.LEAVE,
+		mode = mode,
+		voters = {},
+		openedTurn = turn,
+		expiresTurn = turn,
+		closedTurn = turn,
+		state = TX_Config.ST.PASSED,
+	}
+	TX_Store.Add(store, rec)
+	TX_Votes.FinishPass(store, world, rec)
 	return rec, codes
 end
 
@@ -716,10 +804,14 @@ end
 -- The target sees a record only once the kick passed (PENDING_APPLY, DONE),
 -- also after it left the team; everybody else sees the records of their own
 -- team. So an open vote is hidden from the target, and past votes against the
--- viewer only show if they passed (TP 2.3, DEC 2).
+-- viewer only show if they passed (TP 2.3, DEC 2). A LEAVE record is the
+-- leaver's own: they see it in every state.
 function TX_Votes.VisibleTo(rec, viewerID, viewerTeam)
 	local ST = TX_Config.ST
 	if viewerID == rec.targetID then
+		if TX_Votes.IsLeave(rec) then
+			return true
+		end
 		return rec.state == ST.PENDING_APPLY or rec.state == ST.DONE
 	end
 	return viewerTeam ~= nil and rec.teamID == viewerTeam

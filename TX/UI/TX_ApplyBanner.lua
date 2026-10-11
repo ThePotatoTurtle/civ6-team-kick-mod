@@ -19,13 +19,16 @@
 --       2. applied = 0, the host (F7), no victory, and network apply allowed
 --          (SEAM O4): LOC_TX_BANNER_HOST plus the Apply button;
 --       3. applied = 0 otherwise: LOC_TX_BANNER_WAIT.
+--     A LEAVE record (Leave team) says "is leaving the team" in 2 and 3
+--     (LOC_TX_BANNER_HOST_LEAVE / _WAIT_LEAVE); everything else is the same.
 --     Hotseat: the machine is the host, so whoever has the turn may apply,
 --     the target too (PLAN II.18 item 3).
 --   * Apply (the button, or a KICK_PASSED click on the host):
 --       1. re-check (ApplyCodes); a taken newTeamID gives
 --          LOC_TX_APPLY_CONFLICT_TEXT (gameplay picks a new ID at the next
 --          turn start);
---       2. confirm LOC_TX_APPLY_CONFIRM (+ _HARD for a hard kick, + _NETMP in network MP);
+--       2. confirm LOC_TX_APPLY_CONFIRM (+ _HARD for a hard kick, _HARD_LEAVE
+--          for a hard leave, + _NETMP in network MP);
 --       3. yes: re-check, then PlayerConfigurations[t]:SetTeam(newTeamID) and
 --          Network.BroadcastPlayerInfo(t), the S3 call shapes proven in
 --          Sessions 1 and 2 (TX_Dev_Panel.lua:639-660 S3Write; SR:133,
@@ -252,7 +255,13 @@ local function RefreshBanner()
 				Controls.BannerLabel:SetText(L("LOC_TX_BANNER_RELOAD"))
 			end
 		elseif kind == KIND_HOST then
-			Controls.BannerLabel:SetText(L("LOC_TX_BANNER_HOST", label))
+			if TX_Votes.IsLeave(rec) then
+				Controls.BannerLabel:SetText(L("LOC_TX_BANNER_HOST_LEAVE", label))
+			else
+				Controls.BannerLabel:SetText(L("LOC_TX_BANNER_HOST", label))
+			end
+		elseif TX_Votes.IsLeave(rec) then
+			Controls.BannerLabel:SetText(L("LOC_TX_BANNER_WAIT_LEAVE", label))
 		else
 			Controls.BannerLabel:SetText(L("LOC_TX_BANNER_WAIT", label))
 		end
@@ -645,7 +654,12 @@ local function OnApply(recID)
 	end
 	local text = L("LOC_TX_APPLY_CONFIRM", TX_UI.Label(rec.targetID))
 	if TX_Votes.RecMode(rec) == TX_Config.MODE.HARD and TX_Config.HARD_KICK_ENABLED == true then
-		text = text .. L("LOC_TX_APPLY_CONFIRM_HARD")   -- the war then peace runs after the reload
+		-- the war then peace runs after the reload
+		if TX_Votes.IsLeave(rec) then
+			text = text .. L("LOC_TX_APPLY_CONFIRM_HARD_LEAVE")
+		else
+			text = text .. L("LOC_TX_APPLY_CONFIRM_HARD")
+		end
 	end
 	if TX_UI.NetMP() then
 		text = text .. L("LOC_TX_APPLY_CONFIRM_NETMP")   -- online load instructions

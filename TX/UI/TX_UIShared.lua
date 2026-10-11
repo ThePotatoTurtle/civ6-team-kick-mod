@@ -22,7 +22,8 @@
 --                             (F3); only for reload detection (chunk D).
 --   TX_UI.Label(pid)          LOC_TX_PLAYER_LABEL {leader, civ}.
 --   TX_UI.ModeShort(rec)      the record's kick mode in short words
---                             (LOC_TX_MODE_<mode>_SHORT; old records SOFT).
+--                             (LOC_TX_MODE_<mode>_SHORT; old records SOFT;
+--                             a LEAVE record LOC_TX_LEAVE_<mode>_SHORT).
 --   TX_UI.ModeLine(mode)      LOC_TX_MODE_LINE {LOC_TX_MODE_<mode>, _INFO}.
 --   TX_UI.PortraitIcon(pid)   "ICON_" .. GetLeaderTypeName() (DiplomacyRibbon.lua:219).
 --   TX_UI.Request(onStart, params)  EFV_UIShared.lua:576-610.
@@ -233,9 +234,17 @@ function TX_UI.Label(pid)
 	return TX_UI.L("LOC_TX_PLAYER_GENERIC")
 end
 
--- TX_UI.ModeShort(rec) -> "soft kick" / "hard kick" (LOC_TX_MODE_<mode>_SHORT)
+-- Short mode words per record kind and mode (literal keys, so the data check
+-- sees them; the same table as TX_Notify, which is gameplay only).
+local MODE_SHORT = {
+	KICK = { SOFT = "LOC_TX_MODE_SOFT_SHORT", HARD = "LOC_TX_MODE_HARD_SHORT" },
+	LEAVE = { SOFT = "LOC_TX_LEAVE_SOFT_SHORT", HARD = "LOC_TX_LEAVE_HARD_SHORT" },
+}
+
+-- TX_UI.ModeShort(rec) -> "soft kick" / "hard kick" (LOC_TX_MODE_<mode>_SHORT),
+-- "soft" / "hard" for a LEAVE record (LOC_TX_LEAVE_<mode>_SHORT)
 function TX_UI.ModeShort(rec)
-	return TX_UI.L("LOC_TX_MODE_" .. TX_Votes.RecMode(rec) .. "_SHORT")
+	return TX_UI.L(MODE_SHORT[TX_Votes.RecKind(rec)][TX_Votes.RecMode(rec)])
 end
 
 -- TX_UI.ModeLine(mode) -> "<mode name>: <one-line explanation>" (LOC_TX_MODE_LINE)

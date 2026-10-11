@@ -39,6 +39,9 @@ TX_Config.REQ_PROPOSE = "TX_Propose"
 TX_Config.REQ_VOTE = "TX_Vote"
 TX_Config.REQ_APPLY_DONE = "TX_ApplyDone"
 TX_Config.REQ_VICTORY = "TX_Victory"
+-- Leave team (PLAN Part II notes "Leave team"): a player leaves on their own,
+-- flat param mode; no vote, the record goes straight to PENDING_APPLY.
+TX_Config.REQ_LEAVE = "TX_Leave"
 
 -- Record states (PLAN II.6).
 TX_Config.ST = {
@@ -86,6 +89,15 @@ TX_Config.MODE_DEFAULT = "SOFT"         -- the dialog's default and the mode of 
 -- The kicked-player-declares war step was verified in TX_Dev Session 3c. false: the dialog offers Soft only, gameplay refuses HARD
 -- (BAD_MODE) and a stored HARD record gets no war step (it ends as a soft kick).
 TX_Config.HARD_KICK_ENABLED = true
+
+-- Record kinds (Leave team, PLAN Part II notes). KICK: a vote (or a
+-- dissolve) started by a teammate. LEAVE: the target left on their own
+-- (proposerID = targetID, no voters, straight to PENDING_APPLY). A record
+-- without a kind (saved before Leave team) loads as KICK.
+TX_Config.KIND = { KICK = "KICK", LEAVE = "LEAVE" }
+-- Team window: a Leave button stays armed ("Click again to leave") this many
+-- seconds after the first click, then goes back to normal.
+TX_Config.LEAVE_ARM_SECONDS = 5
 
 -- UI wait for gameplay after a request, in seconds (TX_Dev_Panel.lua:55-56).
 TX_Config.WAIT_POLL = 0.3

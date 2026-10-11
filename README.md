@@ -15,6 +15,7 @@ Requires Gathering Storm. Version 1.0.0.
   - Soft: the kicked player leaves the team but stays allied with it. Good for kicking the AI that took over a player who left.
   - Hard: the alliance is ended too. The kicked player declares war on their old teammates and makes peace at once, so the grievances fall on them.
 - **Two-player teams:** no vote needed. One confirmation dissolves the team.
+- **Leave team:** a player can leave their team on their own from the Team window, soft or hard (same meaning as a kick). Click Leave twice to confirm. No vote: it goes straight to the host's Apply, like a passed kick.
 
 ## How a kick goes
 
@@ -46,4 +47,6 @@ Copy the `TX` folder into `Documents\My Games\Sid Meier's Civilization VI\Mods`,
 
 ## Changelog
 
+- Unreleased:
+  - Leave team: a player can leave their team on their own, soft or hard, with no vote.
 - 1.0.0: First release. Team button and window, secret votes, soft and hard kicks, automatic save after a kick.

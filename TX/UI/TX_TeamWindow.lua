@@ -4,7 +4,8 @@
 --
 -- Context of TX_TeamWindow.xml (AddUserInterfaces, Context InGame; PLAN
 -- II.11a). Controls: TeamPanel (TeamWindowFrame, WindowTitle, CloseButton,
--- MainStack, MembersHeader, MembersStack, VoteHeader, VoteSection, VoteLabel,
+-- MainStack, MembersHeader, MembersStack, LeaveRow, LeaveLabel, LeaveButtons,
+-- LeaveSoftButton, LeaveHardButton, VoteHeader, VoteSection, VoteLabel,
 -- VoterStack, VoteButton, HistoryHeader, HistoryArea, HistoryScroll,
 -- HistoryStack, HistoryEmptyLabel); instances TX_MemberRow (MemberRoot,
 -- Portrait, NameLabel, KickButton), TX_VoterRow (VoterRoot, VoterLabel),
@@ -24,6 +25,16 @@
 --          for AI; a Kick button on every other member, enabled iff
 --          TX_Votes.ProposeReasons is empty, else the reason texts as the
 --          tooltip (the target of an open vote sees TEAM_BUSY only);
+--       1b. Leave team (PLAN Part II notes "Leave team"): Leave (soft) and
+--          Leave (hard) (hard only while HARD_KICK_ENABLED), enabled iff
+--          TX_Votes.LeaveReasons is empty, else the reason texts as the
+--          tooltip (the same cases that disable Kick: open vote, pending
+--          apply, victory). Two clicks on the same button, no popup: the
+--          first arms it (its text becomes "Click again to leave (...)", the
+--          other button goes back to normal), the second sends TX_Leave
+--          { mode }. Disarmed when the window closes, the local player
+--          changes (hotseat), leaving is no longer allowed, or after
+--          TX_Config.LEAVE_ARM_SECONDS (the window's update handler);
 --       2. the open vote, only when TX_Votes.VisibleTo (never for its
 --          target, DEC 2): who started it, who voted, who has not (never yes
 --          or no while open, TP 2.3); a Vote button for a pending local voter
@@ -79,6 +90,9 @@ local m_ButtonShown = nil           -- last visibility given to the button (nil:
 local m_Last = { rev = -1, turn = -1, localID = -2 }   -- key of the last window rebuild
 local m_PollElapsed = 0
 local m_VoteRecID = nil             -- record the Vote button opens
+local m_Armed = nil                 -- Leave team: "SOFT" / "HARD" after the first click, else nil
+local m_ArmedBy = -1                -- the local player who armed it
+local m_ArmedElapsed = 0            -- seconds since it was armed
 
 local function Log(level, fmt, ...)
 	TX_Util.Log(level, LOG_TAG, fmt, ...)
@@ -163,6 +177,36 @@ local HIST_KEY = {
 	EXPIRED = "LOC_TX_HIST_EXPIRED",
 	CANCELLED = "LOC_TX_HIST_CANCELLED",
 }
+-- A LEAVE record is never OPEN, FAILED or EXPIRED (no vote).
+local HIST_LEAVE_KEY = {
+	DONE = "LOC_TX_HIST_LEAVE_DONE",
+	PENDING_APPLY = "LOC_TX_HIST_LEAVE_PENDING_APPLY",
+	PASSED = "LOC_TX_HIST_LEAVE_PENDING_APPLY",
+	CANCELLED = "LOC_TX_HIST_LEAVE_CANCELLED",
+}
+
+local function HistKey(rec)
+	if TX_Votes.IsLeave(rec) then
+		return HIST_LEAVE_KEY[rec.state]
+	end
+	return HIST_KEY[rec.state]
+end
+
+-- The line of a passed record (PENDING_APPLY): passed, or applied once the
+-- host wrote it; "is leaving the team" for a LEAVE record.
+local function PassedLine(rec)
+	local label, mode = TX_UI.Label(rec.targetID), TX_UI.ModeShort(rec)
+	if TX_Votes.IsLeave(rec) then
+		if rec.applied == 1 then
+			return L("LOC_TX_LEAVE_APPLIED_LINE", label, mode)
+		end
+		return L("LOC_TX_LEAVE_PASSED_LINE", label, mode)
+	end
+	if rec.applied == 1 then
+		return L("LOC_TX_APPLIED_LINE", label, mode)
+	end
+	return L("LOC_TX_PASSED_LINE", label, mode)
+end
 
 local function HistoryTurn(rec)
 	if rec.state == ST.DONE and type(rec.doneTurn) == "number" then
@@ -177,7 +221,12 @@ end
 -- Tooltip of a history row: who started it, the reason (FAILED, CANCELLED)
 -- and each vote. History rows are never OPEN, so the votes may show (TP 2.3).
 local function HistoryTooltip(rec)
-	local lines = { L("LOC_TX_HIST_STARTED_BY", TX_UI.Label(rec.proposerID)) }
+	local lines = {}
+	if TX_Votes.IsLeave(rec) then
+		lines[1] = L("LOC_TX_HIST_LEAVE_TT", TX_UI.Label(rec.targetID))
+	else
+		lines[1] = L("LOC_TX_HIST_STARTED_BY", TX_UI.Label(rec.proposerID))
+	end
 	if type(rec.reason) == "string" and rec.reason ~= "" then
 		lines[#lines + 1] = L("LOC_TX_REASON_" .. rec.reason)
 	end
@@ -200,7 +249,7 @@ local function HistoryRecords(store, me, team)
 	local recs = TX_Store.Records(store)
 	for i = #recs, 1, -1 do
 		local rec = recs[i]
-		if rec.state ~= ST.OPEN and HIST_KEY[rec.state] ~= nil and TX_Votes.VisibleTo(rec, me, team) then
+		if rec.state ~= ST.OPEN and HistKey(rec) ~= nil and TX_Votes.VisibleTo(rec, me, team) then
 			out[#out + 1] = rec
 			if #out >= TX_Config.HISTORY_SHOWN then
 				break
@@ -289,11 +338,7 @@ local function RefreshButton()
 				lines[#lines + 1] = L("LOC_TX_LAUNCH_TT_VOTE")
 			elseif rec ~= nil and rec.state == ST.PENDING_APPLY then
 				alert = true
-				if rec.applied == 1 then
-					lines[#lines + 1] = L("LOC_TX_APPLIED_LINE", TX_UI.Label(rec.targetID), TX_UI.ModeShort(rec))
-				else
-					lines[#lines + 1] = L("LOC_TX_PASSED_LINE", TX_UI.Label(rec.targetID), TX_UI.ModeShort(rec))
-				end
+				lines[#lines + 1] = PassedLine(rec)
 			end
 		end
 		m_LaunchInst.AlertIndicator:SetHide(not alert)
@@ -384,6 +429,110 @@ local function OnKickClicked(targetID)
 	popup:Open()
 end
 
+-- ---------------------------------------------------------------------------
+-- Leave team: two clicks on the same button, then TX_Leave { mode }
+-- ---------------------------------------------------------------------------
+-- Text keys per mode (literal, so the data check sees them).
+local LEAVE_KEYS = {
+	SOFT = { label = "LOC_TX_LEAVE_SOFT", armed = "LOC_TX_LEAVE_SOFT_ARMED", tip = "LOC_TX_LEAVE_SOFT_TT" },
+	HARD = { label = "LOC_TX_LEAVE_HARD", armed = "LOC_TX_LEAVE_HARD_ARMED", tip = "LOC_TX_LEAVE_HARD_TT" },
+}
+
+-- Codes that mean the player cannot leave at all: the row is hidden. Any
+-- other code (open vote, pending apply, victory) disables the buttons.
+local LEAVE_HIDE = { NOT_HUMAN = true, NOT_ALIVE = true, NO_TEAM = true }
+
+local function LeaveButton(mode)
+	if mode == TX_Config.MODE.HARD then
+		return Controls.LeaveHardButton
+	end
+	return Controls.LeaveSoftButton
+end
+
+local function LeaveModeOffered(mode)
+	return mode == TX_Config.MODE.SOFT or (mode == TX_Config.MODE.HARD and TX_Config.HARD_KICK_ENABLED == true)
+end
+
+local function Disarm(why)
+	if m_Armed ~= nil then
+		Log(2, "leave %s disarmed for P%d (%s)", m_Armed, m_ArmedBy, why)
+	end
+	m_Armed = nil
+	m_ArmedBy = -1
+	m_ArmedElapsed = 0
+end
+
+-- FillLeave(store, world, me): the Leave row for the local player. Disarms
+-- when the player changed or leaving is no longer allowed.
+local function FillLeave(store, world, me)
+	local codes = TX_Votes.LeaveReasons(store, world, me)
+	if m_Armed ~= nil and (me ~= m_ArmedBy or #codes > 0) then
+		Disarm("not allowed now or another player")
+	end
+	local hide = false
+	for _, c in ipairs(codes) do
+		if LEAVE_HIDE[c] then
+			hide = true
+		end
+	end
+	Controls.LeaveRow:SetHide(hide)
+	for _, mode in ipairs({ TX_Config.MODE.SOFT, TX_Config.MODE.HARD }) do
+		local button = LeaveButton(mode)
+		local keys = LEAVE_KEYS[mode]
+		button:SetHide(not LeaveModeOffered(mode))
+		if m_Armed == mode then
+			button:SetText(L(keys.armed))
+		else
+			button:SetText(L(keys.label))
+		end
+		button:SetDisabled(#codes > 0)
+		if #codes > 0 then
+			button:SetToolTipString(TX_UI.ReasonText(codes))
+		else
+			button:SetToolTipString(L(keys.tip))
+		end
+	end
+	Controls.LeaveButtons:CalculateSize()
+end
+
+local function RefreshLeave()
+	if not m_Open then
+		return
+	end
+	FillLeave(TX_UI.ReadStore(), TX_UI.World(), TX_UI.Local())
+end
+
+-- OnLeaveClicked(mode): the first click arms the button (the other one goes
+-- back to normal), a second click on the same armed button by the same
+-- local player sends TX_Leave { mode }. Gameplay re-validates everything.
+local function OnLeaveClicked(mode)
+	if not LeaveModeOffered(mode) then
+		return
+	end
+	local me = TX_UI.Local()
+	local store, world = TX_UI.ReadStore(), TX_UI.World()
+	local codes = TX_Votes.LeaveReasons(store, world, me)
+	if #codes > 0 then
+		Log(2, "leave %s by P%d not offered: %s", mode, me, table.concat(codes, ","))
+		Disarm("not allowed")
+		RefreshWindow(true)
+		return
+	end
+	if m_Armed == mode and m_ArmedBy == me then
+		Disarm("sent")
+		Log(2, "leave %s by P%d: confirmed, sending", mode, me)
+		TX_UI.Request(TX_Config.REQ_LEAVE, { mode = mode })
+		RefreshWindow(true)
+		RefreshButton()
+		return
+	end
+	m_Armed = mode
+	m_ArmedBy = me
+	m_ArmedElapsed = 0
+	Log(2, "leave %s by P%d: armed, click again to send", mode, me)
+	FillLeave(store, world, me)
+end
+
 local function OnVoteClicked()
 	local id = m_VoteRecID
 	if id == nil then
@@ -442,10 +591,8 @@ local function FillVote(store, world, me, team)
 			showButton = true
 			m_VoteRecID = rec.id
 		end
-	elseif rec.applied == 1 then
-		Controls.VoteLabel:SetText(L("LOC_TX_APPLIED_LINE", TX_UI.Label(rec.targetID), TX_UI.ModeShort(rec)))
 	else
-		Controls.VoteLabel:SetText(L("LOC_TX_PASSED_LINE", TX_UI.Label(rec.targetID), TX_UI.ModeShort(rec)))
+		Controls.VoteLabel:SetText(PassedLine(rec))
 	end
 	Controls.VoteButton:SetHide(not showButton)
 	Controls.VoterStack:CalculateSize()
@@ -457,7 +604,7 @@ local function FillHistory(store, me, team)
 	local recs = HistoryRecords(store, me, team)
 	for _, rec in ipairs(recs) do
 		local inst = m_HistoryIM:GetInstance()
-		inst.HistoryLabel:SetText(L(HIST_KEY[rec.state], HistoryTurn(rec), TX_UI.Label(rec.targetID), TX_UI.ModeShort(rec)))
+		inst.HistoryLabel:SetText(L(HistKey(rec), HistoryTurn(rec), TX_UI.Label(rec.targetID), TX_UI.ModeShort(rec)))
 		inst.HistoryButton:SetToolTipString(HistoryTooltip(rec))
 	end
 	Controls.HistoryEmptyLabel:SetHide(#recs > 0)
@@ -487,6 +634,7 @@ RefreshWindow = function(force)
 	local store = TX_UI.ReadStore()
 	local team = TX_Votes.TeamOf(world, me)
 	FillMembers(store, world, me, team)
+	FillLeave(store, world, me)
 	FillVote(store, world, me, team)
 	local n = FillHistory(store, me, team)
 	Controls.MainStack:CalculateSize()
@@ -497,7 +645,15 @@ end
 -- Open / close / toggle (EFV_Tracker.lua:465-494)
 -- ---------------------------------------------------------------------------
 local function OnUpdate(fDTime)
-	m_PollElapsed = m_PollElapsed + (tonumber(fDTime) or 0)
+	local dt = tonumber(fDTime) or 0
+	if m_Armed ~= nil then
+		m_ArmedElapsed = m_ArmedElapsed + dt
+		if m_ArmedElapsed >= TX_Config.LEAVE_ARM_SECONDS then
+			Disarm("timeout")
+			RefreshLeave()
+		end
+	end
+	m_PollElapsed = m_PollElapsed + dt
 	if m_PollElapsed < POLL_SECONDS then
 		return
 	end
@@ -531,6 +687,7 @@ Close = function()
 		return
 	end
 	m_Open = false
+	Disarm("window closed")
 	ContextPtr:ClearUpdate()
 	Controls.TeamPanel:SetHide(true)
 	PlaySound("UI_Screen_Close")
@@ -607,6 +764,8 @@ local function Initialize()
 	ContextPtr:SetInputHandler(OnInput, true)
 	Controls.CloseButton:RegisterCallback(Mouse.eLClick, OnCloseTrigger)
 	Controls.VoteButton:RegisterCallback(Mouse.eLClick, OnVoteClicked)
+	Controls.LeaveSoftButton:RegisterCallback(Mouse.eLClick, function() OnLeaveClicked(TX_Config.MODE.SOFT) end)
+	Controls.LeaveHardButton:RegisterCallback(Mouse.eLClick, function() OnLeaveClicked(TX_Config.MODE.HARD) end)
 	Events.LoadGameViewStateDone.Add(OnLoadGameViewStateDone)
 	Events.PlayerTurnActivated.Add(OnPlayerTurnActivated)
 	Events.LocalPlayerChanged.Add(OnLocalPlayerChanged)

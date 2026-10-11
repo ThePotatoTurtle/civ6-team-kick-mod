@@ -10,7 +10,7 @@ local function Rec(fields)
 	local r = {
 		teamID = 0, proposerID = 0, targetID = 1,
 		voters = { { pid = 0, v = "YES" }, { pid = 2, v = "PENDING" } },
-		openedTurn = 3, expiresTurn = 8, state = "OPEN", mode = "SOFT",
+		openedTurn = 3, expiresTurn = 8, state = "OPEN", mode = "SOFT", kind = "KICK",
 	}
 	for _, k in ipairs(FAKE.SortedKeys(fields or {})) do
 		r[k] = fields[k]

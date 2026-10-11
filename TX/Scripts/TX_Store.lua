@@ -96,6 +96,14 @@ local function RecordProblem(rec)
 	if rec.mode ~= nil and type(rec.mode) ~= "string" then
 		return "mode is not a string"
 	end
+	if rec.kind ~= nil and type(rec.kind) ~= "string" then
+		return "kind is not a string"
+	end
+	-- A LEAVE record has no voters: the empty list is left out on write
+	-- (Shape) and restored by Normalize. Every other record needs voters.
+	if rec.kind == TX_Config.KIND.LEAVE and rec.voters == nil then
+		return nil
+	end
 	if type(rec.voters) ~= "table" or #rec.voters == 0 then
 		return "no voters"
 	end
@@ -191,6 +199,19 @@ function TX_Store.Normalize(raw, turn)
 					Log(1, "normalize: record %d had mode=%s; set to %s", id, rec.mode, TX_Config.MODE_DEFAULT)
 					rec.mode = TX_Config.MODE_DEFAULT
 					repaired = true
+				end
+				-- Leave team: a record saved before it has no kind and is a
+				-- kick (silently); an unknown kind string is repaired to KICK.
+				-- A LEAVE record gets its empty voters list back.
+				if rec.kind == nil then
+					rec.kind = TX_Config.KIND.KICK
+				elseif TX_Config.KIND[rec.kind] ~= rec.kind then
+					Log(1, "normalize: record %d had kind=%s; set to %s", id, rec.kind, TX_Config.KIND.KICK)
+					rec.kind = TX_Config.KIND.KICK
+					repaired = true
+				end
+				if rec.voters == nil then
+					rec.voters = {}
 				end
 				if rec.state == TX_Config.ST.PENDING_APPLY and not IsNum(rec.applied) then
 					Log(1, "normalize: record %d had no applied flag; set to 0", id)

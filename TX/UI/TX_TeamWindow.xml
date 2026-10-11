@@ -8,8 +8,11 @@
        the label text is LOC_TX_LAUNCH_LABEL instead of "VEF" / "DEV".
      * TeamPanel: the Team window, the EFV TrackerPanel shape
        (EFV_Tracker.xml:50-53: Container + WindowFrameTitle Grid, WindowHeader
-       title, CloseButtonLarge), 640x560:
+       title, CloseButtonLarge), 640x610:
          MembersStack   one TX_MemberRow per living major of the local team
+         LeaveRow       Leave team: LeaveLabel, LeaveSoftButton, LeaveHardButton
+                        (two-click confirm on the button itself; Leave team,
+                        PLAN Part II notes), MainButton GridButtons as KickButton
          VoteSection    VoteLabel, VoterStack (TX_VoterRow), VoteButton
          HistoryScroll  HistoryStack (TX_HistoryRow), HistoryEmptyLabel
        Text on the light body: BodyTextDark14 / 16 (EFV_Tracker.xml:57, 98).
@@ -26,13 +29,20 @@
      un-hides the context in Initialize and toggles TeamPanel only.
      ====================================================================== -->
 <Context Name="TX_TeamWindow">
-	<Container ID="TeamPanel" Anchor="C,C" Size="640,560" Hidden="1" ConsumeMouse="1">
-		<Grid ID="TeamWindowFrame" Anchor="C,C" Size="640,560" Style="WindowFrameTitle">
+	<Container ID="TeamPanel" Anchor="C,C" Size="640,610" Hidden="1" ConsumeMouse="1">
+		<Grid ID="TeamWindowFrame" Anchor="C,C" Size="640,610" Style="WindowFrameTitle">
 			<Label ID="WindowTitle" Style="WindowHeader" Anchor="C,T" Offset="0,12" String="{LOC_TX_WINDOW_TITLE:upper}"/>
 			<Button ID="CloseButton" Anchor="R,T" Style="CloseButtonLarge" Offset="-8,-5"/>
 			<Stack ID="MainStack" Anchor="L,T" Offset="22,50" StackGrowth="Bottom" StackPadding="6">
 				<Label ID="MembersHeader" Anchor="L,T" Style="BodyTextDark16" String="LOC_TX_SECTION_MEMBERS"/>
 				<Stack ID="MembersStack" Anchor="L,T" StackGrowth="Bottom" StackPadding="4"/>
+				<Container ID="LeaveRow" Size="596,45">
+					<Label ID="LeaveLabel" Anchor="L,C" Style="BodyTextDark14" String="LOC_TX_LEAVE_LABEL" TruncateWidth="130"/>
+					<Stack ID="LeaveButtons" Anchor="R,C" StackGrowth="Left" StackPadding="6">
+						<GridButton ID="LeaveHardButton" Size="220,41" Style="MainButton" String="LOC_TX_LEAVE_HARD"/>
+						<GridButton ID="LeaveSoftButton" Size="220,41" Style="MainButton" String="LOC_TX_LEAVE_SOFT"/>
+					</Stack>
+				</Container>
 				<Label ID="VoteHeader" Anchor="L,T" Style="BodyTextDark16" String="LOC_TX_SECTION_VOTE"/>
 				<Stack ID="VoteSection" Anchor="L,T" StackGrowth="Bottom" StackPadding="4">
 					<Label ID="VoteLabel" Anchor="L,T" Style="BodyTextDark14" WrapWidth="596"/>

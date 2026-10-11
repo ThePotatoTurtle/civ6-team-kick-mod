@@ -35,6 +35,9 @@
 --                   hard kick (with the outcome: ended, or a step failed)
 --   REQUEST_FAILED  the sender of a refused request
 -- FAILED, EXPIRED and CANCELLED send nothing (DEC 2, TP 2.1).
+-- Leave team: a LEAVE record sends the same types to the same players, with
+-- the "left" texts LOC_<type>_LEAVE_MESSAGE / _SUMMARY (TX_Notify.Queue
+-- textBase), so the UI's click and sweep handling stays the same.
 --
 -- MP: no pairs(), no RNG, no Game.GetLocalPlayer. Recipients come from the
 -- world snapshot (ascending pids) or from the record (ascending voters).
@@ -217,12 +220,14 @@ local function FindDuplicate(entry)
 end
 
 -- ---------------------------------------------------------------------------
--- TX_Notify.Queue(pid, typeName, args, recordID)
+-- TX_Notify.Queue(pid, typeName, args, recordID, textBase)
 -- Skips non-human players. args: a dense list of already localized strings
 -- and numbers, in placeholder order (the same for _MESSAGE and _SUMMARY).
--- recordID (optional) goes to data.TX_RecordID. EFV_Notify.lua:204-235.
+-- recordID (optional) goes to data.TX_RecordID. textBase (optional): the
+-- text keys are textBase .. "_MESSAGE" / "_SUMMARY" instead of "LOC_" ..
+-- typeName (the Leave team variants). EFV_Notify.lua:204-235.
 -- ---------------------------------------------------------------------------
-function TX_Notify.Queue(pid, typeName, args, recordID)
+function TX_Notify.Queue(pid, typeName, args, recordID, textBase)
 	if type(typeName) ~= "string" then
 		Log(1, "queue: bad typeName %s for pid=%s", TX_Util.Str(typeName), TX_Util.Str(pid))
 		return
@@ -236,6 +241,7 @@ function TX_Notify.Queue(pid, typeName, args, recordID)
 		typeName = typeName,
 		args = CopyArgs(args),
 		recordID = recordID,
+		textBase = textBase,
 		turn = TX_Util.Turn(),
 	}
 	local dup = FindDuplicate(entry)
@@ -251,10 +257,33 @@ end
 -- ---------------------------------------------------------------------------
 -- The notifications (PLAN II.7)
 -- ---------------------------------------------------------------------------
+-- Short mode words per kind and mode (literal keys, so the data check sees them).
+local MODE_SHORT = {
+	KICK = { SOFT = "LOC_TX_MODE_SOFT_SHORT", HARD = "LOC_TX_MODE_HARD_SHORT" },
+	LEAVE = { SOFT = "LOC_TX_LEAVE_SOFT_SHORT", HARD = "LOC_TX_LEAVE_HARD_SHORT" },
+}
+TX_Notify.MODE_SHORT = MODE_SHORT
+
 -- TX_Notify.ModeText(rec) -> the record's mode in short words
--- (LOC_TX_MODE_SOFT_SHORT / _HARD_SHORT; old records are SOFT).
+-- (LOC_TX_MODE_SOFT_SHORT / _HARD_SHORT, "soft kick"; a LEAVE record
+-- LOC_TX_LEAVE_SOFT_SHORT / _HARD_SHORT, "soft"; old records are SOFT kicks).
 function TX_Notify.ModeText(rec)
-	return Text("LOC_TX_MODE_" .. TX_Votes.RecMode(rec) .. "_SHORT")
+	return Text(MODE_SHORT[TX_Votes.RecKind(rec)][TX_Votes.RecMode(rec)])
+end
+
+-- Text keys of a record's KICK_PASSED / KICK_DONE / HARD_KICK_DONE: nil (the
+-- type's own) for a kick, the "left" variant for a LEAVE record.
+local LEAVE_TEXT = {
+	[TX_Config.NOTIF.KICK_PASSED] = "LOC_NOTIFICATION_TX_KICK_PASSED_LEAVE",
+	[TX_Config.NOTIF.KICK_DONE] = "LOC_NOTIFICATION_TX_KICK_DONE_LEAVE",
+	[TX_Config.NOTIF.HARD_KICK_DONE] = "LOC_NOTIFICATION_TX_HARD_KICK_DONE_LEAVE",
+}
+
+local function TextBase(rec, typeName)
+	if TX_Votes.IsLeave(rec) then
+		return LEAVE_TEXT[typeName]
+	end
+	return nil
 end
 
 -- VOTE_REQUIRED to one voter: { proposer, target, turns left, mode }. Refuses the
@@ -292,11 +321,12 @@ local function ToLivingHumans(rec, world, typeName, extra)
 		for _, a in ipairs(extra or {}) do
 			args[#args + 1] = a
 		end
-		TX_Notify.Queue(pid, typeName, args, rec.id)
+		TX_Notify.Queue(pid, typeName, args, rec.id, TextBase(rec, typeName))
 	end
 end
 
--- KICK_PASSED to every living human major: { target, mode }.
+-- KICK_PASSED to every living human major: { target, mode } (a LEAVE
+-- record: the "left" text).
 function TX_Notify.KickPassed(rec, world)
 	ToLivingHumans(rec, world, TX_Config.NOTIF.KICK_PASSED, { TX_Notify.ModeText(rec) })
 end
@@ -337,9 +367,10 @@ local function SendEntry(entry)
 		return false
 	end
 	local n = #entry.args
+	local base = entry.textBase or ("LOC_" .. entry.typeName)
 	local data = {}
-	data[ParameterTypes.MESSAGE] = Text("LOC_" .. entry.typeName .. "_MESSAGE", unpack(entry.args, 1, n))
-	data[ParameterTypes.SUMMARY] = Text("LOC_" .. entry.typeName .. "_SUMMARY", unpack(entry.args, 1, n))
+	data[ParameterTypes.MESSAGE] = Text(base .. "_MESSAGE", unpack(entry.args, 1, n))
+	data[ParameterTypes.SUMMARY] = Text(base .. "_SUMMARY", unpack(entry.args, 1, n))
 	data.AlwaysUnique = true
 	data[TX_Config.NKEY_TURN] = entry.turn
 	if type(entry.recordID) == "number" then

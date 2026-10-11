@@ -81,9 +81,9 @@ local function EventsText(events)
 end
 
 -- ---------------------------------------------------------------------------
-test("votes: reason codes are 24 (22 + ATTEMPT_UNDONE + BAD_MODE), unique, and each has its text", function()
+test("votes: reason codes are 25 (22 + ATTEMPT_UNDONE + BAD_MODE + NO_TEAM), unique, and each has its text", function()
 	Load()
-	H.len(TX_Votes.ALL_REASON_CODES, 24)
+	H.len(TX_Votes.ALL_REASON_CODES, 25)
 	local seen = {}
 	for _, c in ipairs(TX_Votes.ALL_REASON_CODES) do
 		H.isnil(seen[c], "duplicate code " .. c)

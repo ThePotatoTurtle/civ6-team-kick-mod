@@ -30,12 +30,18 @@
        HIST_VOTE_*          1 voter
        POPUP_TEXT           1 proposer, 2 target, 3 turns left, 4 MODE_LINE
        BANNER_HOST / _WAIT  1 target
+       BANNER_HOST_LEAVE / _WAIT_LEAVE  1 leaver
        APPLY_CONFIRM        1 target
+       LEAVE_PASSED_LINE / _APPLIED_LINE  1 leaver, 2 mode (LEAVE_*_SHORT)
+       HIST_LEAVE_<state>   1 turn, 2 leaver, 3 mode (LEAVE_*_SHORT)
+       HIST_LEAVE_TT        1 leaver
        Notifications (the same arguments for _MESSAGE and _SUMMARY):
          VOTE_REQUIRED      1 proposer, 2 target, 3 turns left, 4 mode (MODE_*_SHORT)
          KICK_PASSED        1 target, 2 mode (MODE_*_SHORT)
          KICK_DONE          1 target (soft kick)
          HARD_KICK_DONE     1 target, 2 outcome (HARD_OUTCOME_OK / _FAILED)
+         <type>_LEAVE       the same arguments, for a player who left on their
+                            own (Leave team; mode: LEAVE_*_SHORT)
          REQUEST_FAILED     1 reason text (LOC_TX_REASON_<code>)
      All other keys take no arguments.
      ====================================================================== -->
@@ -131,6 +137,41 @@
 			<Text>Cancel</Text>
 		</Row>
 
+		<!-- Leave team (Team window row; two clicks on the same button, no popup) -->
+		<Row Tag="LOC_TX_LEAVE_LABEL" Language="en_US">
+			<Text>Leave team</Text>
+		</Row>
+		<Row Tag="LOC_TX_LEAVE_SOFT" Language="en_US">
+			<Text>Leave (soft)</Text>
+		</Row>
+		<Row Tag="LOC_TX_LEAVE_HARD" Language="en_US">
+			<Text>Leave (hard)</Text>
+		</Row>
+		<Row Tag="LOC_TX_LEAVE_SOFT_ARMED" Language="en_US">
+			<Text>Click again to leave (soft)</Text>
+		</Row>
+		<Row Tag="LOC_TX_LEAVE_HARD_ARMED" Language="en_US">
+			<Text>Click again to leave (hard)</Text>
+		</Row>
+		<Row Tag="LOC_TX_LEAVE_SOFT_TT" Language="en_US">
+			<Text>You leave the team but stay allied with it. No vote: click twice and the host applies it.</Text>
+		</Row>
+		<Row Tag="LOC_TX_LEAVE_HARD_TT" Language="en_US">
+			<Text>You leave the team and the alliance is ended. You declare war and make peace at once, so the grievances fall on you. No vote: click twice and the host applies it.</Text>
+		</Row>
+		<Row Tag="LOC_TX_LEAVE_SOFT_SHORT" Language="en_US">
+			<Text>soft</Text>
+		</Row>
+		<Row Tag="LOC_TX_LEAVE_HARD_SHORT" Language="en_US">
+			<Text>hard</Text>
+		</Row>
+		<Row Tag="LOC_TX_LEAVE_PASSED_LINE" Language="en_US">
+			<Text>{1_Player} is leaving the team ({2_Mode}). Waiting for the host to apply it.</Text>
+		</Row>
+		<Row Tag="LOC_TX_LEAVE_APPLIED_LINE" Language="en_US">
+			<Text>{1_Player} left the team ({2_Mode}) and it is applied. Load the save made for it now.</Text>
+		</Row>
+
 		<!-- Open vote section -->
 		<Row Tag="LOC_TX_VOTE_LINE" Language="en_US">
 			<Text>{1_Player} wants to kick {2_Player} ({4_Mode}). {3_Num} {3_Num : plural 1?turn; other?turns;} left.</Text>
@@ -179,6 +220,18 @@
 		<Row Tag="LOC_TX_HIST_CANCELLED" Language="en_US">
 			<Text>Turn {1_Num}: the vote to kick {2_Player} ({3_Mode}) was cancelled.</Text>
 		</Row>
+		<Row Tag="LOC_TX_HIST_LEAVE_DONE" Language="en_US">
+			<Text>Turn {1_Num}: {2_Player} left the team ({3_Mode}).</Text>
+		</Row>
+		<Row Tag="LOC_TX_HIST_LEAVE_PENDING_APPLY" Language="en_US">
+			<Text>Turn {1_Num}: {2_Player} is leaving the team ({3_Mode}), not applied yet.</Text>
+		</Row>
+		<Row Tag="LOC_TX_HIST_LEAVE_CANCELLED" Language="en_US">
+			<Text>Turn {1_Num}: {2_Player} leaving the team ({3_Mode}) was cancelled.</Text>
+		</Row>
+		<Row Tag="LOC_TX_HIST_LEAVE_TT" Language="en_US">
+			<Text>{1_Player} left on their own. No vote.</Text>
+		</Row>
 		<Row Tag="LOC_TX_HIST_STARTED_BY" Language="en_US">
 			<Text>Started by {1_Player}.</Text>
 		</Row>
@@ -216,6 +269,12 @@
 		<Row Tag="LOC_TX_BANNER_WAIT" Language="en_US">
 			<Text>The kick of {1_Player} passed. Waiting for the host to apply it.</Text>
 		</Row>
+		<Row Tag="LOC_TX_BANNER_HOST_LEAVE" Language="en_US">
+			<Text>{1_Player} is leaving the team. Apply it, then load the save.</Text>
+		</Row>
+		<Row Tag="LOC_TX_BANNER_WAIT_LEAVE" Language="en_US">
+			<Text>{1_Player} is leaving the team. Waiting for the host to apply it.</Text>
+		</Row>
 		<Row Tag="LOC_TX_BANNER_RELOAD" Language="en_US">
 			<Text>Kick applied. Everyone loads the save made for it (the host has its name; if there is none, save and reload). Don't click leader portraits until then.</Text>
 		</Row>
@@ -239,6 +298,9 @@
 		</Row>
 		<Row Tag="LOC_TX_APPLY_CONFIRM_HARD" Language="en_US">
 			<Text>[NEWLINE][NEWLINE]This is a hard kick. Right after the reload they declare war on their old team and make peace at once, which ends the alliance.</Text>
+		</Row>
+		<Row Tag="LOC_TX_APPLY_CONFIRM_HARD_LEAVE" Language="en_US">
+			<Text>[NEWLINE][NEWLINE]This is a hard leave. Right after the reload they declare war on their old team and make peace at once, which ends the alliance.</Text>
 		</Row>
 		<Row Tag="LOC_TX_RELOAD_TITLE" Language="en_US">
 			<Text>Save and reload now</Text>
@@ -290,17 +352,35 @@
 		<Row Tag="LOC_NOTIFICATION_TX_KICK_PASSED_SUMMARY" Language="en_US">
 			<Text>{1_Player} was voted off their team ({2_Mode}). It takes effect once the host applies it and the new save is loaded.</Text>
 		</Row>
+		<Row Tag="LOC_NOTIFICATION_TX_KICK_PASSED_LEAVE_MESSAGE" Language="en_US">
+			<Text>Leaving a team</Text>
+		</Row>
+		<Row Tag="LOC_NOTIFICATION_TX_KICK_PASSED_LEAVE_SUMMARY" Language="en_US">
+			<Text>{1_Player} is leaving their team ({2_Mode}). It takes effect once the host applies it and the new save is loaded.</Text>
+		</Row>
 		<Row Tag="LOC_NOTIFICATION_TX_KICK_DONE_MESSAGE" Language="en_US">
 			<Text>Team changed</Text>
 		</Row>
 		<Row Tag="LOC_NOTIFICATION_TX_KICK_DONE_SUMMARY" Language="en_US">
 			<Text>{1_Player} now plays alone and stays allied with their old team.</Text>
 		</Row>
+		<Row Tag="LOC_NOTIFICATION_TX_KICK_DONE_LEAVE_MESSAGE" Language="en_US">
+			<Text>Team changed</Text>
+		</Row>
+		<Row Tag="LOC_NOTIFICATION_TX_KICK_DONE_LEAVE_SUMMARY" Language="en_US">
+			<Text>{1_Player} left their team (soft). They now play alone and stay allied with their old team.</Text>
+		</Row>
 		<Row Tag="LOC_NOTIFICATION_TX_HARD_KICK_DONE_MESSAGE" Language="en_US">
 			<Text>Hard kick</Text>
 		</Row>
 		<Row Tag="LOC_NOTIFICATION_TX_HARD_KICK_DONE_SUMMARY" Language="en_US">
 			<Text>{1_Player} was hard kicked from their team. {2_Outcome}</Text>
+		</Row>
+		<Row Tag="LOC_NOTIFICATION_TX_HARD_KICK_DONE_LEAVE_MESSAGE" Language="en_US">
+			<Text>Left a team</Text>
+		</Row>
+		<Row Tag="LOC_NOTIFICATION_TX_HARD_KICK_DONE_LEAVE_SUMMARY" Language="en_US">
+			<Text>{1_Player} left their team (hard). {2_Outcome}</Text>
 		</Row>
 		<Row Tag="LOC_TX_HARD_OUTCOME_OK" Language="en_US">
 			<Text>The alliance with their old team has been ended. They declared war and made peace at once, so the grievances fall on them.</Text>
@@ -387,6 +467,9 @@
 		</Row>
 		<Row Tag="LOC_TX_REASON_BAD_MODE" Language="en_US">
 			<Text>That kick type isn't available.</Text>
+		</Row>
+		<Row Tag="LOC_TX_REASON_NO_TEAM" Language="en_US">
+			<Text>You're not on a team with other players.</Text>
 		</Row>
 	</LocalizedText>
 </GameData>

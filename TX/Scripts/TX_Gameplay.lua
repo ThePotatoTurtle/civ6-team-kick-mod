@@ -11,6 +11,7 @@
 -- log line each (EFV_Gameplay.lua:346-387).
 --   GameEvents.TX_Propose(playerID, { targetID, mode = "SOFT" | "HARD" })
 --   GameEvents.TX_Vote(playerID, { recordID, vote = "YES" | "NO" })
+--   GameEvents.TX_Leave(playerID, { mode = "SOFT" | "HARD" })
 --   GameEvents.TX_ApplyDone(playerID, { recordID, step = "WRITTEN" | "RELOADED" | "UNDONE", team, attempt })
 --   GameEvents.TX_Victory(playerID, { team })
 --   GameEvents.OnGameTurnStarted(turn): the turn pipeline
@@ -235,6 +236,34 @@ local function Vote(playerID, params)
 end
 
 -- ===========================================================================
+-- GameEvents.TX_Leave(playerID, { mode })
+-- Leave team (PLAN Part II notes "Leave team"): the sender leaves their team
+-- on their own. No vote: TX_Votes.Leave re-validates (human, alive, a team
+-- of 2+ living majors, no active record for the team, no victory, a valid
+-- mode) and adds a LEAVE record already in PENDING_APPLY (FinishPass), so
+-- from here on it is a passed kick: KICK_PASSED (the "left" text) to every
+-- living human, the host's Apply, the save, the load, the soft / hard step.
+-- ===========================================================================
+local function Leave(playerID, params)
+	local p = Params(params)
+	local mode = Text(p.mode)
+	Log(2, "Votes", "leave from P%s mode=%s", Str(playerID), Str(p.mode))
+	local store = LoadStore("Votes", "leave")
+	if store == nil then
+		return
+	end
+	local world = World()
+	local rec, codes = TX_Votes.Leave(store, world, playerID, mode)
+	if rec == nil then
+		Refuse("Votes", "leave", playerID, codes, nil)
+		return
+	end
+	Log(2, "Votes", "rec=%d LEAVE team=%d P%d mode=%s", rec.id, rec.teamID, rec.targetID, rec.mode)
+	AfterPass("Votes", store, world, rec)
+	CommitAndFlush("Votes", store)
+end
+
+-- ===========================================================================
 -- GameEvents.TX_ApplyDone(playerID, { recordID, step, team, attempt })
 -- The apply seam, gameplay side (PLAN II.8, II.9). WRITTEN: the host's UI
 -- wrote the config team; gameplay must read it at once (F2). RELOADED: a UI
@@ -438,6 +467,10 @@ local function OnVote(playerID, params)
 	SafeCall("Votes", "TX_Vote", Vote, playerID, params)
 end
 
+local function OnLeave(playerID, params)
+	SafeCall("Votes", "TX_Leave", Leave, playerID, params)
+end
+
 local function OnApplyDone(playerID, params)
 	SafeCall("Apply", "TX_ApplyDone", ApplyDone, playerID, params)
 end
@@ -460,6 +493,9 @@ Log(2, "Init", "registered GameEvents.%s", TX_Config.REQ_PROPOSE)
 
 GameEvents.TX_Vote.Add(OnVote)
 Log(2, "Init", "registered GameEvents.%s", TX_Config.REQ_VOTE)
+
+GameEvents.TX_Leave.Add(OnLeave)
+Log(2, "Init", "registered GameEvents.%s", TX_Config.REQ_LEAVE)
 
 GameEvents.TX_ApplyDone.Add(OnApplyDone)
 Log(2, "Init", "registered GameEvents.%s", TX_Config.REQ_APPLY_DONE)
