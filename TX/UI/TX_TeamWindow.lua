@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_TeamWindow.lua  (Team Kick 1.0.0)
+-- TX_TeamWindow.lua  (Team Kick 1.1.0)
 -- TX:CONTEXT UI
 --
 -- Context of TX_TeamWindow.xml (AddUserInterfaces, Context InGame; PLAN
@@ -30,8 +30,8 @@
 --          TX_Votes.LeaveReasons is empty, else the reason texts as the
 --          tooltip (the same cases that disable Kick: open vote, pending
 --          apply, victory). Two clicks on the same button, no popup: the
---          first arms it (its text becomes "Click again to leave (...)", the
---          other button goes back to normal), the second sends TX_Leave
+--          first arms it (its text becomes "Confirm", LOC_TX_LEAVE_ARMED;
+--          the other button goes back to normal), the second sends TX_Leave
 --          { mode }. Disarmed when the window closes, the local player
 --          changes (hotseat), leaving is no longer allowed, or after
 --          TX_Config.LEAVE_ARM_SECONDS (the window's update handler);
@@ -434,8 +434,8 @@ end
 -- ---------------------------------------------------------------------------
 -- Text keys per mode (literal, so the data check sees them).
 local LEAVE_KEYS = {
-	SOFT = { label = "LOC_TX_LEAVE_SOFT", armed = "LOC_TX_LEAVE_SOFT_ARMED", tip = "LOC_TX_LEAVE_SOFT_TT" },
-	HARD = { label = "LOC_TX_LEAVE_HARD", armed = "LOC_TX_LEAVE_HARD_ARMED", tip = "LOC_TX_LEAVE_HARD_TT" },
+	SOFT = { label = "LOC_TX_LEAVE_SOFT", armed = "LOC_TX_LEAVE_ARMED", tip = "LOC_TX_LEAVE_SOFT_TT" },
+	HARD = { label = "LOC_TX_LEAVE_HARD", armed = "LOC_TX_LEAVE_ARMED", tip = "LOC_TX_LEAVE_HARD_TT" },
 }
 
 -- Codes that mean the player cannot leave at all: the row is hidden. Any

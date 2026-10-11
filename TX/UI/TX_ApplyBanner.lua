@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TX_ApplyBanner.lua  (Team Kick 1.0.0)
+-- TX_ApplyBanner.lua  (Team Kick 1.1.0)
 -- TX:CONTEXT UI
 --
 -- Context of TX_ApplyBanner.xml (AddUserInterfaces, Context InGame; PLAN
@@ -19,8 +19,10 @@
 --       2. applied = 0, the host (F7), no victory, and network apply allowed
 --          (SEAM O4): LOC_TX_BANNER_HOST plus the Apply button;
 --       3. applied = 0 otherwise: LOC_TX_BANNER_WAIT.
---     A LEAVE record (Leave team) says "is leaving the team" in 2 and 3
---     (LOC_TX_BANNER_HOST_LEAVE / _WAIT_LEAVE); everything else is the same.
+--     A LEAVE record (Leave team, TX_Votes.IsLeave) uses the leave version
+--     of every text that says "kick" (TextKey: the key plus _LEAVE): the
+--     banners 1 to 3, the apply title and confirm, the saved, reload and
+--     failed dialogs; everything else is the same.
 --     Hotseat: the machine is the host, so whoever has the turn may apply,
 --     the target too (PLAN II.18 item 3).
 --   * Apply (the button, or a KICK_PASSED click on the host):
@@ -98,6 +100,35 @@ local PASSED_TYPE = TX_Config.NOTIF.KICK_PASSED
 local FAILED_TYPE = TX_Config.NOTIF.REQUEST_FAILED
 
 local KIND_RELOAD, KIND_HOST, KIND_WAIT = "RELOAD", "HOST", "WAIT"
+
+-- The leave version of each text that says "kick" (literal keys, so the data
+-- check sees them). TextKey(rec, key): the leave key for a LEAVE record
+-- (TX_Votes.IsLeave, as the leave notifications), else key; nil rec: key.
+local LEAVE_TEXT = {
+	LOC_TX_BANNER_HOST = "LOC_TX_BANNER_HOST_LEAVE",
+	LOC_TX_BANNER_WAIT = "LOC_TX_BANNER_WAIT_LEAVE",
+	LOC_TX_BANNER_RELOAD = "LOC_TX_BANNER_RELOAD_LEAVE",
+	LOC_TX_BANNER_SAVING = "LOC_TX_BANNER_SAVING_LEAVE",
+	LOC_TX_BANNER_SAVED = "LOC_TX_BANNER_SAVED_LEAVE",
+	LOC_TX_APPLY_TITLE = "LOC_TX_APPLY_TITLE_LEAVE",
+	LOC_TX_APPLY_CONFIRM = "LOC_TX_APPLY_CONFIRM_LEAVE",
+	LOC_TX_APPLY_CONFIRM_HARD = "LOC_TX_APPLY_CONFIRM_HARD_LEAVE",
+	LOC_TX_RELOAD_TEXT = "LOC_TX_RELOAD_TEXT_LEAVE",
+	LOC_TX_RELOAD_TEXT_NETMP = "LOC_TX_RELOAD_TEXT_NETMP_LEAVE",
+	LOC_TX_RELOAD_TEXT_LOCAL = "LOC_TX_RELOAD_TEXT_LOCAL_LEAVE",
+	LOC_TX_SAVED_TITLE = "LOC_TX_SAVED_TITLE_LEAVE",
+	LOC_TX_SAVED_TEXT_HOTSEAT = "LOC_TX_SAVED_TEXT_HOTSEAT_LEAVE",
+	LOC_TX_SAVED_TEXT_NETMP = "LOC_TX_SAVED_TEXT_NETMP_LEAVE",
+	LOC_TX_SAVED_TEXT_LOCAL = "LOC_TX_SAVED_TEXT_LOCAL_LEAVE",
+	LOC_TX_APPLY_FAILED_TITLE = "LOC_TX_APPLY_FAILED_TITLE_LEAVE",
+}
+
+local function TextKey(rec, key)
+	if rec ~= nil and TX_Votes.IsLeave(rec) and LEAVE_TEXT[key] ~= nil then
+		return LEAVE_TEXT[key]
+	end
+	return key
+end
 
 local m_ViewReady = false           -- set on LoadGameViewStateDone (EFV_Tracker.lua:93-97)
 local m_SentReloaded = {}           -- [recID] = true: RELOADED sent in this Lua state
@@ -248,22 +279,16 @@ local function RefreshBanner()
 		local label = TX_UI.Label(rec.targetID)
 		if kind == KIND_RELOAD then
 			if m_Save ~= nil and m_Save.recID == rec.id then
-				Controls.BannerLabel:SetText(L("LOC_TX_BANNER_SAVING"))
+				Controls.BannerLabel:SetText(L(TextKey(rec, "LOC_TX_BANNER_SAVING")))
 			elseif m_SavedName[rec.id] ~= nil then
-				Controls.BannerLabel:SetText(L("LOC_TX_BANNER_SAVED", m_SavedName[rec.id]))
+				Controls.BannerLabel:SetText(L(TextKey(rec, "LOC_TX_BANNER_SAVED"), m_SavedName[rec.id]))
 			else
-				Controls.BannerLabel:SetText(L("LOC_TX_BANNER_RELOAD"))
+				Controls.BannerLabel:SetText(L(TextKey(rec, "LOC_TX_BANNER_RELOAD")))
 			end
 		elseif kind == KIND_HOST then
-			if TX_Votes.IsLeave(rec) then
-				Controls.BannerLabel:SetText(L("LOC_TX_BANNER_HOST_LEAVE", label))
-			else
-				Controls.BannerLabel:SetText(L("LOC_TX_BANNER_HOST", label))
-			end
-		elseif TX_Votes.IsLeave(rec) then
-			Controls.BannerLabel:SetText(L("LOC_TX_BANNER_WAIT_LEAVE", label))
+			Controls.BannerLabel:SetText(L(TextKey(rec, "LOC_TX_BANNER_HOST"), label))
 		else
-			Controls.BannerLabel:SetText(L("LOC_TX_BANNER_WAIT", label))
+			Controls.BannerLabel:SetText(L(TextKey(rec, "LOC_TX_BANNER_WAIT"), label))
 		end
 		m_BannerRecID = rec.id
 		Controls.ApplyButton:SetHide(kind ~= KIND_HOST or m_Wait ~= nil or m_Save ~= nil)
@@ -282,6 +307,7 @@ end
 -- Dialogs (PopupDialogInGame, EFV_UnitActions.lua:260-268)
 -- ---------------------------------------------------------------------------
 -- One OK button: the saved and reload instructions, the failed and the conflict notes.
+-- rec (may be nil: kick texts) picks the leave texts for a LEAVE record.
 local function Notice(id, titleKey, text)
 	local popup = PopupDialogInGame:new(id)
 	popup:AddTitle(L(titleKey))
@@ -291,35 +317,38 @@ local function Notice(id, titleKey, text)
 end
 
 -- The manual fallback: no kick save was made (or it was not confirmed).
-local function ReloadDialog()
+local function ReloadDialog(rec)
 	local key = "LOC_TX_RELOAD_TEXT_LOCAL"
 	if TX_UI.NetMP() then
 		key = "LOC_TX_RELOAD_TEXT_NETMP"
 	elseif TX_UI.Hotseat() then
 		key = "LOC_TX_RELOAD_TEXT"
 	end
-	Notice("TX_ReloadNow", "LOC_TX_RELOAD_TITLE", L(key))
+	Notice("TX_ReloadNow", "LOC_TX_RELOAD_TITLE", L(TextKey(rec, key)))
 end
 
 -- The kick save is done: how everyone loads it (hotseat, network MP, single machine).
-local function SavedDialog(name)
-	local text
+local function SavedDialog(rec, name)
+	local key = "LOC_TX_SAVED_TEXT_LOCAL"
 	if TX_UI.NetMP() then
-		text = L("LOC_TX_SAVED_TEXT_NETMP", name)
+		key = "LOC_TX_SAVED_TEXT_NETMP"
 	elseif TX_UI.Hotseat() then
-		text = L("LOC_TX_SAVED_TEXT_HOTSEAT", name)
-	else
-		text = L("LOC_TX_SAVED_TEXT_LOCAL", name)
+		key = "LOC_TX_SAVED_TEXT_HOTSEAT"
 	end
-	Notice("TX_KickSaved", "LOC_TX_SAVED_TITLE", text)
+	Notice("TX_KickSaved", TextKey(rec, "LOC_TX_SAVED_TITLE"), L(TextKey(rec, key), name))
 end
 
-local function FailedDialog()
-	Notice("TX_ApplyFailed", "LOC_TX_APPLY_FAILED_TITLE", L("LOC_TX_APPLY_FAILED_TEXT"))
+local function FailedDialog(rec)
+	Notice("TX_ApplyFailed", TextKey(rec, "LOC_TX_APPLY_FAILED_TITLE"), L("LOC_TX_APPLY_FAILED_TEXT"))
 end
 
-local function ConflictDialog()
-	Notice("TX_ApplyConflict", "LOC_TX_APPLY_TITLE", L("LOC_TX_APPLY_CONFLICT_TEXT"))
+local function ConflictDialog(rec)
+	Notice("TX_ApplyConflict", TextKey(rec, "LOC_TX_APPLY_TITLE"), L("LOC_TX_APPLY_CONFLICT_TEXT"))
+end
+
+-- The record a save or an apply wait is for (nil when it is gone).
+local function RecordOf(recID)
+	return TX_Store.Get(TX_UI.ReadStore(), recID)
 end
 
 -- ---------------------------------------------------------------------------
@@ -406,7 +435,7 @@ end
 -- The save did not happen or is not confirmed: log it, the manual dialog.
 local function SaveFailed(s, why)
 	Log(1, "kick save rec=%d %s: %s; asking for a manual save and reload", s.recID, s.name, why)
-	ReloadDialog()
+	ReloadDialog(RecordOf(s.recID))
 	RefreshBanner()
 end
 
@@ -425,7 +454,7 @@ local function OnSaveComplete(...)
 	end
 	m_SavedName[s.recID] = s.name
 	Log(2, "kick save rec=%d: saved as %s (Events.SaveComplete %s)", s.recID, s.name, args)
-	SavedDialog(s.name)
+	SavedDialog(RecordOf(s.recID), s.name)
 	RefreshBanner()
 end
 
@@ -509,7 +538,7 @@ local function Undo(w, why)
 		Log(2, "apply rec=%d: reporting UNDONE attempt %d", w.recID, w.attempt)
 		TX_UI.Request(TX_Config.REQ_APPLY_DONE, { recordID = w.recID, step = TX_Config.STEP_UNDONE, attempt = w.attempt })
 	end
-	FailedDialog()
+	FailedDialog(rec)
 	RefreshBanner()
 end
 
@@ -543,7 +572,7 @@ local function Answered(w)
 	local rec = TX_Store.Get(TX_UI.ReadStore(), w.recID)
 	Log(2, "apply rec=%d confirmed by gameplay: P%d reads team %d; saving the game", w.recID, w.target, w.newTeam)
 	if rec == nil or not StartSave(rec) then
-		ReloadDialog()
+		ReloadDialog(rec)
 	end
 	RefreshBanner()
 end
@@ -604,7 +633,7 @@ local function ApplyAllowed(recID, step)
 	end
 	Log(2, "apply rec=%s %s refused: %s", Str(recID), step, table.concat(codes, ","))
 	if HasCode(codes, "TEAM_TAKEN") and not HasCode(codes, "BUSY") then
-		ConflictDialog()
+		ConflictDialog(rec)
 	end
 	RefreshBanner()
 	return false, rec
@@ -652,21 +681,17 @@ local function OnApply(recID)
 	if not ok then
 		return
 	end
-	local text = L("LOC_TX_APPLY_CONFIRM", TX_UI.Label(rec.targetID))
+	local text = L(TextKey(rec, "LOC_TX_APPLY_CONFIRM"), TX_UI.Label(rec.targetID))
 	if TX_Votes.RecMode(rec) == TX_Config.MODE.HARD and TX_Config.HARD_KICK_ENABLED == true then
 		-- the war then peace runs after the reload
-		if TX_Votes.IsLeave(rec) then
-			text = text .. L("LOC_TX_APPLY_CONFIRM_HARD_LEAVE")
-		else
-			text = text .. L("LOC_TX_APPLY_CONFIRM_HARD")
-		end
+		text = text .. L(TextKey(rec, "LOC_TX_APPLY_CONFIRM_HARD"))
 	end
 	if TX_UI.NetMP() then
 		text = text .. L("LOC_TX_APPLY_CONFIRM_NETMP")   -- online load instructions
 	end
 	Log(2, "apply rec=%d: confirm for P%d (target P%d newTeam=%d)", recID, TX_UI.Local(), rec.targetID, rec.newTeamID)
 	local popup = PopupDialogInGame:new("TX_ConfirmApply")
-	popup:AddTitle(L("LOC_TX_APPLY_TITLE"))
+	popup:AddTitle(L(TextKey(rec, "LOC_TX_APPLY_TITLE")))
 	popup:AddText(text)
 	popup:AddConfirmButton(L("LOC_YES"), function() DoApply(recID) end)
 	popup:AddCancelButton(L("LOC_NO"), nil)

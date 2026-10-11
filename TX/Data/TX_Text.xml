@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ======================================================================
      TX_Text.xml  (modinfo InGameActions UpdateText TX_Text)
-     Team Kick 1.0.0, PLAN II.13. Every in-game string of the mod.
+     Team Kick 1.1.0, PLAN II.13. Every in-game string of the mod.
      Wording reviewed by Leon in Session 4 (2026-10-07).
      Format as EFV/Data/EFV_Text.xml: <Row Tag="LOC_TX_..." Language="en_US">.
      Plurals: {n_Num} {n_Num : plural 1?turn; other?turns;}. The game does not replace # in plural forms (Session 4: "# turns left").
@@ -31,7 +31,9 @@
        POPUP_TEXT           1 proposer, 2 target, 3 turns left, 4 MODE_LINE
        BANNER_HOST / _WAIT  1 target
        BANNER_HOST_LEAVE / _WAIT_LEAVE  1 leaver
-       APPLY_CONFIRM        1 target
+       BANNER_SAVED (+_LEAVE)  1 save name
+       APPLY_CONFIRM (+_LEAVE)  1 target
+       SAVED_TEXT_* (+_LEAVE)  1 save name
        LEAVE_PASSED_LINE / _APPLIED_LINE  1 leaver, 2 mode (LEAVE_*_SHORT)
        HIST_LEAVE_<state>   1 turn, 2 leaver, 3 mode (LEAVE_*_SHORT)
        HIST_LEAVE_TT        1 leaver
@@ -147,11 +149,8 @@
 		<Row Tag="LOC_TX_LEAVE_HARD" Language="en_US">
 			<Text>Leave (hard)</Text>
 		</Row>
-		<Row Tag="LOC_TX_LEAVE_SOFT_ARMED" Language="en_US">
-			<Text>Click again to leave (soft)</Text>
-		</Row>
-		<Row Tag="LOC_TX_LEAVE_HARD_ARMED" Language="en_US">
-			<Text>Click again to leave (hard)</Text>
+		<Row Tag="LOC_TX_LEAVE_ARMED" Language="en_US">
+			<Text>Confirm</Text>
 		</Row>
 		<Row Tag="LOC_TX_LEAVE_SOFT_TT" Language="en_US">
 			<Text>You leave the team but stay allied with it. No vote: click twice and the host applies it.</Text>
@@ -284,14 +283,29 @@
 		<Row Tag="LOC_TX_BANNER_SAVED" Language="en_US">
 			<Text>Kick applied and saved as {1_Name}. Everyone loads this save to finish it. Don't click leader portraits until then.</Text>
 		</Row>
+		<Row Tag="LOC_TX_BANNER_RELOAD_LEAVE" Language="en_US">
+			<Text>Leave applied. Everyone loads the save made for it (the host has its name; if there is none, save and reload). Don't click leader portraits until then.</Text>
+		</Row>
+		<Row Tag="LOC_TX_BANNER_SAVING_LEAVE" Language="en_US">
+			<Text>Leave applied. Saving the game...</Text>
+		</Row>
+		<Row Tag="LOC_TX_BANNER_SAVED_LEAVE" Language="en_US">
+			<Text>Leave applied and saved as {1_Name}. Everyone loads this save to finish it. Don't click leader portraits until then.</Text>
+		</Row>
 		<Row Tag="LOC_TX_APPLY_BUTTON" Language="en_US">
 			<Text>Apply</Text>
 		</Row>
 		<Row Tag="LOC_TX_APPLY_TITLE" Language="en_US">
 			<Text>Apply the kick</Text>
 		</Row>
+		<Row Tag="LOC_TX_APPLY_TITLE_LEAVE" Language="en_US">
+			<Text>Apply the leave</Text>
+		</Row>
 		<Row Tag="LOC_TX_APPLY_CONFIRM" Language="en_US">
 			<Text>Move {1_Player} to a team of their own now?[NEWLINE][NEWLINE]Right after this the game saves itself, and everyone loads that save. Civ VI only shows the new teams after a reload.</Text>
+		</Row>
+		<Row Tag="LOC_TX_APPLY_CONFIRM_LEAVE" Language="en_US">
+			<Text>{1_Player} leaves the team and gets a team of their own. Apply it now?[NEWLINE][NEWLINE]Right after this the game saves itself, and everyone loads that save. Civ VI only shows the new teams after a reload.</Text>
 		</Row>
 		<Row Tag="LOC_TX_APPLY_CONFIRM_NETMP" Language="en_US">
 			<Text>[NEWLINE][NEWLINE]After the save, everyone exits to the main menu, the host loads it from Multiplayer > Host Game > Load Game, and the others rejoin.</Text>
@@ -308,26 +322,50 @@
 		<Row Tag="LOC_TX_RELOAD_TEXT" Language="en_US">
 			<Text>The kick is applied, but the game couldn't save itself. Now:[NEWLINE]1. Menu > Save Game, under a new name.[NEWLINE]2. Exit to the main menu and load that save: Multiplayer > Hotseat > Load Game. Don't use Load Game in the in-game menu: that makes a hotseat game single player.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
 		</Row>
+		<Row Tag="LOC_TX_RELOAD_TEXT_LEAVE" Language="en_US">
+			<Text>The leave is applied, but the game couldn't save itself. Now:[NEWLINE]1. Menu > Save Game, under a new name.[NEWLINE]2. Exit to the main menu and load that save: Multiplayer > Hotseat > Load Game. Don't use Load Game in the in-game menu: that makes a hotseat game single player.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
+		</Row>
 		<Row Tag="LOC_TX_RELOAD_TEXT_NETMP" Language="en_US">
 			<Text>The kick is applied, but the game couldn't save itself. Now:[NEWLINE]1. Host: Menu > Save Game, under a new name.[NEWLINE]2. Everyone exits to the main menu, the host loads that save from Multiplayer > Host Game > Load Game, then everyone rejoins.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
+		</Row>
+		<Row Tag="LOC_TX_RELOAD_TEXT_NETMP_LEAVE" Language="en_US">
+			<Text>The leave is applied, but the game couldn't save itself. Now:[NEWLINE]1. Host: Menu > Save Game, under a new name.[NEWLINE]2. Everyone exits to the main menu, the host loads that save from Multiplayer > Host Game > Load Game, then everyone rejoins.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
 		</Row>
 		<Row Tag="LOC_TX_RELOAD_TEXT_LOCAL" Language="en_US">
 			<Text>The kick is applied, but the game couldn't save itself. Now save the game under a new name and load it: Menu > Save Game, then Menu > Load Game.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
 		</Row>
+		<Row Tag="LOC_TX_RELOAD_TEXT_LOCAL_LEAVE" Language="en_US">
+			<Text>The leave is applied, but the game couldn't save itself. Now save the game under a new name and load it: Menu > Save Game, then Menu > Load Game.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
+		</Row>
 		<Row Tag="LOC_TX_SAVED_TITLE" Language="en_US">
 			<Text>Load the save to finish the kick</Text>
+		</Row>
+		<Row Tag="LOC_TX_SAVED_TITLE_LEAVE" Language="en_US">
+			<Text>Load the save to finish leaving</Text>
 		</Row>
 		<Row Tag="LOC_TX_SAVED_TEXT_HOTSEAT" Language="en_US">
 			<Text>Saved as {1_Name}.[NEWLINE][NEWLINE]To finish the kick, everyone loads this save: Main Menu > Multiplayer > Hotseat > Load Game. Don't use Load Game in the in-game menu: that makes a hotseat game single player.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
 		</Row>
+		<Row Tag="LOC_TX_SAVED_TEXT_HOTSEAT_LEAVE" Language="en_US">
+			<Text>Saved as {1_Name}.[NEWLINE][NEWLINE]To finish leaving, everyone loads this save: Main Menu > Multiplayer > Hotseat > Load Game. Don't use Load Game in the in-game menu: that makes a hotseat game single player.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
+		</Row>
 		<Row Tag="LOC_TX_SAVED_TEXT_NETMP" Language="en_US">
 			<Text>Saved as {1_Name}.[NEWLINE][NEWLINE]To finish the kick, everyone loads this save: everyone exits to the main menu, the host loads it from Multiplayer > Host Game > Load Game, then everyone rejoins.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
+		</Row>
+		<Row Tag="LOC_TX_SAVED_TEXT_NETMP_LEAVE" Language="en_US">
+			<Text>Saved as {1_Name}.[NEWLINE][NEWLINE]To finish leaving, everyone loads this save: everyone exits to the main menu, the host loads it from Multiplayer > Host Game > Load Game, then everyone rejoins.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
 		</Row>
 		<Row Tag="LOC_TX_SAVED_TEXT_LOCAL" Language="en_US">
 			<Text>Saved as {1_Name}.[NEWLINE][NEWLINE]To finish the kick, load this save: Menu > Load Game.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
 		</Row>
+		<Row Tag="LOC_TX_SAVED_TEXT_LOCAL_LEAVE" Language="en_US">
+			<Text>Saved as {1_Name}.[NEWLINE][NEWLINE]To finish leaving, load this save: Menu > Load Game.[NEWLINE][NEWLINE]Until then the leader portraits at the top may look wrong. Don't click them.</Text>
+		</Row>
 		<Row Tag="LOC_TX_APPLY_FAILED_TITLE" Language="en_US">
 			<Text>Kick not applied</Text>
+		</Row>
+		<Row Tag="LOC_TX_APPLY_FAILED_TITLE_LEAVE" Language="en_US">
+			<Text>Leave not applied</Text>
 		</Row>
 		<Row Tag="LOC_TX_APPLY_FAILED_TEXT" Language="en_US">
 			<Text>The team change didn't take, so it was undone and nothing changed. Try again, and send Lua.log to the mod author if it keeps failing.</Text>
@@ -421,7 +459,7 @@
 			<Text>Your team can't start a new vote right now.</Text>
 		</Row>
 		<Row Tag="LOC_TX_REASON_APPLY_PENDING" Language="en_US">
-			<Text>A kick on your team is still waiting to be applied.</Text>
+			<Text>A team change on your team is still waiting to be applied.</Text>
 		</Row>
 		<Row Tag="LOC_TX_REASON_NO_RECORD" Language="en_US">
 			<Text>That vote doesn't exist anymore.</Text>
@@ -439,7 +477,7 @@
 			<Text>That request wasn't understood.</Text>
 		</Row>
 		<Row Tag="LOC_TX_REASON_NOT_PENDING" Language="en_US">
-			<Text>There's no passed kick to apply.</Text>
+			<Text>There's no team change waiting to be applied.</Text>
 		</Row>
 		<Row Tag="LOC_TX_REASON_BAD_STEP" Language="en_US">
 			<Text>That request wasn't understood.</Text>
@@ -466,7 +504,7 @@
 			<Text>No free team number is left.</Text>
 		</Row>
 		<Row Tag="LOC_TX_REASON_BAD_MODE" Language="en_US">
-			<Text>That kick type isn't available.</Text>
+			<Text>That choice isn't available.</Text>
 		</Row>
 		<Row Tag="LOC_TX_REASON_NO_TEAM" Language="en_US">
 			<Text>You're not on a team with other players.</Text>
